@@ -561,6 +561,63 @@ public class DexScanner {
         return out;
     }
 
+    public List<FieldInfo> getWrittenStaticFieldsInMethod(String classDesc, String methodName, String[] paramDescs, String targetClassDesc) {
+        List<FieldInfo> out = new ArrayList<>();
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null) return out;
+        DexPart part = m.dex;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            if ((op >= 0x67 && op <= 0x6d) && k + 1 < insnsSize) {
+                int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (fIdx < part.fieldSz) {
+                    int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;
+                    int tIdx = part.buf.getShort(part.fieldOff + fIdx * 8 + 2) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.fieldOff + fIdx * 8 + 4);
+                    String fc = part.getType(cIdx);
+                    if (targetClassDesc == null || targetClassDesc.equals(fc)) {
+                        out.add(new FieldInfo(true, part.getString(nIdx), part.getType(tIdx)));
+                    }
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return out;
+    }
+
+    public Map<String, List<FieldInfo>> getWrittenFieldsGroupedByOwner(String classDesc, String methodName, String[] paramDescs) {
+        Map<String, List<FieldInfo>> out = new HashMap<>();
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null) return out;
+        DexPart part = m.dex;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            if ((op >= 0x59 && op <= 0x5f) && k + 1 < insnsSize) {
+                int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (fIdx < part.fieldSz) {
+                    int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;
+                    int tIdx = part.buf.getShort(part.fieldOff + fIdx * 8 + 2) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.fieldOff + fIdx * 8 + 4);
+                    String fc = part.getType(cIdx);
+                    List<FieldInfo> list = out.get(fc);
+                    if (list == null) {
+                        list = new ArrayList<>();
+                        out.put(fc, list);
+                    }
+                    list.add(new FieldInfo(false, part.getString(nIdx), part.getType(tIdx)));
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return out;
+    }
+
     public List<FieldInfo> getReadInstanceFieldsInMethod(String classDesc, String methodName, String[] paramDescs, String targetClassDesc) {
         List<FieldInfo> out = new ArrayList<>();
         for (MethodInfo m : getMethods(classDesc)) {
@@ -675,6 +732,26 @@ public class DexScanner {
             k += insnWidth(part.buf, insnsOff, k, insnsSize);
         }
         return out;
+    }
+
+    public boolean methodHasOpcode(String classDesc, String methodName, String[] paramDescs, int... opcodes) {
+        if (opcodes == null || opcodes.length == 0) return false;
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null) return false;
+        DexPart part = m.dex;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            for (int target : opcodes) {
+                if (op == target) {
+                    return true;
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return false;
     }
 
     public String findReadFieldBeforeCall(String classDesc, String methodName, String[] paramDescs,

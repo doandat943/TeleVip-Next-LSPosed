@@ -196,22 +196,24 @@ public class ConfigManager {
 
         items.add(shadows);
 
-        // Connections
-        if (!ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
-                && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
-            ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
+        // Connections (Telegraph already ships native Download & Upload speed boosters)
+        if (!ClientManager.is(ClientManager.Client.Telegraph)) {
+            if (!ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
+                    && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
+                ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
+            }
+
+            connections = new ConfigItem(ConfigItem.HEADER, Keys.ConnectionsSettings);
+            items.add(connections);
+
+            downloadSpeed = new ConfigItem(ConfigItem.TEXT, Keys.DownloadSpeed, false, DownloadSpeed::init);
+            items.add(downloadSpeed);
+
+            uploadSpeed = new ConfigItem(ConfigItem.SWITCH, Keys.UploadSpeed, ConfigPreferences.getBoolean(Keys.UploadSpeed), UploadSpeed::init);
+            items.add(uploadSpeed);
+
+            items.add(shadows);
         }
-
-        connections = new ConfigItem(ConfigItem.HEADER, Keys.ConnectionsSettings);
-        items.add(connections);
-
-        downloadSpeed = new ConfigItem(ConfigItem.TEXT, Keys.DownloadSpeed, false, DownloadSpeed::init);
-        items.add(downloadSpeed);
-
-        uploadSpeed = new ConfigItem(ConfigItem.SWITCH, Keys.UploadSpeed, ConfigPreferences.getBoolean(Keys.UploadSpeed), UploadSpeed::init);
-        items.add(uploadSpeed);
-
-        items.add(shadows);
 
         // Media
         media = new ConfigItem(ConfigItem.HEADER, Keys.MediaSettings);
@@ -279,14 +281,12 @@ public class ConfigManager {
         telegramPremium = new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init);
         items.add(telegramPremium);
 
-        if (!ClientManager.is(ClientManager.Client.Telegraph)) {
-            disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
-            hideUpdateApp = new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init);
-            fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
-            items.add(disableNumberRounding);
-            items.add(hideUpdateApp);
-            items.add(fixTLError);
-        }
+        disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
+        hideUpdateApp = new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init);
+        fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
+        items.add(disableNumberRounding);
+        items.add(hideUpdateApp);
+        items.add(fixTLError);
 
         items.add(shadows);
 

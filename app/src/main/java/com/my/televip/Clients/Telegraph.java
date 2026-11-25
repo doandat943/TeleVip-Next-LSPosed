@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedHelpers;
 
 public class Telegraph {
 
@@ -44,30 +45,38 @@ public class Telegraph {
         try {
             Class<?> connectionsManager = ClassLoad.getClass(ClassNames.CONNECTIONS_MANAGER);
             if (connectionsManager != null) {
-                HMethod.hookMethod(connectionsManager, "native_expireFile", long.class, new XC_MethodReplacement() {
-                    @Override
-                    protected Object replaceHookedMethod(MethodHookParam param) {
-                        return false;
-                    }
-                });
-                HMethod.hookMethod(connectionsManager, "native_daysFile", long.class, new XC_MethodReplacement() {
-                    @Override
-                    protected Object replaceHookedMethod(MethodHookParam param) {
-                        return 999;
-                    }
-                });
-                HMethod.hookMethod(connectionsManager, "native_checkLicense", long.class, new XC_MethodReplacement() {
-                    @Override
-                    protected Object replaceHookedMethod(MethodHookParam param) {
-                        return true;
-                    }
-                });
-                HMethod.hookMethod(connectionsManager, "native_removeInstance", int.class, boolean.class, new XC_MethodReplacement() {
-                    @Override
-                    protected Object replaceHookedMethod(MethodHookParam param) {
-                        return true;
-                    }
-                });
+                if (XposedHelpers.findMethodExactIfExists(connectionsManager, "native_expireFile", long.class) != null) {
+                    HMethod.hookMethod(connectionsManager, "native_expireFile", long.class, new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) {
+                            return false;
+                        }
+                    });
+                }
+                if (XposedHelpers.findMethodExactIfExists(connectionsManager, "native_daysFile", long.class) != null) {
+                    HMethod.hookMethod(connectionsManager, "native_daysFile", long.class, new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) {
+                            return 999;
+                        }
+                    });
+                }
+                if (XposedHelpers.findMethodExactIfExists(connectionsManager, "native_checkLicense", long.class) != null) {
+                    HMethod.hookMethod(connectionsManager, "native_checkLicense", long.class, new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) {
+                            return true;
+                        }
+                    });
+                }
+                if (XposedHelpers.findMethodExactIfExists(connectionsManager, "native_removeInstance", int.class, boolean.class) != null) {
+                    HMethod.hookMethod(connectionsManager, "native_removeInstance", int.class, boolean.class, new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) {
+                            return null;
+                        }
+                    });
+                }
             }
         } catch (Throwable t){
             Logger.e(t);

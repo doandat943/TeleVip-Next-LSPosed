@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 38;
+    private static final int SCHEMA_VERSION = 39;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -102,15 +102,41 @@ public class AutoMappingResolver {
     private String buildMapping(String sourceDir, ClassLoader classLoader) throws Exception {
         DexScanner scanner = new DexScanner(sourceDir);
 
-        // 1. Reflection-based superclasses (immune to R8)
+        // 1. Reflection-based superclasses (immune to R8), with DEX fallback
         String baseControllerDesc = getSuperDesc(classLoader, ClassNames.CONNECTIONS_MANAGER);
+        if (baseControllerDesc == null) {
+            baseControllerDesc = scanner.getSuperClass(DexScanner.javaToDesc(ClassNames.CONNECTIONS_MANAGER));
+        }
         String applicationLoaderDesc = getSuperDesc(classLoader, "org.telegram.messenger.ApplicationLoaderImpl");
+        if (applicationLoaderDesc == null) {
+            applicationLoaderDesc = scanner.getSuperClass("Lorg/telegram/messenger/ApplicationLoaderImpl;");
+        }
         String baseFragmentDesc = getSuperDesc(classLoader, ClassNames.PROFILE_ACTIVITY);
+        if (baseFragmentDesc == null) {
+            baseFragmentDesc = scanner.getSuperClass(DexScanner.javaToDesc(ClassNames.PROFILE_ACTIVITY));
+        }
 
         if (applicationLoaderDesc != null) {
             addClass(ClassNames.APPLICATION_LOADER, applicationLoaderDesc);
-            addField("ApplicationLoader", "applicationContext",
-                    scanner.findSingleField(applicationLoaderDesc, true, "Landroid/content/Context;"));
+            String appCtxField = scanner.findSingleField(applicationLoaderDesc, true, "Landroid/content/Context;");
+            if (appCtxField == null) {
+                for (DexScanner.FieldInfo wf : scanner.getWrittenStaticFieldsInMethod(
+                        applicationLoaderDesc, "onCreate", new String[0], applicationLoaderDesc)) {
+                    if ("Landroid/content/Context;".equals(wf.typeDesc)) {
+                        appCtxField = wf.name;
+                        break;
+                    }
+                }
+            }
+            if (appCtxField == null) {
+                for (DexScanner.FieldInfo f : scanner.getFields(applicationLoaderDesc)) {
+                    if (f.isStatic && "Landroid/content/Context;".equals(f.typeDesc)) {
+                        appCtxField = f.name;
+                        break;
+                    }
+                }
+            }
+            addField("ApplicationLoader", "applicationContext", appCtxField);
         }
 
         String launchActDesc = DexScanner.javaToDesc(ClassNames.LAUNCH_ACTIVITY);
@@ -307,17 +333,29 @@ public class AutoMappingResolver {
                 }
             }
             DexScanner.MethodInfo isSecretMethod = null;
+            DexScanner.MethodInfo bestCanForward = null;
+            boolean exactCanForward = false;
             String secretMsgDesc = "Lorg/telegram/tgnet/TLRPC$TL_message_secret;";
             for (DexScanner.MethodInfo m : scanner.getMethods(msgObjDesc)) {
                 if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0) {
-                    if (m.readsFieldNamed("voice")) addMethod("MessageObject", "isVoice", m.name);
-                    else if (m.readsFieldNamed("noforwards")) addMethod("MessageObject", "canForwardMessage", m.name);
-                    else if (m.checksInstanceOf(secretMsgDesc)) {
+                    if (m.readsFieldNamed("voice")) {
+                        addMethod("MessageObject", "isVoice", m.name);
+                    } else if ("canForwardMessage".equals(m.name)) {
+                        bestCanForward = m;
+                        exactCanForward = true;
+                    } else if (!exactCanForward && m.readsFieldNamed("noforwards")) {
+                        if (bestCanForward == null || m.getInsnsSize() < bestCanForward.getInsnsSize()) {
+                            bestCanForward = m;
+                        }
+                    } else if (m.checksInstanceOf(secretMsgDesc)) {
                         if (isSecretMethod == null || m.getInsnsSize() < isSecretMethod.getInsnsSize()) {
                             isSecretMethod = m;
                         }
                     }
                 }
+            }
+            if (bestCanForward != null) {
+                addMethod("MessageObject", "canForwardMessage", bestCanForward.name);
             }
             if (isSecretMethod == null) {
                 for (DexScanner.MethodInfo m : scanner.getMethods(msgObjDesc)) {
@@ -339,9 +377,21 @@ public class AutoMappingResolver {
             addMethod("ChatActivity", "createView",
                     scanner.findSingleMethod(chatActDesc, false, "Landroid/view/View;", "Landroid/content/Context;"));
             String fillMenuName = null;
+            String[] fillMenuParams = null;
             if (msgObjDesc != null) {
-                fillMenuName = scanner.findSingleMethod(chatActDesc, false, "V", msgObjDesc,
-                        "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;");
+                String[][] fillMenuVariants = new String[][]{
+                        {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"},
+                        {msgObjDesc, msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"},
+                        {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/lang/CharSequence;"},
+                        {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"}
+                };
+                for (String[] variant : fillMenuVariants) {
+                    fillMenuName = scanner.findSingleMethod(chatActDesc, false, "V", variant);
+                    if (fillMenuName != null) {
+                        fillMenuParams = variant;
+                        break;
+                    }
+                }
                 addMethod("ChatActivity", "fillMessageMenu", fillMenuName);
                 for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
                     if (!m.isStatic && !"V".equals(m.returnDesc)) {
@@ -371,7 +421,7 @@ public class AutoMappingResolver {
             if (msgObjDesc != null) {
                 String probeMethod = fillMenuName != null ? fillMenuName : (bestOpt != null ? bestOpt.name : null);
                 String[] probeParams = fillMenuName != null
-                        ? new String[]{msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"}
+                        ? fillMenuParams
                         : (bestOpt != null ? new String[]{"I"} : null);
                 if (probeMethod != null && probeParams != null) {
                     Map<String, Integer> moReads = new HashMap<>();
@@ -423,6 +473,18 @@ public class AutoMappingResolver {
         String msgCtrlDesc = null;
         if (baseControllerDesc != null) {
             String userConfigDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "userconfing");
+            if (userConfigDesc == null) {
+                userConfigDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "userconfig");
+            }
+            if (userConfigDesc == null && baseFragmentDesc != null) {
+                for (DexScanner.MethodInfo m : scanner.getMethods(baseFragmentDesc)) {
+                    if (!m.isStatic && "getUserConfig".equals(m.name) && m.paramDescs.length == 0
+                            && scanner.isSubclassOf(m.returnDesc, baseControllerDesc)) {
+                        userConfigDesc = m.returnDesc;
+                        break;
+                    }
+                }
+            }
             if (userConfigDesc != null) {
                 addClass(ClassNames.USER_CONFIG, userConfigDesc);
                 if (baseFragmentDesc != null) {
@@ -442,6 +504,27 @@ public class AutoMappingResolver {
                 }
                 if (selectedAccField == null) {
                     selectedAccField = scanner.findSingleField(userConfigDesc, true, "I");
+                }
+                if (selectedAccField == null) {
+                    for (DexScanner.MethodInfo m : scanner.getMethods(userConfigDesc)) {
+                        if (m.isStatic && "I".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                            String candidate = null;
+                            boolean valid = true;
+                            for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(userConfigDesc, m.name, new String[0], userConfigDesc)) {
+                                if ("I".equals(rf.typeDesc)) {
+                                    if (candidate == null) candidate = rf.name;
+                                    else if (!candidate.equals(rf.name)) {
+                                        valid = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (valid && candidate != null) {
+                                selectedAccField = candidate;
+                                break;
+                            }
+                        }
+                    }
                 }
                 addField("UserConfig", "selectedAccount", selectedAccField);
                 addMethod("UserConfig", "getCurrentUser",
@@ -564,8 +647,16 @@ public class AutoMappingResolver {
                     addMethod("MessagesController", "getInputChannel",
                             scanner.findSingleMethod(msgCtrlDesc, true, "Lorg/telegram/tgnet/TLRPC$InputChannel;", "J"));
                 }
-                addField("MessagesController", "dialogMessagesByIds",
-                        scanner.findSingleField(msgCtrlDesc, false, "Landroid/util/SparseArray;"));
+                String dialogMsgsByIds = scanner.findSingleField(msgCtrlDesc, false, "Landroid/util/SparseArray;");
+                if (dialogMsgsByIds == null && deleteMeth != null) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
+                        if ("Landroid/util/SparseArray;".equals(rf.typeDesc)) {
+                            dialogMsgsByIds = rf.name;
+                            break;
+                        }
+                    }
+                }
+                addField("MessagesController", "dialogMessagesByIds", dialogMsgsByIds);
 
                 // Identify LongSparseArray type and dialogMessage field (prefer field read in deleteMessages)
                 java.util.Set<String> delReadFields = new java.util.HashSet<>();
@@ -659,8 +750,26 @@ public class AutoMappingResolver {
             addClass(ClassNames.LOCALE_CONTROLLER, localeCtrlDesc);
             addMethod("LocaleController", "getInstance",
                     scanner.findSingleMethod(localeCtrlDesc, true, localeCtrlDesc));
-            addField("LocaleController", "isRTL",
-                    scanner.findSingleField(localeCtrlDesc, true, "Z"));
+            String isRtlField = scanner.findSingleField(localeCtrlDesc, true, "Z");
+            if (isRtlField == null && chatActDesc != null) {
+                Map<String, Integer> rtlReads = new HashMap<>();
+                for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(chatActDesc, m.name, m.paramDescs, localeCtrlDesc)) {
+                        if ("Z".equals(rf.typeDesc)) {
+                            Integer c = rtlReads.get(rf.name);
+                            rtlReads.put(rf.name, c == null ? 1 : c + 1);
+                        }
+                    }
+                }
+                int bestCount = 0;
+                for (Map.Entry<String, Integer> e : rtlReads.entrySet()) {
+                    if (e.getValue() > bestCount) {
+                        bestCount = e.getValue();
+                        isRtlField = e.getKey();
+                    }
+                }
+            }
+            addField("LocaleController", "isRTL", isRtlField);
             String getCurLocale = scanner.findSingleMethod(localeCtrlDesc, false, "Ljava/util/Locale;");
             if (getCurLocale != null) {
                 addMethod("LocaleController", "getCurrentLocale", getCurLocale);
@@ -716,21 +825,51 @@ public class AutoMappingResolver {
             resolveSharedConfigUpdate(scanner, sharedConfigDesc);
         }
 
-        String browserDesc = scanner.findClassByStrings(null, null,
+        String browserDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null,
                 "com.android.browser.application_id", "android.support.customtabs.extra.SESSION");
+        if (browserDesc == null) {
+            browserDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null,
+                    "com.android.browser.application_id");
+        }
         if (browserDesc != null) {
             addClass(ClassNames.BROWSER, browserDesc);
-            addMethod("Browser", "openUrl",
-                    scanner.findSingleMethod(browserDesc, true, "V", "Landroid/content/Context;", "Ljava/lang/String;"));
+            String openUrlMeth = null;
+            Map<String, Integer> csVoidCounts = new HashMap<>();
+            List<String> csVoidNames = new ArrayList<>();
+            for (DexScanner.MethodInfo m : scanner.getMethods(browserDesc)) {
+                if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 2
+                        && "Landroid/content/Context;".equals(m.paramDescs[0])
+                        && ("Ljava/lang/String;".equals(m.paramDescs[1]) || "Landroid/net/Uri;".equals(m.paramDescs[1]))) {
+                    csVoidCounts.put(m.name, csVoidCounts.getOrDefault(m.name, 0) + 1);
+                    if (m.paramDescs.length == 2 && "Ljava/lang/String;".equals(m.paramDescs[1])) {
+                        if ("openUrl".equals(m.name)) {
+                            openUrlMeth = m.name;
+                            break;
+                        }
+                        csVoidNames.add(m.name);
+                    }
+                }
+            }
+            if (openUrlMeth == null && csVoidNames.size() == 1) {
+                openUrlMeth = csVoidNames.get(0);
+            } else if (openUrlMeth == null && !csVoidNames.isEmpty()) {
+                int bestOverloads = 0;
+                for (String cand : csVoidNames) {
+                    int cnt = csVoidCounts.getOrDefault(cand, 0);
+                    if (cnt > bestOverloads) {
+                        bestOverloads = cnt;
+                        openUrlMeth = cand;
+                    }
+                }
+            }
+            if (openUrlMeth != null) {
+                addMethod("Browser", "openUrl", openUrlMeth);
+            }
         }
 
         String themeDesc = findTheme(scanner);
         if (themeDesc != null) {
             addClass(ClassNames.THEME, themeDesc);
-            String isDark = findIsCurrentThemeDark(scanner, themeDesc);
-            if (isDark != null) {
-                addMethod("Theme", "isCurrentThemeDark", isDark);
-            }
             addField("Theme", "chat_timePaint",
                     scanner.findSingleField(themeDesc, true, "Landroid/text/TextPaint;"));
 
@@ -746,6 +885,7 @@ public class AutoMappingResolver {
                     break;
                 }
             }
+            String infoIsDark = null;
             if (getThemeMethod != null && themeInfoDesc != null) {
                 addMethod("Theme", "getTheme", getThemeMethod);
                 String applyAnim = scanner.findSingleMethod(themeDesc, true, "V", themeInfoDesc, "Z", "I", "Landroid/view/View;");
@@ -756,10 +896,18 @@ public class AutoMappingResolver {
                 if (applyDirect != null) {
                     addMethod("Theme", "applyTheme", applyDirect);
                 }
-                String infoIsDark = scanner.findSingleMethod(themeInfoDesc, false, "Z");
+                infoIsDark = scanner.findSingleMethod(themeInfoDesc, false, "Z");
+                if (infoIsDark == null) {
+                    infoIsDark = scanner.findMethodByString(themeInfoDesc, "Dark Blue", false, "Z");
+                }
                 if (infoIsDark != null) {
                     addMethod("ThemeInfo", "isDark", infoIsDark);
                 }
+            }
+
+            String isDark = findIsCurrentThemeDark(scanner, themeDesc, themeInfoDesc, infoIsDark);
+            if (isDark != null) {
+                addMethod("Theme", "isCurrentThemeDark", isDark);
             }
         }
 
@@ -1543,17 +1691,36 @@ public class AutoMappingResolver {
             }
         }
 
-        String smiDesc = scanner.findClassByPredicate("Lorg/telegram/messenger/", (d, fs, ms) -> {
-            int strs = 0, bools = 0, lists = 0;
-            for (DexScanner.FieldInfo f : fs) {
-                if (!f.isStatic) {
+        String smiDesc = null;
+        if (prepPhoto != null) {
+            for (Map.Entry<String, List<DexScanner.FieldInfo>> e :
+                    scanner.getWrittenFieldsGroupedByOwner(smhDesc, prepPhoto.name, prepPhoto.paramDescs).entrySet()) {
+                String owner = e.getKey();
+                if (owner.equals(smhDesc) || !owner.startsWith("Lorg/telegram/messenger/")) continue;
+                int strs = 0, lists = 0;
+                for (DexScanner.FieldInfo f : e.getValue()) {
                     if ("Ljava/lang/String;".equals(f.typeDesc)) strs++;
-                    else if ("Z".equals(f.typeDesc)) bools++;
                     else if ("Ljava/util/ArrayList;".equals(f.typeDesc)) lists++;
                 }
+                if (strs >= 2 && lists >= 1) {
+                    smiDesc = owner;
+                    break;
+                }
             }
-            return strs >= 3 && bools >= 3 && lists >= 1 && fs.size() >= 10 && fs.size() <= 35 && ms.size() <= 10;
-        });
+        }
+        if (smiDesc == null) {
+            smiDesc = scanner.findClassByPredicate("Lorg/telegram/messenger/", (d, fs, ms) -> {
+                int strs = 0, bools = 0, lists = 0;
+                for (DexScanner.FieldInfo f : fs) {
+                    if (!f.isStatic) {
+                        if ("Ljava/lang/String;".equals(f.typeDesc)) strs++;
+                        else if ("Z".equals(f.typeDesc)) bools++;
+                        else if ("Ljava/util/ArrayList;".equals(f.typeDesc)) lists++;
+                    }
+                }
+                return strs >= 3 && bools >= 3 && lists >= 1 && fs.size() >= 10 && fs.size() <= 35 && ms.size() <= 10;
+            });
+        }
         if (smiDesc != null) {
             addClass(ClassNames.SENDING_MEDIA_INFO, smiDesc);
             if (prepPhoto != null) {
@@ -1786,16 +1953,26 @@ public class AutoMappingResolver {
             addMethod("SettingsActivity$SettingCell$Factory", "bindView", factoryBindName[0]);
         }
 
-        // Resolve UItem fields from exact Factory.of() overload bytecode writes (iput / iput-object)
+        // Resolve UItem fields from Factory.of() bytecode writes (largest overload first)
+        List<DexScanner.MethodInfo> ofOverloads = new ArrayList<>();
+        for (DexScanner.MethodInfo m : scanner.getMethods(factoryDesc)) {
+            if (m.isStatic && factoryOfName[0].equals(m.name) && uItemDesc.equals(m.returnDesc)) {
+                ofOverloads.add(m);
+            }
+        }
+        ofOverloads.sort((a, b) -> Integer.compare(b.paramDescs.length, a.paramDescs.length));
         String firstInt = null;
         String cs1 = null, cs2 = null;
-        for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(factoryDesc, factoryOfName[0], factoryOfParams[0], uItemDesc)) {
-            if ("I".equals(f.typeDesc) && firstInt == null) {
-                firstInt = f.name;
-            } else if ("Ljava/lang/CharSequence;".equals(f.typeDesc)) {
-                if (cs1 == null) cs1 = f.name;
-                else if (cs2 == null && !f.name.equals(cs1)) cs2 = f.name;
+        for (DexScanner.MethodInfo m : ofOverloads) {
+            for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(factoryDesc, m.name, m.paramDescs, uItemDesc)) {
+                if ("I".equals(f.typeDesc) && firstInt == null) {
+                    firstInt = f.name;
+                } else if ("Ljava/lang/CharSequence;".equals(f.typeDesc)) {
+                    if (cs1 == null) cs1 = f.name;
+                    else if (cs2 == null && !f.name.equals(cs1)) cs2 = f.name;
+                }
             }
+            if (firstInt != null && cs1 != null && cs2 != null) break;
         }
         if (firstInt != null) addField("UItem", "id", firstInt);
         if (cs1 != null) addField("UItem", "text", cs1);
@@ -1838,19 +2015,61 @@ public class AutoMappingResolver {
         });
     }
 
-    private static String findIsCurrentThemeDark(DexScanner scanner, String themeDesc) {
-        String best = null;
-        int bestSize = 0;
+    private static String findIsCurrentThemeDark(
+            DexScanner scanner, String themeDesc, String themeInfoDesc, String infoIsDark) {
+        String bestPrimary = null;
+        int bestPrimarySize = Integer.MAX_VALUE;
+        String bestFieldMatch = null;
+        int bestFieldSize = Integer.MAX_VALUE;
+        String bestFallback = null;
+        int bestFallbackSize = 0;
+
+        String[] noArgs = new String[0];
         for (DexScanner.MethodInfo m : scanner.getMethods(themeDesc)) {
-            if (m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0 && m.codeOff != 0) {
-                int insns = m.getInsnsSize();
-                if (insns > bestSize) {
-                    bestSize = insns;
-                    best = m.name;
+            if (!m.isStatic || !"Z".equals(m.returnDesc) || m.paramDescs.length != 0 || m.codeOff == 0) {
+                continue;
+            }
+            int insns = m.getInsnsSize();
+            boolean hasXor = scanner.methodHasOpcode(themeDesc, m.name, noArgs, 0x97, 0xb7, 0xd7, 0xdf);
+
+            if (themeInfoDesc != null && infoIsDark != null && !hasXor) {
+                boolean callsInfoIsDark = false;
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(themeDesc, m.name, noArgs, themeInfoDesc)) {
+                    if (infoIsDark.equals(ref.name) && ref.paramDescs.length == 0 && "Z".equals(ref.returnDesc)) {
+                        callsInfoIsDark = true;
+                        break;
+                    }
+                }
+                if (callsInfoIsDark && insns < bestPrimarySize) {
+                    bestPrimarySize = insns;
+                    bestPrimary = m.name;
                 }
             }
+
+            if (hasXor || !scanner.getCalledMethodsInMethod(themeDesc, m.name, noArgs, "Ljava/lang/System;").isEmpty()) {
+                continue;
+            }
+            if (themeInfoDesc != null) {
+                boolean readsThemeInfo = false;
+                for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(themeDesc, m.name, noArgs, themeDesc)) {
+                    if (themeInfoDesc.equals(rf.typeDesc)) {
+                        readsThemeInfo = true;
+                        break;
+                    }
+                }
+                if (readsThemeInfo && insns < bestFieldSize) {
+                    bestFieldSize = insns;
+                    bestFieldMatch = m.name;
+                }
+            }
+            if (insns > bestFallbackSize) {
+                bestFallbackSize = insns;
+                bestFallback = m.name;
+            }
         }
-        return best;
+        if (bestPrimary != null) return bestPrimary;
+        if (bestFieldMatch != null) return bestFieldMatch;
+        return bestFallback;
     }
 
     private void resolveAlertDialog(DexScanner scanner) {

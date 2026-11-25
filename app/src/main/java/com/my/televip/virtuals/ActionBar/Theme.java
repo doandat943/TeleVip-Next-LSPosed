@@ -57,8 +57,8 @@ public class Theme {
             Context ctx = ApplicationLoaderHook.getApplicationContext();
             if (ctx == null) ctx = Utils.getCurrentActivity();
             SharedPreferences prefs = ctx != null ? ctx.getSharedPreferences("themeconfig", Context.MODE_PRIVATE) : null;
-            String dayName = prefs != null ? prefs.getString("lastDayTheme", "Blue") : "Blue";
-            String nightName = prefs != null ? prefs.getString("lastDarkTheme", "Dark Blue") : "Dark Blue";
+            String dayName = prefs != null ? prefs.getString("lastDayTheme", prefs.getString("lastDayCustomTheme", "Blue")) : "Blue";
+            String nightName = prefs != null ? prefs.getString("lastDarkTheme", prefs.getString("lastDarkCustomTheme", "Dark Blue")) : "Dark Blue";
 
             Object dayTheme = invokeGetTheme(getThemeMethod, dayName);
             if (dayTheme == null || isThemeInfoDark(dayTheme)) {
