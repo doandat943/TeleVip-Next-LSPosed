@@ -221,6 +221,9 @@ public class SettingsController {
     }
 
     public void hide() {
+        if (settingsActivity != null && settingsActivity.closeSearchIfOpen()) {
+            return;
+        }
         if (Build.VERSION.SDK_INT >= 33 && backCallback != null) {
             try {
                 Activity prevAct = backCallbackActivity != null ? backCallbackActivity.get() : Utils.getCurrentActivity();
