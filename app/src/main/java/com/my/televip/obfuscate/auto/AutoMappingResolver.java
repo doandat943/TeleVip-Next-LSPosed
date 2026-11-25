@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 32;
+    private static final int SCHEMA_VERSION = 34;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -754,6 +754,10 @@ public class AutoMappingResolver {
         String notifCenterDesc = findNotificationCenter(scanner);
         if (notifCenterDesc != null) {
             addClass(ClassNames.NOTIFICATION_CENTER, notifCenterDesc);
+            String notifGetInst = scanner.findSingleMethod(notifCenterDesc, true, notifCenterDesc, "I");
+            if (notifGetInst != null) {
+                addMethod("NotificationCenter", "getInstance", notifGetInst);
+            }
             String bestPost = null;
             int bestPostSize = -1;
             for (DexScanner.MethodInfo m : scanner.getMethods(notifCenterDesc)) {
@@ -774,11 +778,14 @@ public class AutoMappingResolver {
                     : null;
             String delMeth = methodMap.get("MessagesController#deleteMessages");
             if (mcDesc != null && delMeth != null) {
+                String lastNotifInt = null;
                 for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(mcDesc, delMeth, null, notifCenterDesc)) {
                     if ("I".equals(rf.typeDesc)) {
-                        addField("NotificationCenter", "messagesDeleted", rf.name);
-                        break;
+                        lastNotifInt = rf.name;
                     }
+                }
+                if (lastNotifInt != null) {
+                    addField("NotificationCenter", "messagesDeleted", lastNotifInt);
                 }
             }
             String tlErrField = scanner.findReadStaticFieldBeforeString(

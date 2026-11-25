@@ -73,6 +73,30 @@ public class MessagesController {
         return XposedHelpers.callStaticMethod(ClassLoad.getClass(ClassNames.MESSAGES_CONTROLLER), Obfuscate.getMethodName("MessagesController", "getInputChannel"), id);
     }
 
+    /**
+     * Looks up a cached TLRPC.Chat by positive chat/channel ID, supporting both Long and primitive long overloads.
+     */
+    public Object getChat(long chatId) {
+        if (messagesController == null) return null;
+        Class<?> cls = messagesController.getClass();
+        String mapped = Obfuscate.getMethodName("MessagesController", "getChat");
+        if (mapped != null && !"getChat".equals(mapped)) {
+            if (XposedHelpers.findMethodExactIfExists(cls, mapped, Long.class) != null) {
+                return XposedHelpers.callMethod(messagesController, mapped, Long.valueOf(chatId));
+            }
+            if (XposedHelpers.findMethodExactIfExists(cls, mapped, long.class) != null) {
+                return XposedHelpers.callMethod(messagesController, mapped, chatId);
+            }
+        }
+        if (XposedHelpers.findMethodExactIfExists(cls, "getChat", Long.class) != null) {
+            return XposedHelpers.callMethod(messagesController, "getChat", Long.valueOf(chatId));
+        }
+        if (XposedHelpers.findMethodExactIfExists(cls, "getChat", long.class) != null) {
+            return XposedHelpers.callMethod(messagesController, "getChat", chatId);
+        }
+        return null;
+    }
+
     public MessagesStorage getMessagesStorage() {
         return new MessagesStorage(XposedHelpers.callMethod(messagesController, Obfuscate.getMethodName("MessagesController", "getMessagesStorage")));
     }

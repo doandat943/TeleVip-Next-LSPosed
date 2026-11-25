@@ -166,5 +166,18 @@
   "HideUpdateAppDesc": "Suppresses in-app Telegram client update prompts",
   "FixTLErrorDesc": "Hides occasional 'TL error' pop-ups shown by the client",
   "DeveloperChannelDesc": "t.me/televipnext",
-  "RestartAppDesc": "Applies the settings marked 'Restart required'"
+  "RestartAppDesc": "Applies the settings marked 'Restart required'",
+  "ShowDeletedPrivate": "Private Chats",
+  "ShowDeletedPrivateDesc": "Keep deleted messages in private chats",
+  "ShowDeletedGroups": "Groups",
+  "ShowDeletedGroupsDesc": "Keep deleted messages in groups and supergroups",
+  "ShowDeletedChannels": "Channels",
+  "ShowDeletedChannelsDesc": "Keep deleted posts in channels",
+  "ClearDeletedMessages": "Clear Deleted Messages",
+  "ClearDeletedMessagesDesc": "Remove all locally kept deleted messages",
+  "ClearDeletedConfirm": "Remove all locally kept deleted messages from your device? Messages on Telegram servers will not be affected.",
+  "ClearAction": "Clear",
+  "ClearedDeletedCount": "Cleared %d deleted messages",
+  "NoDeletedMessages": "No deleted messages to clear",
+  "DeleteLocally": "Deleted"
 }

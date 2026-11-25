@@ -34,6 +34,7 @@ import com.my.televip.Class.ClassNames;
 import com.my.televip.Configs.ConfigItem;
 import com.my.televip.Configs.ConfigManager;
 import com.my.televip.base.BaseMethodHook;
+import com.my.televip.features.messages.ShowDeletedMessages;
 import com.my.televip.hooks.HMethod;
 import com.my.televip.language.Keys;
 import com.my.televip.language.Translator;
@@ -631,12 +632,16 @@ public class SettingsActivity {
     private View buildExpandableItemContainer(ConfigItem parentItem, GlassDesign.Palette p) {
         List<ConfigItem> children = parentItem.getChildren();
         int initialEnabled = 0;
-        int totalChildren = children != null ? children.size() : 0;
+        int switchCount = 0;
         if (children != null) {
             for (ConfigItem c : children) {
-                if (c.isEnable()) initialEnabled++;
+                if (c.getType() == ConfigItem.SWITCH) {
+                    switchCount++;
+                    if (c.isEnable()) initialEnabled++;
+                }
             }
         }
+        final int totalSwitchChildren = switchCount;
         parentItem.setEnable(initialEnabled > 0);
 
         LinearLayout wrapper = new LinearLayout(context);
@@ -660,7 +665,7 @@ public class SettingsActivity {
         textCol.setOrientation(LinearLayout.VERTICAL);
 
         TextView titleTv = new TextView(context);
-        titleTv.setText(formatExpandableTitle(parentItem, initialEnabled, totalChildren));
+        titleTv.setText(formatExpandableTitle(parentItem, initialEnabled, totalSwitchChildren));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
         textCol.addView(titleTv);
@@ -704,6 +709,36 @@ public class SettingsActivity {
                 childRow.setMinimumHeight(dp(50));
                 childRow.setBackground(GlassDesign.createRowRipple(p.ripple));
 
+                if (child.getType() == ConfigItem.TEXT) {
+                    LinearLayout cTextCol = new LinearLayout(context);
+                    cTextCol.setOrientation(LinearLayout.VERTICAL);
+
+                    TextView childTitle = new TextView(context);
+                    childTitle.setText(Translator.get(child.getKey()));
+                    childTitle.setTextColor(Color.rgb(255, 69, 58));
+                    childTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
+                    childTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                    cTextCol.addView(childTitle);
+
+                    String childSub = buildSubtitleText(child);
+                    if (childSub != null && !childSub.isEmpty()) {
+                        TextView cSubTv = new TextView(context);
+                        cSubTv.setText(childSub);
+                        cSubTv.setTextColor(p.textSecondary);
+                        cSubTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+                        LinearLayout.LayoutParams cSubLp = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                        cSubLp.topMargin = dp(2f);
+                        cTextCol.addView(cSubTv, cSubLp);
+                    }
+
+                    childRow.addView(cTextCol, new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                    childRow.setOnClickListener(v -> showClearDeletedConfirm());
+                    childrenContainer.addView(childRow);
+                    continue;
+                }
+
                 TextView childTitle = new TextView(context);
                 childTitle.setText(Translator.get(child.getKey()));
                 childTitle.setTextColor(p.textPrimary);
@@ -723,11 +758,11 @@ public class SettingsActivity {
 
                     int count = 0;
                     for (ConfigItem c : children) {
-                        if (c.isEnable()) count++;
+                        if (c.getType() == ConfigItem.SWITCH && c.isEnable()) count++;
                     }
                     parentItem.setEnable(count > 0);
                     parentSw.setChecked(count > 0, true);
-                    titleTv.setText(formatExpandableTitle(parentItem, count, children.size()));
+                    titleTv.setText(formatExpandableTitle(parentItem, count, totalSwitchChildren));
 
                     child.run();
                 });
@@ -743,11 +778,12 @@ public class SettingsActivity {
             if (children != null) {
                 for (int i = 0; i < children.size(); i++) {
                     ConfigItem c = children.get(i);
+                    if (c.getType() != ConfigItem.SWITCH) continue;
                     c.setEnable(next);
                     c.run();
                     if (childSwitches[i] != null) childSwitches[i].setChecked(next, true);
                 }
-                titleTv.setText(formatExpandableTitle(parentItem, next ? children.size() : 0, children.size()));
+                titleTv.setText(formatExpandableTitle(parentItem, next ? totalSwitchChildren : 0, totalSwitchChildren));
             }
         });
 
@@ -757,6 +793,23 @@ public class SettingsActivity {
         });
 
         return wrapper;
+    }
+
+    private void showClearDeletedConfirm() {
+        try {
+            int themeRes = Theme.isLight()
+                    ? android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
+                    : android.R.style.Theme_DeviceDefault_Dialog_Alert;
+            new AlertDialog.Builder(context, themeRes)
+                    .setTitle(Translator.get(Keys.ClearDeletedMessages))
+                    .setMessage(Translator.get(Keys.ClearDeletedConfirm))
+                    .setPositiveButton(Translator.get(Keys.ClearAction), (dialog, which) ->
+                            ShowDeletedMessages.clearAllDeletedMessages(context))
+                    .setNegativeButton(Translator.get(Keys.Cancel), null)
+                    .show();
+        } catch (Throwable t) {
+            Logger.e(t);
+        }
     }
 
     private String formatExpandableTitle(ConfigItem parentItem, int enabled, int total) {

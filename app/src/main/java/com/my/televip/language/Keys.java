@@ -21,6 +21,15 @@ public class Keys {
     public static final String PreventMedia = "PreventMedia";
     public static final String HidePhone = "HidePhone";
     public static final String ShowDeletedMessages = "ShowDeletedMessages";
+    public static final String ShowDeletedPrivate = "ShowDeletedPrivate";
+    public static final String ShowDeletedGroups = "ShowDeletedGroups";
+    public static final String ShowDeletedChannels = "ShowDeletedChannels";
+    public static final String ClearDeletedMessages = "ClearDeletedMessages";
+    public static final String ClearDeletedConfirm = "ClearDeletedConfirm";
+    public static final String ClearAction = "ClearAction";
+    public static final String ClearedDeletedCount = "ClearedDeletedCount";
+    public static final String NoDeletedMessages = "NoDeletedMessages";
+    public static final String DeleteLocally = "DeleteLocally";
     public static final String Deleted = "Deleted";
     public static final String Copied = "Copied";
     public static final String UserOffline = "UserOffline";

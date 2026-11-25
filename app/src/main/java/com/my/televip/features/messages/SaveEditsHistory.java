@@ -175,8 +175,6 @@ public class SaveEditsHistory {
                             int option = (Integer) param.args[0];
                             if (option != OPTION_EDIT_HISTORY) return;
 
-                            param.setResult(null);
-
                             long dbKey = 0L;
                             int msgId = 0;
                             String currentText = null;

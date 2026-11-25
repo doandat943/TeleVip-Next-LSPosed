@@ -166,5 +166,18 @@
   "HideUpdateAppDesc": "جلوگیری از نمایش پنجره به‌روزرسانی کلاینت تلگرام",
   "FixTLErrorDesc": "پنهان کردن خطاهای گاه‌به‌گاه 'TL error' کلاینت",
   "DeveloperChannelDesc": "t.me/televipnext",
-  "RestartAppDesc": "اعمال تنظیماتی که علامت «نیاز به ریستارت» دارند"
+  "RestartAppDesc": "اعمال تنظیماتی که علامت «نیاز به ریستارت» دارند",
+  "ShowDeletedPrivate": "چت‌های خصوصی",
+  "ShowDeletedPrivateDesc": "نگهداری پیام‌های حذف‌شده در چت‌های خصوصی",
+  "ShowDeletedGroups": "گروه‌ها",
+  "ShowDeletedGroupsDesc": "نگهداری پیام‌های حذف‌شده در گروه‌ها",
+  "ShowDeletedChannels": "کانال‌ها",
+  "ShowDeletedChannelsDesc": "نگهداری پست‌های حذف‌شده در کانال‌ها",
+  "ClearDeletedMessages": "پاک‌سازی پیام‌های حذف‌شده",
+  "ClearDeletedMessagesDesc": "حذف همه پیام‌های حذف‌شده ذخیره‌شده به‌صورت محلی",
+  "ClearDeletedConfirm": "همه پیام‌های حذف‌شده که به‌صورت محلی روی دستگاه نگه داشته شده‌اند پاک شوند؟ پیام‌های روی سرور تلگرام تغییری نمی‌کنند.",
+  "ClearAction": "پاک‌سازی",
+  "ClearedDeletedCount": "%d پیام حذف‌شده پاک شد",
+  "NoDeletedMessages": "پیام حذف‌شده‌ای برای پاک‌سازی نیست",
+  "DeleteLocally": "حذف‌شده"
 }

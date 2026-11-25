@@ -48,7 +48,7 @@ public class ConfigItem {
         this.children = children;
         boolean any = false;
         for (ConfigItem child : children) {
-            if (child.isEnable()) { any = true; break; }
+            if (child.getType() == SWITCH && child.isEnable()) { any = true; break; }
         }
         enable = any;
     }

@@ -166,5 +166,18 @@
   "HideUpdateAppDesc": "屏蔽 Telegram 客户端内的更新提示",
   "FixTLErrorDesc": "隐藏客户端偶尔弹出的 'TL error' 提示框",
   "DeveloperChannelDesc": "t.me/televipnext",
-  "RestartAppDesc": "应用标有“需要重新启动”的设置"
+  "RestartAppDesc": "应用标有“需要重新启动”的设置",
+  "ShowDeletedPrivate": "私聊",
+  "ShowDeletedPrivateDesc": "在私聊中保留已删除的消息",
+  "ShowDeletedGroups": "群组",
+  "ShowDeletedGroupsDesc": "在群组中保留已删除的消息",
+  "ShowDeletedChannels": "频道",
+  "ShowDeletedChannelsDesc": "在频道中保留已删除的帖子",
+  "ClearDeletedMessages": "清理已删除消息",
+  "ClearDeletedMessagesDesc": "移除本地保留的所有已删除消息",
+  "ClearDeletedConfirm": "确定要从设备移除所有本地保留的已删除消息吗？Telegram 服务器上的消息不会受影响。",
+  "ClearAction": "清理",
+  "ClearedDeletedCount": "已清理 %d 条已删除消息",
+  "NoDeletedMessages": "没有可清理的已删除消息",
+  "DeleteLocally": "已删除"
 }

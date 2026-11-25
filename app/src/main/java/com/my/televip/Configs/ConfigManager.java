@@ -60,6 +60,10 @@ public class ConfigManager {
 
     // Messages
     public static ConfigItem messages;
+    public static ConfigItem showDeletedPrivate;
+    public static ConfigItem showDeletedGroups;
+    public static ConfigItem showDeletedChannels;
+    public static ConfigItem clearDeletedMessages;
     public static ConfigItem showDeletedMessages;
     public static ConfigItem showMessageId;
     public static ConfigItem saveEditsHistory;
@@ -154,7 +158,27 @@ public class ConfigManager {
         messages = new ConfigItem(ConfigItem.HEADER, Keys.MessagesSettings);
         items.add(messages);
 
-        showDeletedMessages = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedMessages, ConfigPreferences.getBoolean(Keys.ShowDeletedMessages), ShowDeletedMessages::init);
+        if (!ConfigPreferences.contains(Keys.ShowDeletedPrivate)
+                && ConfigPreferences.getBoolean(Keys.ShowDeletedMessages)) {
+            ConfigPreferences.putBoolean(Keys.ShowDeletedPrivate, true);
+            ConfigPreferences.putBoolean(Keys.ShowDeletedGroups, true);
+            ConfigPreferences.putBoolean(Keys.ShowDeletedChannels, false);
+        }
+
+        List<ConfigItem> childrenDeleted = new ArrayList<>();
+        showDeletedPrivate = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedPrivate, ConfigPreferences.getBoolean(Keys.ShowDeletedPrivate), ShowDeletedMessages::init);
+        childrenDeleted.add(showDeletedPrivate);
+
+        showDeletedGroups = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedGroups, ConfigPreferences.getBoolean(Keys.ShowDeletedGroups), ShowDeletedMessages::init);
+        childrenDeleted.add(showDeletedGroups);
+
+        showDeletedChannels = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedChannels, ConfigPreferences.getBoolean(Keys.ShowDeletedChannels), ShowDeletedMessages::init);
+        childrenDeleted.add(showDeletedChannels);
+
+        clearDeletedMessages = new ConfigItem(ConfigItem.TEXT, Keys.ClearDeletedMessages);
+        childrenDeleted.add(clearDeletedMessages);
+
+        showDeletedMessages = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.ShowDeletedMessages, childrenDeleted);
         items.add(showDeletedMessages);
 
         if (!ClientManager.is(ClientManager.Client.NagramX)) {
@@ -270,7 +294,7 @@ public class ConfigManager {
                 if (item.getType() == ConfigItem.EXPANDABLE_SWITCH) {
                     if (item.getChildren() != null) {
                         for (ConfigItem child : item.getChildren()) {
-                            if (child != null && child.isEnable()) {
+                            if (child != null && child.getType() == ConfigItem.SWITCH && child.isEnable()) {
                                 child.run();
                             }
                         }
@@ -287,12 +311,19 @@ public class ConfigManager {
                 EditOnlineTextView.init();
             }
             AlwaysSaveMedia.init();
+            ShowDeletedMessages.initMenuHooks();
 
             if (ClientManager.is(ClientManager.Client.Telegraph)) Telegraph.removeAd();
 
         } catch (Throwable e) {
             Logger.e(e);
         }
+    }
+
+    public static boolean isShowDeletedAnyEnabled() {
+        return (showDeletedPrivate != null && showDeletedPrivate.isEnable()) ||
+                (showDeletedGroups != null && showDeletedGroups.isEnable()) ||
+                (showDeletedChannels != null && showDeletedChannels.isEnable());
     }
 
     public static boolean isGhostMode() {

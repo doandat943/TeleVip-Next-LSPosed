@@ -63,13 +63,6 @@ public class MessageTimeModifier {
                 ConfigManager.showMessageId != null &&
                         ConfigManager.showMessageId.isEnable();
 
-        boolean deleted =
-                ConfigManager.showDeletedMessages != null &&
-                        ConfigManager.showDeletedMessages.isEnable();
-
-        if (!id && !deleted)
-            return;
-
         try {
             MessageObject msg = new MessageObject(messageObject);
 
@@ -78,15 +71,18 @@ public class MessageTimeModifier {
             if (message.get_Message() == null)
                 return;
 
+            boolean hasDeletedFlag = (message.getFlags() & ShowDeletedMessages.FLAG_DELETED) != 0;
+            if (!id && !hasDeletedFlag)
+                return;
+
             String prefix = null;
             boolean redColor = false;
 
             if (id && message.getId() != 0) {
                 prefix = "ID " + message.getId();
-
             }
 
-            if (deleted && (message.getFlags() & ShowDeletedMessages.FLAG_DELETED) != 0) {
+            if (hasDeletedFlag) {
                 prefix = Translator.get(Keys.Deleted);
                 redColor = true;
             }

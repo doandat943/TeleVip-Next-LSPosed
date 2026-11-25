@@ -166,5 +166,18 @@
   "HideUpdateAppDesc": "Chặn thông báo nhắc cập nhật ứng dụng Telegram",
   "FixTLErrorDesc": "Ẩn các hộp thoại báo lỗi 'TL error' thi thoảng xuất hiện",
   "DeveloperChannelDesc": "t.me/televipnext",
-  "RestartAppDesc": "Áp dụng các thay đổi có ghi chú 'Cần khởi động lại'"
+  "RestartAppDesc": "Áp dụng các thay đổi có ghi chú 'Cần khởi động lại'",
+  "ShowDeletedPrivate": "Trò chuyện riêng tư",
+  "ShowDeletedPrivateDesc": "Giữ lại tin nhắn đã xóa trong đoạn chat riêng tư",
+  "ShowDeletedGroups": "Nhóm",
+  "ShowDeletedGroupsDesc": "Giữ lại tin nhắn đã xóa trong các nhóm",
+  "ShowDeletedChannels": "Kênh",
+  "ShowDeletedChannelsDesc": "Giữ lại bài viết đã xóa trong các kênh",
+  "ClearDeletedMessages": "Dọn tin nhắn đã xóa",
+  "ClearDeletedMessagesDesc": "Xóa toàn bộ tin nhắn đã xóa đang lưu cục bộ",
+  "ClearDeletedConfirm": "Xóa toàn bộ tin nhắn đã xóa đang được giữ cục bộ trên thiết bị này? Tin nhắn trên máy chủ Telegram sẽ không bị ảnh hưởng.",
+  "ClearAction": "Dọn sạch",
+  "ClearedDeletedCount": "Đã dọn %d tin nhắn đã xóa",
+  "NoDeletedMessages": "Không có tin nhắn đã xóa nào",
+  "DeleteLocally": "Đã xóa"
 }

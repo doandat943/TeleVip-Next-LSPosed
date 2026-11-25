@@ -166,5 +166,18 @@
   "HideUpdateAppDesc": "إخفاء تنبيهات تحديث تطبيق تيليجرام",
   "FixTLErrorDesc": "إخفاء نوافذ خطأ TL المنبثقة العرضية",
   "DeveloperChannelDesc": "t.me/televipnext",
-  "RestartAppDesc": "تطبيق الإعدادات التي تتطلب إعادة التشغيل"
+  "RestartAppDesc": "تطبيق الإعدادات التي تتطلب إعادة التشغيل",
+  "ShowDeletedPrivate": "المحادثات الخاصة",
+  "ShowDeletedPrivateDesc": "الاحتفاظ بالرسائل المحذوفة في المحادثات الخاصة",
+  "ShowDeletedGroups": "المجموعات",
+  "ShowDeletedGroupsDesc": "الاحتفاظ بالرسائل المحذوفة في المجموعات",
+  "ShowDeletedChannels": "القنوات",
+  "ShowDeletedChannelsDesc": "الاحتفاظ بالمنشورات المحذوفة في القنوات",
+  "ClearDeletedMessages": "مسح الرسائل المحذوفة",
+  "ClearDeletedMessagesDesc": "إزالة جميع الرسائل المحذوفة المحفوظة محلياً",
+  "ClearDeletedConfirm": "هل تريد إزالة جميع الرسائل المحذوفة المحفوظة محلياً من جهازك؟ لن تتأثر الرسائل على خوادم تيليجرام.",
+  "ClearAction": "مسح",
+  "ClearedDeletedCount": "تم مسح %d رسالة محذوفة",
+  "NoDeletedMessages": "لا توجد رسائل محذوفة لمسحها",
+  "DeleteLocally": "محذوف"
 }
