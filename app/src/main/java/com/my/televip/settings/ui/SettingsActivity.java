@@ -12,8 +12,12 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.TypedValue;
+import android.view.Choreographer;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -95,6 +99,8 @@ public class SettingsActivity {
     private final Context context;
     public RecyclerListView listView;
 
+    private static final int TAB_COUNT = 4;
+
     private FrameLayout rootView;
     private SettingsController controller;
     private int currentTab = TAB_PRIVACY;
@@ -104,7 +110,15 @@ public class SettingsActivity {
     private LinearLayout normalHeaderGroup;
     private LinearLayout searchHeaderGroup;
     private EditText searchInput;
-    private ScrollView mainScrollView;
+    private GlassDesign.SegmentedTabBar tabBar;
+    private TabPagerView tabPager;
+    private final ScrollView[] tabScrollViews = new ScrollView[TAB_COUNT];
+    private final LinearLayout[] tabContainers = new LinearLayout[TAB_COUNT];
+    private ScrollView searchScrollView;
+    private LinearLayout searchContainer;
+    private boolean showingSearchList = false;
+    private int lastHeaderPadTop = 0;
+    private int lastNavPadBottom = 0;
 
     private final List<TabSection> allTabSections = new ArrayList<>();
     private final List<SearchableRow> searchableRows = new ArrayList<>();
@@ -166,31 +180,63 @@ public class SettingsActivity {
         actionsCardView = null;
         footerCreditView = null;
         emptySearchCard = null;
+        tabBar = null;
+        tabPager = null;
+        searchScrollView = null;
+        searchContainer = null;
+        showingSearchList = false;
+        for (int i = 0; i < TAB_COUNT; i++) {
+            tabScrollViews[i] = null;
+            tabContainers[i] = null;
+        }
 
         final GlassDesign.Palette p = GlassDesign.Palette.of(light);
         rootView.setBackground(GlassDesign.createAuroraBackground(p));
 
         try {
-            // 1. Scrollable full-bleed content layer
-            mainScrollView = new ScrollView(context);
-            mainScrollView.setVerticalScrollBarEnabled(false);
-            mainScrollView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
-            mainScrollView.setClipToPadding(false);
-
             int statusH = getDimenPx("status_bar_height");
             int navH = getDimenPx("navigation_bar_height");
-            int fallbackTopPad = statusH + dp(116);
-            mainScrollView.setPadding(0, fallbackTopPad, 0, navH + dp(28));
+            lastHeaderPadTop = statusH + dp(116);
+            lastNavPadBottom = navH + dp(28);
 
-            LinearLayout contentContainer = new LinearLayout(context);
-            contentContainer.setOrientation(LinearLayout.VERTICAL);
+            // 1. 4-page horizontal pager with independent vertical ScrollViews
+            tabPager = new TabPagerView(context);
+            for (int i = 0; i < TAB_COUNT; i++) {
+                ScrollView sv = new ScrollView(context);
+                sv.setVerticalScrollBarEnabled(false);
+                sv.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
+                sv.setClipToPadding(false);
+                sv.setPadding(0, lastHeaderPadTop, 0, lastNavPadBottom);
 
-            populateContent(contentContainer, p);
+                LinearLayout pageCol = new LinearLayout(context);
+                pageCol.setOrientation(LinearLayout.VERTICAL);
+                sv.addView(pageCol, new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            mainScrollView.addView(contentContainer, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            rootView.addView(mainScrollView, new FrameLayout.LayoutParams(
+                tabScrollViews[i] = sv;
+                tabContainers[i] = pageCol;
+                tabPager.addView(sv, new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            }
+            rootView.addView(tabPager, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+            // Dedicated search scroll container (shown only while searching)
+            searchScrollView = new ScrollView(context);
+            searchScrollView.setVerticalScrollBarEnabled(false);
+            searchScrollView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
+            searchScrollView.setClipToPadding(false);
+            searchScrollView.setPadding(0, lastHeaderPadTop, 0, lastNavPadBottom);
+            searchScrollView.setVisibility(View.GONE);
+
+            searchContainer = new LinearLayout(context);
+            searchContainer.setOrientation(LinearLayout.VERTICAL);
+            searchScrollView.addView(searchContainer, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            rootView.addView(searchScrollView, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+            populateContent(p);
 
             // 2. Floating Glass Top Header + Segmented Tab Bar overlay
             LinearLayout floatingHeader = buildFloatingHeader(p, statusH);
@@ -199,11 +245,21 @@ public class SettingsActivity {
 
             floatingHeader.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
                 int h = b - t;
-                if (h > 0 && mainScrollView.getPaddingTop() != h + dp(4)) {
-                    mainScrollView.setPadding(0, h + dp(4), 0, navH + dp(28));
+                int targetTop = h + dp(4);
+                if (h > 0 && lastHeaderPadTop != targetTop) {
+                    lastHeaderPadTop = targetTop;
+                    for (int i = 0; i < TAB_COUNT; i++) {
+                        if (tabScrollViews[i] != null) {
+                            tabScrollViews[i].setPadding(0, targetTop, 0, lastNavPadBottom);
+                        }
+                    }
+                    if (searchScrollView != null) {
+                        searchScrollView.setPadding(0, targetTop, 0, lastNavPadBottom);
+                    }
                 }
             });
 
+            tabPager.jumpToTab(currentTab);
             applyVisibilityFilter();
         } catch (Throwable e) {
             Logger.e(e);
@@ -234,7 +290,7 @@ public class SettingsActivity {
         normalHeaderGroup.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         TextView titleTv = new TextView(context);
-        titleTv.setText(Translator.getOrDefault(Keys.SettingsTitle, "TeleVip Next Settings \uD83D\uDC7B"));
+        titleTv.setText(Translator.getOrDefault(Keys.SettingsTitle, "TeleVip Next"));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
         titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
@@ -341,14 +397,14 @@ public class SettingsActivity {
                 Translator.getOrDefault(Keys.TabAppearance, "Appearance"),
                 Translator.getOrDefault(Keys.TabTools, "Tools")
         };
-        GlassDesign.SegmentedTabBar tabBar = new GlassDesign.SegmentedTabBar(context, tabTitles, p, currentTab);
+        tabBar = new GlassDesign.SegmentedTabBar(context, tabTitles, p, currentTab);
         tabBar.setOnTabSelectedListener(index -> {
-            currentTab = index;
             if (searchMode) {
+                currentTab = index;
                 exitSearchMode();
-            } else {
-                applyVisibilityFilter();
-                if (mainScrollView != null) mainScrollView.scrollTo(0, 0);
+                if (tabPager != null) tabPager.jumpToTab(index);
+            } else if (tabPager != null) {
+                tabPager.springToTab(index, 0f);
             }
         });
         LinearLayout.LayoutParams tabLp = new LinearLayout.LayoutParams(
@@ -400,7 +456,7 @@ public class SettingsActivity {
         }
     }
 
-    private void populateContent(LinearLayout container, GlassDesign.Palette p) {
+    private void populateContent(GlassDesign.Palette p) {
         List<ConfigItem> items = ConfigManager.getItems();
 
         // Parse ConfigManager items into logical sections by HEADER
@@ -429,31 +485,36 @@ public class SettingsActivity {
             }
         }
 
-        // Render feature sections as frosted glass cards assigned to tabs
+        // Render feature sections as frosted glass cards into their respective tab pages
         for (SectionData sec : featureSections) {
             int tab = resolveTabForSection(sec.headerKey);
+            LinearLayout pageCol = tabContainers[tab];
             LinearLayout card = buildSectionCard(sec.headerKey, sec.items, p, tab);
-            container.addView(card, marginLp(dp(12), 0, dp(12), dp(12)));
+            LinearLayout.LayoutParams cardLp = marginLp(dp(12), 0, dp(12), dp(12));
+            if (pageCol != null) pageCol.addView(card, cardLp);
             sectionCards.add(card);
-            allTabSections.add(new TabSection(tab, card, false));
+            allTabSections.add(new TabSection(tab, card, cardLp));
 
             for (ConfigItem note : sec.footnotes) {
                 TextView noteTv = buildFootnoteView(note, p);
-                container.addView(noteTv, marginLp(dp(20), 0, dp(20), dp(14)));
+                LinearLayout.LayoutParams noteLp = marginLp(dp(20), 0, dp(20), dp(14));
+                if (pageCol != null) pageCol.addView(noteTv, noteLp);
                 footnoteViews.add(noteTv);
-                allTabSections.add(new TabSection(tab, noteTv, true));
+                allTabSections.add(new TabSection(tab, noteTv, noteLp));
             }
         }
 
         // Render standalone action items (Developer Channel, Restart App) in Tools tab
+        LinearLayout toolsCol = tabContainers[TAB_TOOLS];
         if (!standaloneActions.isEmpty()) {
             actionsCardView = buildActionsCard(standaloneActions, p, TAB_TOOLS);
-            container.addView(actionsCardView, marginLp(dp(12), 0, dp(12), dp(14)));
+            LinearLayout.LayoutParams actionsLp = marginLp(dp(12), 0, dp(12), dp(14));
+            if (toolsCol != null) toolsCol.addView(actionsCardView, actionsLp);
             sectionCards.add(actionsCardView);
-            allTabSections.add(new TabSection(TAB_TOOLS, actionsCardView, false));
+            allTabSections.add(new TabSection(TAB_TOOLS, actionsCardView, actionsLp));
         }
 
-        // Empty search state card
+        // Empty search state card (only inside searchContainer)
         emptySearchCard = createGlassCard(p);
         emptySearchCard.setPadding(dp(20), dp(24), dp(20), dp(24));
         emptySearchCard.setGravity(Gravity.CENTER);
@@ -464,9 +525,11 @@ public class SettingsActivity {
         emptyTv.setGravity(Gravity.CENTER);
         emptySearchCard.addView(emptyTv);
         emptySearchCard.setVisibility(View.GONE);
-        container.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
+        if (searchContainer != null) {
+            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
+        }
 
-        // Footer credit (visible on Tools tab)
+        // Footer credit (on Tools tab)
         footerCreditView = new LinearLayout(context);
         footerCreditView.setOrientation(LinearLayout.VERTICAL);
         footerCreditView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -478,7 +541,9 @@ public class SettingsActivity {
         creditTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         creditTv.setGravity(Gravity.CENTER);
         footerCreditView.addView(creditTv);
-        container.addView(footerCreditView);
+        if (toolsCol != null) {
+            toolsCol.addView(footerCreditView);
+        }
     }
 
     private int resolveTabForSection(String headerKey) {
@@ -897,8 +962,66 @@ public class SettingsActivity {
         searchableRows.add(new SearchableRow(combined, rowView, card, tabIndex));
     }
 
+    private void enterSearchListMode() {
+        if (showingSearchList || searchContainer == null || searchScrollView == null) return;
+        showingSearchList = true;
+        if (tabPager != null) tabPager.setVisibility(View.GONE);
+        searchContainer.removeAllViews();
+        for (LinearLayout card : sectionCards) {
+            if (card.getParent() instanceof ViewGroup) {
+                ((ViewGroup) card.getParent()).removeView(card);
+            }
+            LinearLayout.LayoutParams lp = card == actionsCardView
+                    ? marginLp(dp(12), 0, dp(12), dp(14))
+                    : marginLp(dp(12), 0, dp(12), dp(12));
+            searchContainer.addView(card, lp);
+        }
+        if (emptySearchCard != null) {
+            if (emptySearchCard.getParent() instanceof ViewGroup) {
+                ((ViewGroup) emptySearchCard.getParent()).removeView(emptySearchCard);
+            }
+            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
+        }
+        searchScrollView.scrollTo(0, 0);
+        searchScrollView.setVisibility(View.VISIBLE);
+    }
+
+    private void exitSearchListMode() {
+        if (!showingSearchList) return;
+        showingSearchList = false;
+        if (searchScrollView != null) searchScrollView.setVisibility(View.GONE);
+        if (searchContainer != null) searchContainer.removeAllViews();
+        for (int i = 0; i < TAB_COUNT; i++) {
+            if (tabContainers[i] != null) tabContainers[i].removeAllViews();
+        }
+        for (TabSection ts : allTabSections) {
+            if (ts.view.getParent() instanceof ViewGroup) {
+                ((ViewGroup) ts.view.getParent()).removeView(ts.view);
+            }
+            LinearLayout target = tabContainers[ts.tabIndex];
+            if (target != null) {
+                target.addView(ts.view, ts.layoutParams);
+            }
+        }
+        if (footerCreditView != null) {
+            if (footerCreditView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) footerCreditView.getParent()).removeView(footerCreditView);
+            }
+            if (tabContainers[TAB_TOOLS] != null) {
+                tabContainers[TAB_TOOLS].addView(footerCreditView);
+            }
+        }
+        if (emptySearchCard != null && searchContainer != null) {
+            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
+        }
+        if (tabPager != null) {
+            tabPager.setVisibility(View.VISIBLE);
+        }
+    }
+
     private void applyVisibilityFilter() {
         if (searchMode && !searchQuery.isEmpty()) {
+            enterSearchListMode();
             for (View note : footnoteViews) {
                 note.setVisibility(View.GONE);
             }
@@ -929,16 +1052,17 @@ public class SettingsActivity {
             return;
         }
 
+        exitSearchListMode();
         if (emptySearchCard != null) emptySearchCard.setVisibility(View.GONE);
         for (SearchableRow sr : searchableRows) {
             sr.rowView.setVisibility(View.VISIBLE);
         }
         for (TabSection ts : allTabSections) {
-            ts.view.setVisibility(ts.tabIndex == currentTab ? View.VISIBLE : View.GONE);
+            ts.view.setVisibility(View.VISIBLE);
         }
         updateActionsCardDividers();
         if (footerCreditView != null) {
-            footerCreditView.setVisibility(currentTab == TAB_TOOLS ? View.VISIBLE : View.GONE);
+            footerCreditView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1053,10 +1177,12 @@ public class SettingsActivity {
     private static final class TabSection {
         final int tabIndex;
         final View view;
+        final LinearLayout.LayoutParams layoutParams;
 
-        TabSection(int tabIndex, View view, boolean footnote) {
+        TabSection(int tabIndex, View view, LinearLayout.LayoutParams layoutParams) {
             this.tabIndex = tabIndex;
             this.view = view;
+            this.layoutParams = layoutParams;
         }
     }
 
@@ -1067,6 +1193,255 @@ public class SettingsActivity {
         SearchableRow(String textLower, View rowView, LinearLayout card, int tabIndex) {
             this.textLower = textLower != null ? textLower : "";
             this.rowView = rowView;
+        }
+    }
+
+    private final class TabPagerView extends FrameLayout implements Choreographer.FrameCallback {
+        private static final float SPRING_OMEGA = 14.5f;
+
+        private final float edgeBackWidth;
+        private final int touchSlop;
+        private float pagerPos = currentTab;
+        private float downX;
+        private float downY;
+        private float dragAnchorX;
+        private float dragStartPos;
+        private int dragStartTab;
+        private boolean isHorizontalDrag;
+        private boolean lockedVertical;
+        private VelocityTracker velocityTracker;
+
+        private boolean springRunning;
+        private long springStartNanos;
+        private float springStartOffset;
+        private float springStartVel;
+        private int springTarget;
+
+        TabPagerView(Context ctx) {
+            super(ctx);
+            this.edgeBackWidth = dp(32);
+            this.touchSlop = ViewConfiguration.get(ctx).getScaledTouchSlop();
+        }
+
+        void jumpToTab(int tab) {
+            int clamped = Math.max(0, Math.min(TAB_COUNT - 1, tab));
+            cancelSpring();
+            currentTab = clamped;
+            applyOffset(clamped);
+            if (tabBar != null && !searchMode) {
+                tabBar.setSelectedTab(clamped, false);
+            }
+        }
+
+        void springToTab(int target, float initialVelPagesPerSec) {
+            int clamped = Math.max(0, Math.min(TAB_COUNT - 1, target));
+            cancelSpring();
+            currentTab = clamped;
+            springTarget = clamped;
+            springStartOffset = pagerPos - clamped;
+            springStartVel = Math.max(-6.5f, Math.min(6.5f, initialVelPagesPerSec));
+            if (Math.abs(springStartOffset) < 0.001f && Math.abs(springStartVel) < 0.01f) {
+                applyOffset(clamped);
+                if (tabBar != null && !searchMode) {
+                    tabBar.setSelectedTab(clamped, false);
+                }
+                return;
+            }
+            springStartNanos = System.nanoTime();
+            springRunning = true;
+            Choreographer.getInstance().postFrameCallback(this);
+        }
+
+        void cancelSpring() {
+            if (springRunning) {
+                springRunning = false;
+                Choreographer.getInstance().removeFrameCallback(this);
+            }
+        }
+
+        @Override
+        public void doFrame(long frameTimeNanos) {
+            if (!springRunning) return;
+            float t = Math.max(0f, (frameTimeNanos - springStartNanos) * 1e-9f);
+            float exp = (float) Math.exp(-SPRING_OMEGA * t);
+            float a = springStartVel + SPRING_OMEGA * springStartOffset;
+            float x = (springStartOffset + a * t) * exp;
+            float v = (springStartVel - SPRING_OMEGA * a * t) * exp;
+
+            if ((Math.abs(x) < 0.0008f && Math.abs(v) < 0.01f) || t >= 0.8f) {
+                springRunning = false;
+                applyOffset(springTarget);
+                if (tabBar != null && !searchMode) {
+                    tabBar.setSelectedTab(springTarget, false);
+                }
+                return;
+            }
+
+            applyOffset(springTarget + x);
+            Choreographer.getInstance().postFrameCallback(this);
+        }
+
+        private void applyOffset(float pos) {
+            pagerPos = pos;
+            int w = getWidth();
+            if (w > 0) {
+                int count = getChildCount();
+                for (int i = 0; i < count; i++) {
+                    View page = getChildAt(i);
+                    float diff = i - pos;
+                    page.setTranslationX(diff * w);
+                    int vis = Math.abs(diff) < 1.05f ? View.VISIBLE : View.INVISIBLE;
+                    if (page.getVisibility() != vis) {
+                        page.setVisibility(vis);
+                    }
+                }
+            }
+            if (tabBar != null && !searchMode) {
+                tabBar.setDragPosition(pos);
+            }
+        }
+
+        private void recycleTracker() {
+            if (velocityTracker != null) {
+                velocityTracker.recycle();
+                velocityTracker = null;
+            }
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+            super.onLayout(changed, left, top, right, bottom);
+            applyOffset(pagerPos);
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            cancelSpring();
+            recycleTracker();
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent ev) {
+            if (searchMode) {
+                isHorizontalDrag = false;
+                lockedVertical = false;
+                recycleTracker();
+                return false;
+            }
+            int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                downX = ev.getX();
+                downY = ev.getY();
+                isHorizontalDrag = false;
+                lockedVertical = false;
+                recycleTracker();
+                velocityTracker = VelocityTracker.obtain();
+                velocityTracker.addMovement(ev);
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                if (velocityTracker != null) velocityTracker.addMovement(ev);
+                if (!lockedVertical && !isHorizontalDrag) {
+                    float dx = ev.getX() - downX;
+                    float dy = ev.getY() - downY;
+                    if (downX <= edgeBackWidth && dx > 0) {
+                        lockedVertical = true;
+                        return false;
+                    }
+                    if (Math.abs(dy) > touchSlop && Math.abs(dy) >= Math.abs(dx)) {
+                        lockedVertical = true;
+                    } else if (Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
+                        cancelSpring();
+                        isHorizontalDrag = true;
+                        dragAnchorX = ev.getX();
+                        dragStartPos = pagerPos;
+                        dragStartTab = Math.max(0, Math.min(TAB_COUNT - 1, Math.round(pagerPos)));
+                        if (getParent() != null) {
+                            getParent().requestDisallowInterceptTouchEvent(true);
+                        }
+                        return true;
+                    }
+                }
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                isHorizontalDrag = false;
+                lockedVertical = false;
+                recycleTracker();
+            }
+            return isHorizontalDrag;
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent ev) {
+            if (searchMode) {
+                isHorizontalDrag = false;
+                lockedVertical = false;
+                recycleTracker();
+                return false;
+            }
+            if (velocityTracker == null) {
+                velocityTracker = VelocityTracker.obtain();
+            }
+            velocityTracker.addMovement(ev);
+
+            int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                return true;
+            } else if (action == MotionEvent.ACTION_MOVE) {
+                float dx = ev.getX() - downX;
+                float dy = ev.getY() - downY;
+                if (!isHorizontalDrag && !lockedVertical) {
+                    if (downX <= edgeBackWidth && dx > 0) {
+                        lockedVertical = true;
+                    } else if (Math.abs(dy) > touchSlop && Math.abs(dy) >= Math.abs(dx)) {
+                        lockedVertical = true;
+                    } else if (Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy) * 1.25f) {
+                        cancelSpring();
+                        isHorizontalDrag = true;
+                        dragAnchorX = ev.getX();
+                        dragStartPos = pagerPos;
+                        dragStartTab = Math.max(0, Math.min(TAB_COUNT - 1, Math.round(pagerPos)));
+                        if (getParent() != null) {
+                            getParent().requestDisallowInterceptTouchEvent(true);
+                        }
+                    }
+                }
+                if (isHorizontalDrag) {
+                    float w = Math.max(1f, getWidth());
+                    float rawPos = dragStartPos - (ev.getX() - dragAnchorX) / w;
+                    float max = TAB_COUNT - 1;
+                    if (rawPos < 0f) {
+                        float over = -rawPos;
+                        rawPos = -(over / (1f + over * 3.5f)) * 0.45f;
+                    } else if (rawPos > max) {
+                        float over = rawPos - max;
+                        rawPos = max + (over / (1f + over * 3.5f)) * 0.45f;
+                    }
+                    applyOffset(rawPos);
+                    return true;
+                }
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                if (isHorizontalDrag) {
+                    velocityTracker.computeCurrentVelocity(1000);
+                    float vx = velocityTracker.getXVelocity();
+                    recycleTracker();
+                    isHorizontalDrag = false;
+                    lockedVertical = false;
+
+                    float w = Math.max(1f, getWidth());
+                    float velPagesPerSec = -vx / w;
+                    float projected = pagerPos + velPagesPerSec * 0.14f;
+                    int minTab = Math.max(0, dragStartTab - 1);
+                    int maxTab = Math.min(TAB_COUNT - 1, dragStartTab + 1);
+                    int target = action == MotionEvent.ACTION_UP
+                            ? Math.max(minTab, Math.min(maxTab, Math.round(projected)))
+                            : dragStartTab;
+                    springToTab(target, velPagesPerSec);
+                    return true;
+                }
+                isHorizontalDrag = false;
+                lockedVertical = false;
+                recycleTracker();
+            }
+            return true;
         }
     }
 

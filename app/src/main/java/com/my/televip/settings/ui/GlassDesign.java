@@ -326,6 +326,7 @@ public final class GlassDesign {
         private final View thumbView;
         private final TextView[] labels;
         private final Palette palette;
+        private final ArgbEvaluator labelColorEval = new ArgbEvaluator();
         private int selectedIndex = 0;
         private float currentPos = 0f;
         private ValueAnimator thumbAnim;
@@ -377,6 +378,19 @@ public final class GlassDesign {
 
         public void setOnTabSelectedListener(OnTabSelectedListener listener) {
             this.listener = listener;
+        }
+
+        public void setDragPosition(float pos) {
+            if (labels.length == 0) return;
+            if (thumbAnim != null) thumbAnim.cancel();
+            currentPos = Math.max(0f, Math.min(pos, labels.length - 1));
+            selectedIndex = Math.round(currentPos);
+            for (int i = 0; i < labels.length; i++) {
+                float weight = Math.max(0f, 1f - Math.abs(i - currentPos));
+                int color = (int) labelColorEval.evaluate(weight, palette.textSecondary, palette.textPrimary);
+                labels[i].setTextColor(color);
+            }
+            positionThumb();
         }
 
         public void setSelectedTab(int index, boolean animate) {
