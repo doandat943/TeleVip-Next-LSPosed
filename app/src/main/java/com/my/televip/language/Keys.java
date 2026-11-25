@@ -147,4 +147,14 @@ public class Keys {
     public static final String NoTextChangesPrev = "NoTextChangesPrev";
     public static final String NoTextChanges = "NoTextChanges";
     public static final String EditHistoryFooterNote = "EditHistoryFooterNote";
+    public static final String CreditsTitle = "CreditsTitle";
+    public static final String CreditsTagline = "CreditsTagline";
+    public static final String CreditsAuthors = "CreditsAuthors";
+    public static final String CreditsMaintainerRole = "CreditsMaintainerRole";
+    public static final String CreditsOriginalAuthorRole = "CreditsOriginalAuthorRole";
+    public static final String CreditsLinks = "CreditsLinks";
+    public static final String CreditsChannelRole = "CreditsChannelRole";
+    public static final String CreditsSourceCode = "CreditsSourceCode";
+    public static final String CreditsSourceCodeRole = "CreditsSourceCodeRole";
+    public static final String CreditsCopiedInfo = "CreditsCopiedInfo";
 }

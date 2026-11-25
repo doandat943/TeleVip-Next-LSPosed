@@ -15,7 +15,6 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
@@ -33,7 +32,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.Window;
-import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -129,7 +127,7 @@ final class EditHistorySheet {
         final Handler mainHandler = new Handler(Looper.getMainLooper());
         final Runnable[] hideToastHolder = new Runnable[1];
 
-        final Dialog dialog = new Dialog(activity);
+        final Dialog dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         final FrameLayout scrim = new FrameLayout(activity);
@@ -187,18 +185,12 @@ final class EditHistorySheet {
                 hideToastHolder);
 
         dialog.setContentView(scrim);
-        Window win = dialog.getWindow();
-        if (win != null) {
-            win.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            win.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            win.setDimAmount(light ? 0.26f : 0.46f);
-            win.setStatusBarColor(Color.TRANSPARENT);
-        }
+        GlassDesign.configureEdgeToEdgeSheetDialog(dialog, light);
 
         sheet.setTranslationY(dp(activity, 44));
         sheet.setAlpha(0f);
         dialog.show();
+        GlassDesign.applySheetSystemBarAppearance(dialog, light);
         sheet.animate()
                 .translationY(0f)
                 .alpha(1f)
@@ -249,7 +241,7 @@ final class EditHistorySheet {
         topBarLp.setMargins(dp(activity, 14), 0, dp(activity, 14), dp(activity, 12));
         sheet.addView(topBar, topBarLp);
 
-        topBar.addView(new View(activity), new LinearLayout.LayoutParams(dp(activity, 36), dp(activity, 36)));
+        topBar.addView(new View(activity), new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
 
         LinearLayout titleCol = new LinearLayout(activity);
         titleCol.setOrientation(LinearLayout.VERTICAL);
@@ -288,13 +280,8 @@ final class EditHistorySheet {
         subTv.setSingleLine(true);
         titleCol.addView(subTv);
 
-        ImageView closeBtn = new ImageView(activity);
-        closeBtn.setImageDrawable(GlassDesign.GlassIcons.closeIcon(p.textPrimary));
-        closeBtn.setScaleType(ImageView.ScaleType.CENTER);
-        closeBtn.setBackground(GlassDesign.createGlassPillDrawable(p, dp(activity, 18)));
-        closeBtn.setForeground(GlassDesign.createPillRippleOverlay(p.ripple, dp(activity, 18)));
-        closeBtn.setOnClickListener(v -> dialog.dismiss());
-        topBar.addView(closeBtn, new LinearLayout.LayoutParams(dp(activity, 36), dp(activity, 36)));
+        ImageView closeBtn = GlassDesign.createCloseCircleButton(activity, p, dialog::dismiss);
+        topBar.addView(closeBtn, new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
 
         // 3. Segmented Pill Tabs ("History" | "Changes")
         GlassDesign.SegmentedTabBar tabBar = null;

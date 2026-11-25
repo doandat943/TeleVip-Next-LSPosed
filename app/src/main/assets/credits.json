@@ -1,0 +1,50 @@
+{
+  "name": "TeleVip Next",
+  "taglineKey": "CreditsTagline",
+  "sections": [
+    {
+      "titleKey": "CreditsAuthors",
+      "icon": "sparkles",
+      "badgeColor": "#8B6BFF",
+      "items": [
+        {
+          "name": "doandat943",
+          "handle": "@doandat943",
+          "roleKey": "CreditsMaintainerRole",
+          "avatarBg": "#2A85FF",
+          "url": "https://t.me/doandat943"
+        },
+        {
+          "name": "Mustafa",
+          "handle": "@m_1_iq",
+          "roleKey": "CreditsOriginalAuthorRole",
+          "avatarBg": "#FF7A45",
+          "url": "https://t.me/m_1_iq"
+        }
+      ]
+    },
+    {
+      "titleKey": "CreditsLinks",
+      "icon": "telegram",
+      "badgeColor": "#28A8EA",
+      "items": [
+        {
+          "nameKey": "DeveloperChannel",
+          "handle": "@televipnext",
+          "roleKey": "CreditsChannelRole",
+          "icon": "telegram",
+          "avatarBg": "#28A8EA",
+          "url": "https://t.me/televipnext"
+        },
+        {
+          "nameKey": "CreditsSourceCode",
+          "handle": "GitHub",
+          "roleKey": "CreditsSourceCodeRole",
+          "icon": "code",
+          "avatarBg": "#34C759",
+          "url": "https://github.com/doandat943/TeleVip-Next-LSPosed"
+        }
+      ]
+    }
+  ]
+}

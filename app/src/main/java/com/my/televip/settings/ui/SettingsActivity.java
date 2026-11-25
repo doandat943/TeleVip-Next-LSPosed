@@ -251,19 +251,49 @@ public class SettingsActivity {
         });
         normalHeaderGroup.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
+        FrameLayout brandSlot = new FrameLayout(context);
+        LinearLayout.LayoutParams brandSlotLp = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        brandSlotLp.setMarginStart(dp(8));
+        brandSlotLp.setMarginEnd(dp(8));
+
+        LinearLayout brandPill = new LinearLayout(context);
+        brandPill.setOrientation(LinearLayout.HORIZONTAL);
+        brandPill.setGravity(Gravity.CENTER_VERTICAL);
+        brandPill.setMinimumHeight(dp(40));
+        brandPill.setPadding(dp(8), dp(6), dp(10), dp(6));
+        brandPill.setBackground(GlassDesign.createGlassPillDrawable(p, dp(20)));
+        brandPill.setForeground(GlassDesign.createPillRippleOverlay(p.ripple, dp(20)));
+        GlassDesign.attachPressScale(brandPill);
+        brandPill.setOnClickListener(v -> CreditsSheet.show(context, controller));
+
+        ImageView emblemIv = new ImageView(context);
+        emblemIv.setImageDrawable(GlassDesign.GlassIcons.brandEmblemDrawable(dp(8)));
+        LinearLayout.LayoutParams emblemLp = new LinearLayout.LayoutParams(dp(24), dp(24));
+        emblemLp.setMarginEnd(dp(8));
+        brandPill.addView(emblemIv, emblemLp);
+
         TextView titleTv = new TextView(context);
         titleTv.setText(Translator.get(Keys.SettingsTitle));
         titleTv.setTextColor(p.textPrimary);
-        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
         titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        titleTv.setGravity(Gravity.CENTER);
         titleTv.setSingleLine(true);
         titleTv.setEllipsize(TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        titleLp.setMarginStart(dp(8));
-        titleLp.setMarginEnd(dp(8));
-        normalHeaderGroup.addView(titleTv, titleLp);
+        LinearLayout.LayoutParams titleTextLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        brandPill.addView(titleTv, titleTextLp);
+
+        ImageView chevronIv = new ImageView(context);
+        chevronIv.setImageDrawable(GlassDesign.GlassIcons.chevronRight(p.textMuted));
+        LinearLayout.LayoutParams chevLp = new LinearLayout.LayoutParams(dp(14), dp(14));
+        chevLp.setMarginStart(dp(4));
+        brandPill.addView(chevronIv, chevLp);
+
+        FrameLayout.LayoutParams pillCenterLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(40), Gravity.CENTER);
+        brandSlot.addView(brandPill, pillCenterLp);
+        normalHeaderGroup.addView(brandSlot, brandSlotLp);
 
         // Merged dual-icon glass pill (Theme toggle + Search)
         LinearLayout actionPill = new LinearLayout(context);
@@ -503,6 +533,7 @@ public class SettingsActivity {
         creditTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         creditTv.setGravity(Gravity.CENTER);
         footerCreditView.addView(creditTv);
+        footerCreditView.setOnClickListener(v -> CreditsSheet.show(context, controller));
         if (toolsCol != null) {
             toolsCol.addView(footerCreditView);
         }

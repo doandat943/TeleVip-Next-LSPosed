@@ -184,5 +184,15 @@
   "UploadSpeedDesc": "افزایش اندازه بسته‌های آپلود و اتصالات موازی برای ارسال سریع‌تر فایل‌ها",
   "SpeedOff": "خاموش",
   "SpeedFast": "سریع",
-  "SpeedUltra": "فوق‌العاده"
+  "SpeedUltra": "فوق‌العاده",
+  "CreditsTitle": "سازندگان",
+  "CreditsTagline": "مجموعه امکانات LSPosed برای کلاینت‌های تلگرام",
+  "CreditsAuthors": "تیم و نویسندگان",
+  "CreditsMaintainerRole": "توسعه‌دهنده TeleVip Next، رابط Liquid Glass و هوک‌های تلگرام جدید",
+  "CreditsOriginalAuthorRole": "سازنده نسخه اصلی TeleVip و پایه کد پروژه",
+  "CreditsLinks": "جامعه و منبع کد",
+  "CreditsChannelRole": "آپدیت‌ها، فایل‌های APK و اطلاعیه‌های انتشار",
+  "CreditsSourceCode": "مخزن GitHub",
+  "CreditsSourceCodeRole": "کد منبع، گزارش باگ و مشارکت‌ها",
+  "CreditsCopiedInfo": "اطلاعات نسخه و کلاینت کپی شد"
 }

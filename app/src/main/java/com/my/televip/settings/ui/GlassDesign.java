@@ -2,6 +2,7 @@ package com.my.televip.settings.ui;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Canvas;
@@ -16,15 +17,23 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.os.Build;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -35,15 +44,16 @@ import android.widget.TextView;
  */
 public final class GlassDesign {
 
-    static final int ICON_GHOST = 1;
-    static final int ICON_MESSAGES = 2;
-    static final int ICON_MEDIA = 3;
-    static final int ICON_CONNECTIONS = 4;
-    static final int ICON_UI = 5;
-    static final int ICON_STORIES = 6;
-    static final int ICON_SPARKLES = 7;
-    static final int ICON_TELEGRAM = 8;
-    static final int ICON_RESTART = 9;
+    public static final int ICON_GHOST = 1;
+    public static final int ICON_MESSAGES = 2;
+    public static final int ICON_MEDIA = 3;
+    public static final int ICON_CONNECTIONS = 4;
+    public static final int ICON_UI = 5;
+    public static final int ICON_STORIES = 6;
+    public static final int ICON_SPARKLES = 7;
+    public static final int ICON_TELEGRAM = 8;
+    public static final int ICON_RESTART = 9;
+    public static final int ICON_CODE = 10;
 
     private GlassDesign() {}
 
@@ -191,6 +201,88 @@ public final class GlassDesign {
         GradientDrawable mask = new GradientDrawable();
         mask.setColor(Color.WHITE);
         return new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask);
+    }
+
+    /**
+     * Attaches a subtle tactile press-scale spring animation to a pill or circle button.
+     */
+    public static void attachPressScale(View view) {
+        view.setOnTouchListener((v, ev) -> {
+            int action = ev.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(90).start();
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
+            }
+            return false;
+        });
+    }
+
+    /**
+     * Creates the standardized 32dp floating-glass circular close button with subtle icon padding.
+     */
+    public static ImageView createCloseCircleButton(Context context, Palette p, Runnable onClick) {
+        ImageView closeBtn = new ImageView(context);
+        closeBtn.setImageDrawable(GlassIcons.closeIcon(p.textSecondary));
+        closeBtn.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        int closePad = dp(context, 9);
+        closeBtn.setPadding(closePad, closePad, closePad, closePad);
+        closeBtn.setBackground(createGlassPillDrawable(p, dp(context, 16)));
+        closeBtn.setForeground(createPillRippleOverlay(p.ripple, dp(context, 16)));
+        attachPressScale(closeBtn);
+        if (onClick != null) {
+            closeBtn.setOnClickListener(v -> onClick.run());
+        }
+        return closeBtn;
+    }
+
+    /**
+     * Configures a bottom-sheet Dialog window for edge-to-edge rendering with transparent system bars.
+     */
+    public static void configureEdgeToEdgeSheetDialog(Dialog dialog, boolean light) {
+        Window win = dialog.getWindow();
+        if (win == null) {
+            return;
+        }
+        win.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        win.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND
+                | WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        win.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION
+                | WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        win.setDimAmount(light ? 0.26f : 0.48f);
+        win.setStatusBarColor(Color.TRANSPARENT);
+        win.setNavigationBarColor(Color.TRANSPARENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            win.setNavigationBarContrastEnforced(false);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            win.setDecorFitsSystemWindows(false);
+        } else {
+            int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            if (light && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            }
+            win.getDecorView().setSystemUiVisibility(flags);
+        }
+    }
+
+    /**
+     * Updates navigation bar icon contrast on API 30+ once the sheet Dialog window is shown.
+     */
+    public static void applySheetSystemBarAppearance(Dialog dialog, boolean light) {
+        Window win = dialog.getWindow();
+        if (win != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController ic = win.getInsetsController();
+            if (ic != null) {
+                int mask = WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                ic.setSystemBarsAppearance(light ? mask : 0, mask);
+            }
+        }
+    }
+
+    private static int dp(Context ctx, float v) {
+        return Math.round(v * ctx.getResources().getDisplayMetrics().density);
     }
 
     /**
@@ -598,7 +690,59 @@ public final class GlassDesign {
             };
         }
 
-        static Drawable badgeDrawable(int bgColor, int cornerRadiusPx, int iconType, int fgColor) {
+        public static Drawable chevronRight(int color) {
+            return new VectorDrawable24(color, true) {
+                @Override
+                protected void draw24(Canvas c, Paint fill, Paint stroke) {
+                    stroke.setStrokeWidth(2.2f);
+                    Path p = new Path();
+                    p.moveTo(9.2f, 6.0f);
+                    p.lineTo(15.2f, 12.0f);
+                    p.lineTo(9.2f, 18.0f);
+                    c.drawPath(p, stroke);
+                }
+            };
+        }
+
+        public static Drawable brandEmblemDrawable(int cornerRadiusPx) {
+            GradientDrawable bg = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    new int[]{Color.rgb(124, 92, 255), Color.rgb(45, 156, 255)}
+            );
+            bg.setCornerRadius(cornerRadiusPx);
+
+            Drawable fg = new VectorDrawable24(Color.WHITE, false) {
+                @Override
+                protected void draw24(Canvas c, Paint fill, Paint stroke) {
+                    // Stylized TeleVip Next ghost silhouette with eyes
+                    Path ghost = new Path();
+                    ghost.moveTo(5.6f, 19.6f);
+                    ghost.lineTo(5.6f, 10.6f);
+                    ghost.cubicTo(5.6f, 5.9f, 8.6f, 3.6f, 12.0f, 3.6f);
+                    ghost.cubicTo(15.4f, 3.6f, 18.4f, 5.9f, 18.4f, 10.6f);
+                    ghost.lineTo(18.4f, 19.6f);
+                    ghost.cubicTo(17.1f, 18.2f, 15.8f, 18.2f, 14.8f, 19.6f);
+                    ghost.cubicTo(13.8f, 18.2f, 12.8f, 18.2f, 12.0f, 19.6f);
+                    ghost.cubicTo(11.2f, 18.2f, 10.2f, 18.2f, 9.2f, 19.6f);
+                    ghost.cubicTo(8.2f, 18.2f, 6.9f, 18.2f, 5.6f, 19.6f);
+                    ghost.close();
+                    c.drawPath(ghost, fill);
+
+                    Paint eyeCut = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    eyeCut.setColor(Color.rgb(88, 122, 255));
+                    eyeCut.setStyle(Paint.Style.FILL);
+                    c.drawCircle(9.8f, 10.8f, 1.35f, eyeCut);
+                    c.drawCircle(14.2f, 10.8f, 1.35f, eyeCut);
+                }
+            };
+
+            LayerDrawable layer = new LayerDrawable(new Drawable[]{bg, fg});
+            int inset = Math.max(2, Math.round(cornerRadiusPx * 0.42f));
+            layer.setLayerInset(1, inset, inset, inset, inset);
+            return layer;
+        }
+
+        public static Drawable badgeDrawable(int bgColor, int cornerRadiusPx, int iconType, int fgColor) {
             GradientDrawable bg = new GradientDrawable();
             bg.setColor(bgColor);
             bg.setCornerRadius(cornerRadiusPx);
@@ -725,6 +869,24 @@ public final class GlassDesign {
                             plane.lineTo(16.8f, 19.4f);
                             plane.close();
                             c.drawPath(plane, fill);
+                            break;
+                        }
+                        case ICON_CODE: {
+                            // Angle brackets </ > representing open source repository
+                            stroke.setStrokeWidth(2.0f);
+                            Path left = new Path();
+                            left.moveTo(8.5f, 7.5f);
+                            left.lineTo(4.2f, 12.0f);
+                            left.lineTo(8.5f, 16.5f);
+                            c.drawPath(left, stroke);
+
+                            Path right = new Path();
+                            right.moveTo(15.5f, 7.5f);
+                            right.lineTo(19.8f, 12.0f);
+                            right.lineTo(15.5f, 16.5f);
+                            c.drawPath(right, stroke);
+
+                            c.drawLine(13.4f, 6.0f, 10.6f, 18.0f, stroke);
                             break;
                         }
                         case ICON_RESTART:

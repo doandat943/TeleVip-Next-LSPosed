@@ -184,5 +184,15 @@
   "UploadSpeedDesc": "زيادة حجم أجزاء الرفع والاتصالات المتوازية لتسريع إرسال الملفات",
   "SpeedOff": "إيقاف",
   "SpeedFast": "سريع",
-  "SpeedUltra": "فائق"
+  "SpeedUltra": "فائق",
+  "CreditsTitle": "الحقوق والشكر",
+  "CreditsTagline": "حزمة إضافات LSPosed لتطبيقات تيليجرام",
+  "CreditsAuthors": "الفريق والمطورون",
+  "CreditsMaintainerRole": "مطور TeleVip Next وواجهة Liquid Glass وتحديثات تيليجرام",
+  "CreditsOriginalAuthorRole": "المطور الأصلي لإضافة TeleVip وأساس المشروع",
+  "CreditsLinks": "المجتمع والمصدر",
+  "CreditsChannelRole": "التحديثات وملفات APK وإعلانات الإصدارات",
+  "CreditsSourceCode": "مستودع GitHub",
+  "CreditsSourceCodeRole": "الكود المصدري وتتبع المشكلات وطلبات الدمج",
+  "CreditsCopiedInfo": "تم نسخ معلومات الإصدار والعميل"
 }

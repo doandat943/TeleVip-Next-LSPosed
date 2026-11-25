@@ -184,5 +184,15 @@
   "UploadSpeedDesc": "Increases upload chunk size and parallel connections for faster file uploads",
   "SpeedOff": "Off",
   "SpeedFast": "Fast",
-  "SpeedUltra": "Ultra"
+  "SpeedUltra": "Ultra",
+  "CreditsTitle": "Credits",
+  "CreditsTagline": "LSPosed enhancement suite for Telegram clients",
+  "CreditsAuthors": "Team & Authors",
+  "CreditsMaintainerRole": "TeleVip Next maintainer, Liquid Glass UI & Telegram 13.x hooks",
+  "CreditsOriginalAuthorRole": "Original TeleVip author & codebase foundation",
+  "CreditsLinks": "Community & Source",
+  "CreditsChannelRole": "Updates, APK builds & release announcements",
+  "CreditsSourceCode": "GitHub Repository",
+  "CreditsSourceCodeRole": "Source code, issue tracker & pull requests",
+  "CreditsCopiedInfo": "Copied version & client info"
 }

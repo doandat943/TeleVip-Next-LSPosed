@@ -184,5 +184,15 @@
   "UploadSpeedDesc": "增大上传分块并增加并行连接以加快文件上传速度",
   "SpeedOff": "关闭",
   "SpeedFast": "快速",
-  "SpeedUltra": "极速"
+  "SpeedUltra": "极速",
+  "CreditsTitle": "致谢与关于",
+  "CreditsTagline": "适用于 Telegram 客户端的 LSPosed 增强模块",
+  "CreditsAuthors": "开发团队与作者",
+  "CreditsMaintainerRole": "TeleVip Next 维护者、Liquid Glass 界面与新版 Telegram 适配",
+  "CreditsOriginalAuthorRole": "TeleVip 原作者与基础代码架构",
+  "CreditsLinks": "社区与源码",
+  "CreditsChannelRole": "版本更新、APK 构建与功能公告",
+  "CreditsSourceCode": "GitHub 仓库",
+  "CreditsSourceCodeRole": "开源代码、问题反馈与 Pull Request",
+  "CreditsCopiedInfo": "已复制版本与客户端信息"
 }

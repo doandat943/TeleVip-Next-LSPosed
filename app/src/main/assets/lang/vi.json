@@ -184,5 +184,15 @@
   "UploadSpeedDesc": "Tăng kích thước gói tải lên và luồng kết nối song song giúp gửi tệp nhanh hơn",
   "SpeedOff": "Tắt",
   "SpeedFast": "Nhanh",
-  "SpeedUltra": "Siêu tốc"
+  "SpeedUltra": "Siêu tốc",
+  "CreditsTitle": "Ghi công",
+  "CreditsTagline": "Bộ mở rộng LSPosed dành cho các ứng dụng Telegram",
+  "CreditsAuthors": "Tác giả & Phát triển",
+  "CreditsMaintainerRole": "Phát triển TeleVip Next, giao diện Liquid Glass & hỗ trợ Telegram mới",
+  "CreditsOriginalAuthorRole": "Tác giả bản TeleVip gốc & nền tảng mã nguồn",
+  "CreditsLinks": "Cộng đồng & Mã nguồn",
+  "CreditsChannelRole": "Kênh cập nhật, bản build APK & thông báo tính năng mới",
+  "CreditsSourceCode": "Kho lưu trữ GitHub",
+  "CreditsSourceCodeRole": "Mã nguồn mở, báo lỗi & đóng góp PR",
+  "CreditsCopiedInfo": "Đã sao chép thông tin phiên bản và client"
 }
