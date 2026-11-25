@@ -7,6 +7,7 @@ import com.my.televip.application.AndroidUtilities;
 import com.my.televip.dex.DexInjector;
 import com.my.televip.language.Translator;
 import com.my.televip.logging.Logger;
+import com.my.televip.obfuscate.ObfuscationManager;
 import com.my.televip.settings.SettingsManager;
 import com.my.televip.settings.controller.SettingsController;
 import com.my.televip.utils.Utils;
@@ -16,6 +17,7 @@ public class TeleVip {
     
     public static void startHook() {
         try {
+            ObfuscationManager.initRuntimeResolver();
             resolverRegistry.loadParameter();
             Translator.init();
             AndroidUtilities.init();

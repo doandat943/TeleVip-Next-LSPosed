@@ -107,7 +107,8 @@ public class ClientManager {
 
         }
 
-        return ClassLoad.getClass(ClassNames.CONNECTIONS_MANAGER, classLoader, false) != null && ClassLoad.getClass(ClassNames.MESSAGES_CONTROLLER, classLoader, false) != null && ClassLoad.getClass(ClassNames.MESSAGES_STORAGE, classLoader, false) != null;
+        return ClassLoad.getClass(ClassNames.CONNECTIONS_MANAGER, classLoader, false) != null
+                && ClassLoad.getClass(ClassNames.LAUNCH_ACTIVITY, classLoader, false) != null;
     }
 
 }

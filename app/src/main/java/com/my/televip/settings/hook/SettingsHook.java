@@ -38,33 +38,96 @@ public class SettingsHook {
 
             GhostDrawable ghostDrawable = new GhostDrawable();
 
-            HMethod.hookMethod(ClassLoad.getClass(ClassNames.SETTINGS_ACTIVITY_SETTING_CELL), Obfuscate.getMethodName("SettingsActivity$SettingCell", "set"), ArgsResolver.merge("set", new Class[]{int.class, int.class, int.class, CharSequence.class, CharSequence.class, CharSequence.class}, new BaseMethodHook() {
-                @Override
-                protected void afterMethod(MethodHookParam param) {
-                    int id = (int) param.args[2];
-                    if (id == 8353847) {
-                        ImageView iconView = (ImageView) XposedHelpers.getObjectField(param.thisObject, Obfuscate.getFieldName("SettingsActivity$SettingCell", "iconView"));
-                        iconView.setImageDrawable(ghostDrawable);
+            Class<?> settingCellClass = ClassLoad.getClass(ClassNames.SETTINGS_ACTIVITY_SETTING_CELL, Utils.classLoader, false);
+            if (settingCellClass != null) {
+                HMethod.hookMethod(settingCellClass, Obfuscate.getMethodName("SettingsActivity$SettingCell", "set"), ArgsResolver.merge("set", new Class[]{int.class, int.class, int.class, CharSequence.class, CharSequence.class, CharSequence.class}, new BaseMethodHook() {
+                    @Override
+                    protected void afterMethod(MethodHookParam param) {
+                        int id = (int) param.args[2];
+                        if (id == 8353847) {
+                            ImageView iconView = (ImageView) XposedHelpers.getObjectField(param.thisObject, Obfuscate.getFieldName("SettingsActivity$SettingCell", "iconView"));
+                            if (iconView != null) {
+                                iconView.setImageDrawable(ghostDrawable);
+                            }
+                        }
                     }
-                }
-            }));
-
-            HMethod.hookMethod(SettingsActivityClass, Obfuscate.getMethodName("SettingsActivity", "fillItems"),
-                    ArgsResolver.merge("fillItems", new Class[]{java.util.ArrayList.class, ClassLoad.getClass(ClassNames.UNIVERSAL_ADAPTER)}, new BaseMethodHook() {
+                }));
+            } else {
+                String bindName = Obfuscate.getMethodName("SettingsActivity$SettingCell$Factory", "bindView");
+                if (bindName != null) {
+                    XposedBridge.hookAllMethods(SettingsActivity$SettingCell$FactoryClass, bindName, new BaseMethodHook() {
                         @Override
-                        protected void afterMethod(final MethodHookParam param) {
-                            ArrayList<Object> arrayList = (ArrayList<Object>) param.args[0];
-                            if (arrayList != null) {
+                        protected void afterMethod(MethodHookParam param) {
+                            if (param.args.length >= 2 && param.args[0] instanceof View && param.args[1] != null) {
+                                UItem uItem = new UItem(param.args[1]);
+                                if (uItem.getID() == 8353847) {
+                                    View cell = (View) param.args[0];
+                                    for (java.lang.reflect.Field f : cell.getClass().getDeclaredFields()) {
+                                        if (ImageView.class.isAssignableFrom(f.getType())) {
+                                            f.setAccessible(true);
+                                            try {
+                                                ImageView iv = (ImageView) f.get(cell);
+                                                if (iv != null) {
+                                                    iv.setImageDrawable(ghostDrawable);
+                                                    break;
+                                                }
+                                            } catch (Throwable ignored) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
 
+            final Class<?> UItemClass = ClassLoad.getClass(ClassNames.UITEM);
+
+            final String ofName = Obfuscate.getMethodName("SettingsActivity$SettingCell$Factory", "of");
+            XposedBridge.hookAllMethods(SettingsActivityClass, Obfuscate.getMethodName("SettingsActivity", "fillItems"),
+                    new BaseMethodHook() {
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        protected void afterMethod(final MethodHookParam param) {
+                            ArrayList<Object> arrayList = null;
+                            for (Object arg : param.args) {
+                                if (arg instanceof ArrayList) {
+                                    arrayList = (ArrayList<Object>) arg;
+                                    break;
+                                }
+                            }
+                            if (arrayList != null) {
                                 int color1 = 0xFFF46F6F;
                                 int color2 = 0xFFDF5555;
 
-                                Object uItem = XposedHelpers.callStaticMethod(SettingsActivity$SettingCell$FactoryClass, Obfuscate.getMethodName("SettingsActivity$SettingCell$Factory", "of"), 8353847,
-                                        color1,
-                                        color2,
-                                        8353847,
-                                        Translator.get(Keys.GhostMode),
-                                        Translator.get(Keys.ByMustafa));
+                                Object uItem = null;
+                                try {
+                                    Method m6 = XposedHelpers.findMethodExactIfExists(SettingsActivity$SettingCell$FactoryClass, ofName,
+                                            int.class, int.class, int.class, int.class, CharSequence.class, CharSequence.class);
+                                    if (m6 != null) {
+                                        uItem = m6.invoke(null, 8353847, color1, color2, 8353847,
+                                                Translator.get(Keys.GhostMode), Translator.get(Keys.ByMustafa));
+                                    } else {
+                                        for (Method fm : SettingsActivity$SettingCell$FactoryClass.getDeclaredMethods()) {
+                                            Class<?>[] pt = fm.getParameterTypes();
+                                            if (fm.getName().equals(ofName) && pt.length == 7
+                                                    && pt[0] == int.class && pt[1] == int.class
+                                                    && pt[2] == int.class && pt[3] == int.class
+                                                    && pt[4] == CharSequence.class && pt[5] == CharSequence.class) {
+                                                fm.setAccessible(true);
+                                                Object arg6 = pt[6] == boolean.class ? Boolean.FALSE
+                                                        : (pt[6] == int.class ? Integer.valueOf(0) : null);
+                                                uItem = fm.invoke(null, 8353847, color1, color2, 8353847,
+                                                        Translator.get(Keys.GhostMode), Translator.get(Keys.ByMustafa), arg6);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                } catch (Throwable t) {
+                                    Logger.e(t);
+                                }
+                                if (uItem == null) return;
+
                                 for (int i = 0; i < arrayList.size(); i++) {
                                     UItem item = new UItem(arrayList.get(i));
 
@@ -73,27 +136,32 @@ public class SettingsHook {
                                         break;
                                     }
                                 }
-
                             }
                         }
-                    }));
+                    });
 
-
-            Class<?> UItemClass = ClassLoad.getClass(ClassNames.UITEM);
-
-            HMethod.hookMethod(
+            String onClickName = Obfuscate.getMethodName("SettingsActivity", "onClick");
+            XposedBridge.hookAllMethods(
                     SettingsActivityClass,
-                    Obfuscate.getMethodName("SettingsActivity", "onClick"), ArgsResolver.merge("onClick", new Class[]{UItemClass, View.class, int.class, float.class, float.class}, new BaseMethodHook() {
+                    onClickName, new BaseMethodHook() {
                         @Override
                         protected void afterMethod(final MethodHookParam param) {
-                            UItem uItem = new UItem(param.args[0]);
-                            if (uItem.getUItem() != null) {
+                            Object rawItem = null;
+                            for (Object arg : param.args) {
+                                if (arg != null && UItemClass != null && UItemClass.isInstance(arg)) {
+                                    rawItem = arg;
+                                    break;
+                                }
+                            }
+                            if (rawItem != null) {
+                                UItem uItem = new UItem(rawItem);
                                 if (uItem.getID() == 8353847) {
+                                    Logger.w("SettingsHook: opening TeleVip Settings via " + param.method.getName());
                                     settingsController.openView();
                                 }
                             }
                         }
-                    }));
+                    });
         } catch (Throwable t){
             Logger.e(t);
         }

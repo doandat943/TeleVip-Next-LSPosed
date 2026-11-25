@@ -33,7 +33,8 @@ public class Logger {
             StringBuilder log = new StringBuilder();
 
             log.append("[TeleVip] [Error] pkgName: ").append(pkgName).append(" ").append(throwable).append("\n");
-            log.append("appName = ").append(ResolverRegistry.getResolverClass().getSimpleName()).append("\n");
+            Class<?> resolverCls = ResolverRegistry.getResolverClass();
+            log.append("appName = ").append(resolverCls != null ? resolverCls.getSimpleName() : pkgName).append("\n");
 
             try {
                 PackageManager pm = ApplicationLoaderHook.getApplicationContext().getPackageManager();

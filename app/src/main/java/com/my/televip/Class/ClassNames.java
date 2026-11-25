@@ -14,7 +14,7 @@ public class ClassNames {
     public static final String NOTIFICATIONS_CONTROLLER = "org.telegram.messenger.NotificationsController";
     public static final String NOTIFICATION_CENTER = "org.telegram.messenger.NotificationCenter";
     public static final String LAUNCH_ACTIVITY = "org.telegram.ui.LaunchActivity";
-    public static final String ALERT_DIALOG_BUILDER = "org.telegram.ui.ActionBar.AlertDialog.Builder";
+    public static final String ALERT_DIALOG_BUILDER = "org.telegram.ui.ActionBar.AlertDialog$Builder";
     public static final String TEXT_SETTINGS_CELL = "org.telegram.ui.Cells.TextSettingsCell";
     public static final String TLRPC_ENCRYPTED_CHAT = "org.telegram.tgnet.TLRPC$EncryptedChat";
     public static final String TL_OBJECT = "org.telegram.tgnet.TLObject";

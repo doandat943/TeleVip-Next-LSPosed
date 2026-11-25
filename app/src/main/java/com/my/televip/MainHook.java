@@ -28,6 +28,7 @@ public class MainHook implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
         Utils.classLoader = lpparam.classLoader;
         Utils.pkgName = lpparam.packageName;
+        Utils.sourceDir = lpparam.appInfo != null ? lpparam.appInfo.sourceDir : null;
 
         HMethod.hookMethod(ClassLoad.getClass(ClassNames.LAUNCH_ACTIVITY), "onCreate", Bundle.class, new BaseMethodHook() {
             @Override

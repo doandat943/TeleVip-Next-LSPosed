@@ -32,7 +32,6 @@ android {
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.13.2")
     implementation(libs.jcal)
     compileOnly libs.api
     implementation(libs.gson)
@@ -44,11 +43,18 @@ tasks.register("copyLargestDexAsJava") {
     dependsOn(":settingsadapter:assembleDebug")
 
     doLast {
-        def apkFile = fileTree("$rootDir/settingsadapter/build/intermediates/apk/debug")
+        def apkTree = fileTree("$rootDir/settingsadapter/build/intermediates/apk/debug")
                 .matching { include "*.apk" }
-                .singleFile
+        if (apkTree.files.isEmpty()) {
+            apkTree = fileTree("$rootDir/settingsadapter/build/outputs/apk/debug")
+                    .matching { include "*.apk" }
+        }
+        def apkFile = apkTree.singleFile
 
         def tempDir = new File(buildDir, "tmp/dexExtract")
+        if (tempDir.exists()) {
+            tempDir.deleteDir()
+        }
         tempDir.mkdirs()
 
         copy {

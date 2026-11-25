@@ -5,15 +5,17 @@ import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.Obfuscate;
 import com.my.televip.utils.Utils;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import de.robv.android.xposed.XposedHelpers;
 
 public class ClassLoad {
 
-    private static final Map<ClassLoader, Map<String, Class<?>>> cache = new WeakHashMap<>();
+    private static final Map<ClassLoader, Map<String, Class<?>>> cache =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     public static Class<?> getClass(String name) {
         return getClass(name, Utils.classLoader, true);
@@ -24,11 +26,20 @@ public class ClassLoad {
     }
 
     public static Class<?> getClass(String name, ClassLoader classLoader, boolean log) {
-
+        if (name == null) return null;
         String resolved = Obfuscate.getClassName(name);
+        if (resolved == null) return null;
 
-        Map<String, Class<?>> loaderCache =
-                cache.computeIfAbsent(classLoader, k -> new HashMap<>());
+        Map<String, Class<?>> loaderCache = cache.get(classLoader);
+        if (loaderCache == null) {
+            synchronized (cache) {
+                loaderCache = cache.get(classLoader);
+                if (loaderCache == null) {
+                    loaderCache = new ConcurrentHashMap<>();
+                    cache.put(classLoader, loaderCache);
+                }
+            }
+        }
 
         if (loaderCache.containsKey(resolved)) {
             return loaderCache.get(resolved);

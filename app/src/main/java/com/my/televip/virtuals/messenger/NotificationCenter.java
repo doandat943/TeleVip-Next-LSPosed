@@ -16,14 +16,28 @@ public class NotificationCenter {
 
     public static int getMessagesDeleted() {
         if (messagesDeleted == -1) {
-            messagesDeleted = XposedHelpers.getStaticIntField(ClassLoad.getClass(ClassNames.NOTIFICATION_CENTER), Obfuscate.getFieldName("NotificationCenter", "messagesDeleted"));
+            try {
+                Class<?> cls = ClassLoad.getClass(ClassNames.NOTIFICATION_CENTER, com.my.televip.utils.Utils.classLoader, false);
+                if (cls != null) {
+                    messagesDeleted = XposedHelpers.getStaticIntField(cls, Obfuscate.getFieldName("NotificationCenter", "messagesDeleted"));
+                }
+            } catch (Throwable ignored) {
+                messagesDeleted = -2;
+            }
         }
         return messagesDeleted;
     }
 
     public static int getTlSchemeParseException() {
         if (tlSchemeParseException == -1) {
-            tlSchemeParseException = XposedHelpers.getStaticIntField(ClassLoad.getClass(ClassNames.NOTIFICATION_CENTER), Obfuscate.getFieldName("NotificationCenter", "tlSchemeParseException"));
+            try {
+                Class<?> cls = ClassLoad.getClass(ClassNames.NOTIFICATION_CENTER, com.my.televip.utils.Utils.classLoader, false);
+                if (cls != null) {
+                    tlSchemeParseException = XposedHelpers.getStaticIntField(cls, Obfuscate.getFieldName("NotificationCenter", "tlSchemeParseException"));
+                }
+            } catch (Throwable ignored) {
+                tlSchemeParseException = -2;
+            }
         }
         return tlSchemeParseException;
     }

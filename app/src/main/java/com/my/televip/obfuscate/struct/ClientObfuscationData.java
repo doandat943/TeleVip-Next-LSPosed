@@ -23,10 +23,11 @@ public class ClientObfuscationData {
             data.parseMethods(root.optJSONArray("methods"));
             JSONObject aliasRoot = new JSONObject(clientAliasJson);
             data.parseMethodAlias(aliasRoot.optJSONObject("methodAlias"));
+            return data;
         } catch (Throwable t) {
             t.printStackTrace();
+            return null;
         }
-        return data;
     }
 
     private void parseClasses(JSONArray arr) {
@@ -36,7 +37,9 @@ public class ClientObfuscationData {
             if (o == null) continue;
             String original = o.optString("o", null);
             String resolved = o.optString("r", null);
-            classMap.put(original, resolved);
+            if (original != null && resolved != null) {
+                classMap.put(original, resolved);
+            }
         }
     }
 
@@ -48,7 +51,9 @@ public class ClientObfuscationData {
             String className = o.optString("c", null);
             String original = o.optString("o", null);
             String resolved = o.optString("r", null);
-            fieldMap.put(className + "#" + original, resolved);
+            if (className != null && original != null && resolved != null) {
+                fieldMap.put(className + "#" + original, resolved);
+            }
         }
     }
 
@@ -60,7 +65,9 @@ public class ClientObfuscationData {
             String className = o.optString("c", null);
             String original = o.optString("o", null);
             String resolved = o.optString("r", null);
-            methodMap.put(className + "#" + original, resolved);
+            if (className != null && original != null && resolved != null) {
+                methodMap.put(className + "#" + original, resolved);
+            }
         }
     }
 
@@ -70,7 +77,9 @@ public class ClientObfuscationData {
         while (keys.hasNext()) {
             String key = keys.next();
             String value = obj.optString(key, null);
-            methodAliasMap.put(key, value);
+            if (key != null && value != null) {
+                methodAliasMap.put(key, value);
+            }
         }
     }
 

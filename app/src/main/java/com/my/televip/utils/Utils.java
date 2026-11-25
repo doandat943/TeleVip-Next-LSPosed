@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 public class Utils {
     public static String pkgName = null;
     public static String modulePath = null;
+    public static String sourceDir = null;
     public static ClassLoader classLoader = null;
     public static final String issue = "Your Telegram client may be an incompatible version with TeleVip. Please download the latest version that is compatible with TeleVip.";
 
@@ -41,11 +42,14 @@ public class Utils {
 
     public static void objectToJson(Object object) {
         try {
+            Activity act = Utils.getCurrentActivity();
+            if (act == null || object == null) return;
+
             Gson gson = new Gson();
 
             String json = gson.toJson(object);
 
-            File dir = new File(Utils.getCurrentActivity().getFilesDir(), "backup");
+            File dir = new File(act.getFilesDir(), "backup");
             if (!dir.exists()) {
                 dir.mkdirs();
             }
@@ -55,9 +59,9 @@ public class Utils {
                     object.getClass().getSimpleName() + "_" + System.currentTimeMillis() + ".json"
             );
 
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(json.getBytes(StandardCharsets.UTF_8));
-            fos.close();
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(json.getBytes(StandardCharsets.UTF_8));
+            }
         } catch (Throwable throwable) {
             Logger.e(throwable);
         }

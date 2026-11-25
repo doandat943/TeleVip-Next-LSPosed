@@ -43,7 +43,8 @@ public class MessageStorage {
     public static void markMessagesDeleted(MessagesStorage messagesStorage, final long dialogId, ArrayList<Integer> delMsg) {
         try {
             storage.post(() -> {
-                SQLiteDatabase db = messagesStorage.getDatabase();
+                try {
+                    SQLiteDatabase db = messagesStorage.getDatabase();
                 for (int i = 0; i < 2; ++i) {
                     final String table = i == 0 ? "messages_v2" : "messages_topics";
 
@@ -77,6 +78,9 @@ public class MessageStorage {
                     }
                     cursor.dispose();
                     state.step();
+                }
+                } catch (Throwable e) {
+                    Logger.e(e);
                 }
             });
         } catch (Throwable e){

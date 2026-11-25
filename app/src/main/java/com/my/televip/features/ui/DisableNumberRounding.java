@@ -18,15 +18,27 @@ public class DisableNumberRounding {
             if (!isEnable) {
                 isEnable = true;
 
-                if (ClassLoad.getClass(ClassNames.LOCALE_CONTROLLER) != null) {
-                    HMethod.hookMethod(ClassLoad.getClass(ClassNames.LOCALE_CONTROLLER), Obfuscate.getMethodName("LocaleController", "formatShortNumber"), ArgsResolver.merge("formatShortNumber", new Class[]{int.class, int[].class},
+                Class<?> lcCls = ClassLoad.getClass(ClassNames.LOCALE_CONTROLLER);
+                if (lcCls != null) {
+                    String method = Obfuscate.getMethodName("LocaleController", "formatShortNumber");
+                    Class<?>[] sig = de.robv.android.xposed.XposedHelpers.findMethodExactIfExists(lcCls, method, int.class, int[].class) != null
+                            ? new Class[]{int.class, int[].class}
+                            : new Class[]{int[].class, int.class};
+                    HMethod.hookMethod(lcCls, method, ArgsResolver.merge("formatShortNumber", sig,
                             new BaseMethodHook() {
                                 @Override
                                 protected void beforeMethod(MethodHookParam param) {
                                     if (ConfigManager.disableNumberRounding.isEnable()) {
-                                        int[] rounded = (int[]) param.args[1];
-                                        int number = (int) param.args[0];
-                                        if (rounded != null) {
+                                        int[] rounded;
+                                        int number;
+                                        if (param.args[0] instanceof int[]) {
+                                            rounded = (int[]) param.args[0];
+                                            number = (int) param.args[1];
+                                        } else {
+                                            number = (int) param.args[0];
+                                            rounded = (int[]) param.args[1];
+                                        }
+                                        if (rounded != null && rounded.length > 0) {
                                             rounded[0] = number;
                                         }
                                         param.setResult(String.valueOf(number));
