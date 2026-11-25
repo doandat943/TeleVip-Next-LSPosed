@@ -637,7 +637,10 @@ public class SaveEditsHistory {
         if (!TextUtils.isEmpty(formatted)) {
             return formatted.trim();
         }
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date(millis));
+        String pattern = MessageTimeModifier.isSecondsEnabled()
+                ? "yyyy-MM-dd HH:mm:ss"
+                : "yyyy-MM-dd HH:mm";
+        return new SimpleDateFormat(pattern, Locale.getDefault()).format(new Date(millis));
     }
 
     private static Object extractSelectedMessageObject(de.robv.android.xposed.XC_MethodHook.MethodHookParam param) {

@@ -1,6 +1,7 @@
 package com.my.televip.calendar;
 
 import com.my.televip.Configs.ConfigManager;
+import com.my.televip.features.messages.MessageTimeModifier;
 import com.my.televip.language.Keys;
 import com.my.televip.language.Translator;
 
@@ -105,7 +106,8 @@ public class ConverterCalendar {
             int year = rightNow.getYear();
 
 
-            SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            String timePattern = MessageTimeModifier.isSecondsEnabled() ? "hh:mm:ss a" : "hh:mm a";
+            SimpleDateFormat sdf = new SimpleDateFormat(timePattern, Locale.getDefault());
             String dateHour = sdf.format(new Date(date));
 
             rightNow = ConverterCalendar.toCalendar(date);

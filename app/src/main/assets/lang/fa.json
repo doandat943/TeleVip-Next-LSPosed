@@ -194,5 +194,7 @@
   "CreditsChannelRole": "آپدیت‌ها، فایل‌های APK و اطلاعیه‌های انتشار",
   "CreditsSourceCode": "مخزن GitHub",
   "CreditsSourceCodeRole": "کد منبع، گزارش باگ و مشارکت‌ها",
-  "CreditsCopiedInfo": "اطلاعات نسخه و کلاینت کپی شد"
+  "CreditsCopiedInfo": "اطلاعات نسخه و کلاینت کپی شد",
+  "ShowTimeSeconds": "نمایش ثانیه",
+  "ShowTimeSecondsDesc": "نمایش ثانیه در زمان‌ها در سراسر برنامه (14:32 → 14:32:05)"
 }

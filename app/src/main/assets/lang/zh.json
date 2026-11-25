@@ -194,5 +194,7 @@
   "CreditsChannelRole": "版本更新、APK 构建与功能公告",
   "CreditsSourceCode": "GitHub 仓库",
   "CreditsSourceCodeRole": "开源代码、问题反馈与 Pull Request",
-  "CreditsCopiedInfo": "已复制版本与客户端信息"
+  "CreditsCopiedInfo": "已复制版本与客户端信息",
+  "ShowTimeSeconds": "显示秒数",
+  "ShowTimeSecondsDesc": "在应用内所有时间戳中显示秒数（14:32 → 14:32:05）"
 }

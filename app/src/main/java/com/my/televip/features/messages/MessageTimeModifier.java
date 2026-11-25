@@ -18,43 +18,129 @@ import com.my.televip.language.Translator;
 import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.ArgsResolver;
 import com.my.televip.obfuscate.Obfuscate;
+import com.my.televip.utils.Utils;
 import com.my.televip.virtuals.ActionBar.Theme;
 import com.my.televip.virtuals.messenger.MessageObject;
 import com.my.televip.virtuals.tgnet.TLRPC;
 import com.my.televip.virtuals.ui.Cells.ChatMessageCell;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
+import de.robv.android.xposed.XposedHelpers;
+
 public class MessageTimeModifier {
 
     public static boolean loaded;
+    private static boolean formatterHooked;
+    private static final ThreadLocal<Boolean> IN_FORMATTER_HOOK = new ThreadLocal<>();
+
+    public static boolean isSecondsEnabled() {
+        return ConfigManager.showTimeSeconds != null
+                && ConfigManager.showTimeSeconds.isEnable();
+    }
 
     public static void init() {
-
-        if (loaded)
-            return;
-
-        loaded = true;
-
-        try {
-            HMethod.hookMethod(
-                    ClassLoad.getClass(ClassNames.CHAT_MESSAGE_CELL),
-                    Obfuscate.getMethodName("ChatMessageCell", "measureTime"),
-                    ArgsResolver.merge("measureTime", new Class[]{ClassLoad.getClass(ClassNames.MESSAGE_OBJECT)},
-                            new BaseMethodHook() {
-                                @Override
-                                protected void afterMethod(MethodHookParam param) {
-
-                                    try {
-                                        apply(param.thisObject, param.args[0]);
-                                    } catch (Throwable e) {
-                                        Logger.e(e);
+        if (!loaded) {
+            loaded = true;
+            try {
+                HMethod.hookMethod(
+                        ClassLoad.getClass(ClassNames.CHAT_MESSAGE_CELL),
+                        Obfuscate.getMethodName("ChatMessageCell", "measureTime"),
+                        ArgsResolver.merge("measureTime", new Class[]{ClassLoad.getClass(ClassNames.MESSAGE_OBJECT)},
+                                new BaseMethodHook() {
+                                    @Override
+                                    protected void afterMethod(MethodHookParam param) {
+                                        try {
+                                            apply(param.thisObject, param.args[0]);
+                                        } catch (Throwable e) {
+                                            Logger.e(e);
+                                        }
                                     }
-
-                                }
-                            }));
-        } catch (Throwable e) {
-            Logger.e(e);
+                                }));
+            } catch (Throwable e) {
+                Logger.e(e);
+            }
         }
 
+        if (!formatterHooked && isSecondsEnabled()) {
+            initFormatterHook();
+        }
+    }
+
+    /**
+     * Hooks LocaleController.getFormatterDay() so Telegram renders timestamps with seconds across the app.
+     */
+    private static void initFormatterHook() {
+        if (formatterHooked) return;
+        try {
+            Class<?> localeCls = ClassLoad.getClass(ClassNames.LOCALE_CONTROLLER, Utils.classLoader, false);
+            if (localeCls == null) return;
+
+            String dayName = resolveLocaleMethod(localeCls, "getFormatterDay", false);
+            String daySecName = resolveLocaleMethod(localeCls, "getFormatterDayWithSeconds", true);
+            if (dayName == null || daySecName == null || dayName.equals(daySecName)) {
+                return;
+            }
+
+            final String targetSecMethod = daySecName;
+            formatterHooked = true;
+            HMethod.hookMethod(localeCls, dayName, new BaseMethodHook() {
+                @Override
+                protected void beforeMethod(MethodHookParam param) {
+                    if (!isSecondsEnabled() || Boolean.TRUE.equals(IN_FORMATTER_HOOK.get())) {
+                        return;
+                    }
+                    IN_FORMATTER_HOOK.set(Boolean.TRUE);
+                    try {
+                        Object secFmt = XposedHelpers.callMethod(param.thisObject, targetSecMethod);
+                        if (secFmt != null) {
+                            param.setResult(secFmt);
+                        }
+                    } catch (Throwable t) {
+                        Logger.e(t);
+                    } finally {
+                        IN_FORMATTER_HOOK.remove();
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            Logger.e(t);
+        }
+    }
+
+    private static String resolveLocaleMethod(Class<?> localeCls, String mappingKey, boolean withSeconds) {
+        String mapped = Obfuscate.getMethodName("LocaleController", mappingKey);
+        if (mapped != null && XposedHelpers.findMethodExactIfExists(localeCls, mapped) != null) {
+            return mapped;
+        }
+        try {
+            String getInstName = Obfuscate.getMethodName("LocaleController", "getInstance");
+            Object instance = null;
+            if (getInstName != null && XposedHelpers.findMethodExactIfExists(localeCls, getInstName) != null) {
+                instance = XposedHelpers.callStaticMethod(localeCls, getInstName);
+            }
+            if (instance == null) return null;
+
+            for (Method m : localeCls.getDeclaredMethods()) {
+                if (Modifier.isStatic(m.getModifiers()) || m.getParameterTypes().length != 0) continue;
+                if (!"org.telegram.messenger.time.FastDateFormat".equals(m.getReturnType().getName())) continue;
+                m.setAccessible(true);
+                Object fmt = m.invoke(instance);
+                if (fmt == null) continue;
+                String pattern = (String) XposedHelpers.callMethod(fmt, "getPattern");
+                if (pattern == null || !pattern.contains("mm")) continue;
+                if (pattern.indexOf('d') >= 0 || pattern.indexOf('M') >= 0
+                        || pattern.indexOf('y') >= 0 || pattern.indexOf('E') >= 0) {
+                    continue;
+                }
+                boolean hasSec = pattern.contains("ss");
+                if (hasSec == withSeconds) {
+                    return m.getName();
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
     }
 
     private static void apply(Object cellObject, Object messageObject)
@@ -62,6 +148,7 @@ public class MessageTimeModifier {
         boolean id =
                 ConfigManager.showMessageId != null &&
                         ConfigManager.showMessageId.isEnable();
+        boolean showSeconds = isSecondsEnabled();
 
         try {
             MessageObject msg = new MessageObject(messageObject);
@@ -72,8 +159,15 @@ public class MessageTimeModifier {
                 return;
 
             boolean hasDeletedFlag = (message.getFlags() & ShowDeletedMessages.FLAG_DELETED) != 0;
-            if (!id && !hasDeletedFlag)
+            if (!id && !hasDeletedFlag && !showSeconds)
                 return;
+
+            if (showSeconds) {
+                int date = message.getDate();
+                if (date > 0 && date < 0x7ffffff0) {
+                    appendSecondsToTime(cellObject, ((date % 60) + 60) % 60);
+                }
+            }
 
             String prefix = null;
             boolean redColor = false;
@@ -94,6 +188,65 @@ public class MessageTimeModifier {
             Logger.e(e);
         }
 
+    }
+
+    /**
+     * Inserts two-digit seconds after the HH:mm portion of the message timestamp and expands time widths.
+     */
+    private static void appendSecondsToTime(Object object, int seconds) {
+        ChatMessageCell cell = new ChatMessageCell(object);
+        SpannableStringBuilder time = convertToStringBuilder(cell.getCurrentTimeString());
+        if (time == null || time.length() < 4)
+            return;
+
+        for (int colonIdx = time.length() - 3; colonIdx >= 1; colonIdx--) {
+            if (time.charAt(colonIdx) != ':') continue;
+            char base = digitZeroBase(time.charAt(colonIdx - 1));
+            if (base == 0) continue;
+            if (digitZeroBase(time.charAt(colonIdx + 1)) != base
+                    || digitZeroBase(time.charAt(colonIdx + 2)) != base) {
+                continue;
+            }
+            int hourStart = colonIdx - 1;
+            if (hourStart > 0 && digitZeroBase(time.charAt(hourStart - 1)) == base) {
+                hourStart--;
+            }
+            if (hourStart > 0 && time.charAt(hourStart - 1) == ':') {
+                continue;
+            }
+            if (colonIdx + 3 < time.length() && time.charAt(colonIdx + 3) == ':') {
+                return;
+            }
+            if (colonIdx + 3 < time.length() && digitZeroBase(time.charAt(colonIdx + 3)) != 0) {
+                continue;
+            }
+
+            String secStr = new String(new char[]{
+                    ':',
+                    (char) (base + (seconds / 10)),
+                    (char) (base + (seconds % 10))
+            });
+            time.insert(colonIdx + 3, secStr);
+            cell.setCurrentTimeString(time);
+
+            TextPaint paint = Theme.getTextPaint();
+            if (paint == null) {
+                paint = getFallbackTimePaint(object);
+            }
+            if (paint != null) {
+                int ceil = (int) Math.ceil(paint.measureText(secStr));
+                cell.setTimeTextWidth(ceil + cell.getTimeTextWidth());
+                cell.setTimeWidth(ceil + cell.getTimeWidth());
+            }
+            return;
+        }
+    }
+
+    private static char digitZeroBase(char c) {
+        if (c >= '0' && c <= '9') return '0';
+        if (c >= '\u0660' && c <= '\u0669') return '\u0660';
+        if (c >= '\u06F0' && c <= '\u06F9') return '\u06F0';
+        return 0;
     }
 
     public static SpannableStringBuilder convertToStringBuilder(CharSequence charSequence) {

@@ -194,5 +194,7 @@
   "CreditsChannelRole": "التحديثات وملفات APK وإعلانات الإصدارات",
   "CreditsSourceCode": "مستودع GitHub",
   "CreditsSourceCodeRole": "الكود المصدري وتتبع المشكلات وطلبات الدمج",
-  "CreditsCopiedInfo": "تم نسخ معلومات الإصدار والعميل"
+  "CreditsCopiedInfo": "تم نسخ معلومات الإصدار والعميل",
+  "ShowTimeSeconds": "عرض الثواني",
+  "ShowTimeSecondsDesc": "عرض الثواني في الطوابع الزمنية في جميع أنحاء التطبيق (14:32 → 14:32:05)"
 }

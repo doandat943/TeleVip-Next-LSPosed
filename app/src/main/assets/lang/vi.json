@@ -194,5 +194,7 @@
   "CreditsChannelRole": "Kênh cập nhật, bản build APK & thông báo tính năng mới",
   "CreditsSourceCode": "Kho lưu trữ GitHub",
   "CreditsSourceCodeRole": "Mã nguồn mở, báo lỗi & đóng góp PR",
-  "CreditsCopiedInfo": "Đã sao chép thông tin phiên bản và client"
+  "CreditsCopiedInfo": "Đã sao chép thông tin phiên bản và client",
+  "ShowTimeSeconds": "Hiển thị giây",
+  "ShowTimeSecondsDesc": "Hiển thị giây trong mốc thời gian toàn ứng dụng (14:32 → 14:32:05)"
 }

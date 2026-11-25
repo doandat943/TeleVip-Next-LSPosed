@@ -83,6 +83,19 @@ public class TLRPC {
             return XposedHelpers.getIntField(message, Obfuscate.getFieldName("TLRPC$Message", "ttl"));
         }
 
+        public int getDate() {
+            try {
+                String mapped = Obfuscate.getFieldName("TLRPC$Message", "date");
+                if (XposedHelpers.findFieldIfExists(message.getClass(), mapped) != null) {
+                    return XposedHelpers.getIntField(message, mapped);
+                }
+                if (!"date".equals(mapped) && XposedHelpers.findFieldIfExists(message.getClass(), "date") != null) {
+                    return XposedHelpers.getIntField(message, "date");
+                }
+            } catch (Throwable ignored) {}
+            return 0;
+        }
+
         public Object get_Message(){
             return message;
         }

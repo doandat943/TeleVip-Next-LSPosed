@@ -194,5 +194,7 @@
   "CreditsChannelRole": "Updates, APK builds & release announcements",
   "CreditsSourceCode": "GitHub Repository",
   "CreditsSourceCodeRole": "Source code, issue tracker & pull requests",
-  "CreditsCopiedInfo": "Copied version & client info"
+  "CreditsCopiedInfo": "Copied version & client info",
+  "ShowTimeSeconds": "Show Seconds",
+  "ShowTimeSecondsDesc": "Show seconds in timestamps across the app (14:32 → 14:32:05)"
 }

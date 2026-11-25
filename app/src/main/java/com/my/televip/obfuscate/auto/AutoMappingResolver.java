@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 35;
+    private static final int SCHEMA_VERSION = 36;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -690,6 +690,16 @@ public class AutoMappingResolver {
                     addMethod("LocaleController", "formatYearMont", m.name);
                     break;
                 }
+            }
+
+            String fastDateFmtDesc = "Lorg/telegram/messenger/time/FastDateFormat;";
+            String fmtDay = scanner.findMethodByString(localeCtrlDesc, "formatterDay24H", false, fastDateFmtDesc);
+            if (fmtDay != null) {
+                addMethod("LocaleController", "getFormatterDay", fmtDay);
+            }
+            String fmtDaySec = scanner.findMethodByString(localeCtrlDesc, "formatterDayWithSeconds24H", false, fastDateFmtDesc);
+            if (fmtDaySec != null) {
+                addMethod("LocaleController", "getFormatterDayWithSeconds", fmtDaySec);
             }
         }
 

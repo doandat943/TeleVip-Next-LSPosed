@@ -89,6 +89,7 @@ public class ConfigManager {
     public static ConfigItem hideProxySponsor;
     public static ConfigItem showUserID;
     public static ConfigItem customCalendar;
+    public static ConfigItem showTimeSeconds;
 
     // Other Features
     public static ConfigItem otherFeatures;
@@ -251,6 +252,8 @@ public class ConfigManager {
             items.add(showUserID);
             customCalendar = new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init);
             items.add(customCalendar);
+            showTimeSeconds = new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init);
+            items.add(showTimeSeconds);
         }
 
         items.add(shadows);

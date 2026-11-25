@@ -6,6 +6,7 @@ import com.my.televip.Configs.ConfigManager;
 import com.my.televip.base.BaseMethodHook;
 import com.my.televip.calendar.CalendarDate;
 import com.my.televip.calendar.ConverterCalendar;
+import com.my.televip.features.messages.MessageTimeModifier;
 import com.my.televip.hooks.HMethod;
 import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.ArgsResolver;
@@ -117,7 +118,8 @@ public class HijriDate {
             if (type == DateFormatType.UNKNOWN || type == DateFormatType.TIME_ONLY) return org;
 
             CalendarDate dateCalendar = null;
-            SimpleDateFormat sdfTime = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+            String timePattern = MessageTimeModifier.isSecondsEnabled() ? "hh:mm:ss a" : "hh:mm a";
+            SimpleDateFormat sdfTime = new SimpleDateFormat(timePattern, Locale.getDefault());
             String dateHour = null;
 
             if (date instanceof Long) {
