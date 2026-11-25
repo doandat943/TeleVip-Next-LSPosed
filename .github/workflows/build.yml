@@ -160,9 +160,9 @@ jobs:
 
           res = subprocess.run([
               "curl", "-sS", "-f",
-              "-F", f"chat_id={chat_id}",
-              "-F", "parse_mode=HTML",
-              "-F", f"caption={doc_caption[:1024]}",
+              "--form-string", f"chat_id={chat_id}",
+              "--form-string", "parse_mode=HTML",
+              "--form-string", f"caption={doc_caption[:1024]}",
               "-F", f"document=@{apk_upload}",
               f"https://api.telegram.org/bot{token}/sendDocument",
           ], capture_output=True, text=True)
