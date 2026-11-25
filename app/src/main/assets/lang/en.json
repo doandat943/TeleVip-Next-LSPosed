@@ -49,7 +49,7 @@
   "TodayAt": "Today at ",
   "YesterdayAt": "Yesterday at ",
   "MarkReadAfterSend": "Mark messages as read after sending or tap a reaction",
-  "OfflineVisibilityInfo": "When the “Hide Online Status” feature is enabled, your online status will not be completely hidden. Instead, it reduces how often you appear as online. You may still appear online when interacting with the app, such as sending messages, reacting to them, or reading messages. Your status will return to offline after about 30–60 seconds. For the best result, it is recommended to enable all Ghost Mode options.",
+  "OfflineVisibilityInfo": "Unlike Telegram's built-in Last Seen privacy setting, Hide 'Online' status keeps you offline while browsing without blocking you from seeing others' exact Last Seen (no Premium needed). However, Telegram's servers will still briefly mark you online for about 30–60 seconds whenever you send messages, react, or mark chats as read. For the best result, enable all Ghost Mode options.",
   "DisableChannelSwipeBack": "Disable Channel Swipe Back",
   "DisableProfileSwipeBack": "Disable Profile Swipe Back",
   "HidePinnedMessages": "Hide Pinned Messages",

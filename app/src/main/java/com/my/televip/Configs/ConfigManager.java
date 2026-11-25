@@ -267,6 +267,16 @@ public class ConfigManager {
         try {
             for (ConfigItem item : items) {
                 if (item == null) continue;
+                if (item.getType() == ConfigItem.EXPANDABLE_SWITCH) {
+                    if (item.getChildren() != null) {
+                        for (ConfigItem child : item.getChildren()) {
+                            if (child != null && child.isEnable()) {
+                                child.run();
+                            }
+                        }
+                    }
+                    continue;
+                }
                 if (item.getType() != ConfigItem.SWITCH && item.getCustomCalendar() == 0) continue;
                 if (item.isEnable()) item.run();
             }
@@ -285,12 +295,14 @@ public class ConfigManager {
         }
     }
 
-    public static boolean isGhostMode(){
-        return hideSeen.isEnable() ||
-                hideStoryView.isEnable() ||
-                hideTyping.isEnable() ||
-                hideOnline.isEnable() ||
-                markReadAfterSend.isEnable();
+    public static boolean isGhostMode() {
+        return (hideSeen != null && hideSeen.isEnable()) ||
+                (hideSeenPrivateChat != null && hideSeenPrivateChat.isEnable()) ||
+                (hideSeenChannel != null && hideSeenChannel.isEnable()) ||
+                (hideStoryView != null && hideStoryView.isEnable()) ||
+                (hideTyping != null && hideTyping.isEnable()) ||
+                (hideOnline != null && hideOnline.isEnable()) ||
+                (markReadAfterSend != null && markReadAfterSend.isEnable());
     }
 
 }

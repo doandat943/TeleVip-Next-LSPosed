@@ -66,7 +66,7 @@ public class SettingsActivity {
         SUBTITLE_DEFAULTS.put(Keys.HideTyping, "Others won't see that you are typing");
         SUBTITLE_DEFAULTS.put(Keys.HideStoryView, "Watch stories without appearing in their viewers list");
         SUBTITLE_DEFAULTS.put(Keys.HidePhone, "Hides your own phone number across the app, handy for screenshots");
-        SUBTITLE_DEFAULTS.put(Keys.HideOnline, "Appear online much less often. Tap the note below for details");
+        SUBTITLE_DEFAULTS.put(Keys.HideOnline, "Stay offline while browsing without losing others' exact Last Seen. Tap the note below for details");
         SUBTITLE_DEFAULTS.put(Keys.DisableStories, "Hides the stories bar from the chat list");
         SUBTITLE_DEFAULTS.put(Keys.ShowDeletedMessages, "Keeps messages others delete and marks them as deleted");
         SUBTITLE_DEFAULTS.put(Keys.ShowMessageID, "Shows the ID of each message in the chat");
@@ -689,7 +689,6 @@ public class SettingsActivity {
                     boolean next = !childSw.isChecked();
                     childSw.setChecked(next, true);
                     child.setEnable(next);
-                    child.run();
 
                     int count = 0;
                     for (ConfigItem c : children) {
@@ -698,6 +697,8 @@ public class SettingsActivity {
                     parentItem.setEnable(count > 0);
                     parentSw.setChecked(count > 0, true);
                     titleTv.setText(formatExpandableTitle(parentItem, count, children.size()));
+
+                    child.run();
                 });
 
                 childrenContainer.addView(childRow);

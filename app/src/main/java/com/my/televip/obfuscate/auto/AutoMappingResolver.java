@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 26;
+    private static final int SCHEMA_VERSION = 27;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -504,6 +504,13 @@ public class AutoMappingResolver {
                             addMethod("MessagesStorage", "getStorageQueue", m.name);
                             addClass("org.telegram.messenger.DispatchQueue", m.returnDesc);
                             addMethod("DispatchQueue", "postRunnable", bestPostRun.name);
+                            String utilDesc = DexScanner.javaToDesc(ClassNames.UTILITIES);
+                            for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(utilDesc, "<clinit>", new String[0], utilDesc)) {
+                                if (m.returnDesc.equals(wf.typeDesc)) {
+                                    addField("Utilities", "stageQueue", wf.name);
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
@@ -543,6 +550,13 @@ public class AutoMappingResolver {
                         DexScanner.javaToDesc(ClassNames.TLRPC_ENCRYPTED_CHAT),
                         "J", "Z", "I", "Z", "J", DexScanner.javaToDesc(ClassNames.TL_OBJECT), "I", "Z", "I");
                 addMethod("MessagesController", "deleteMessages", deleteMeth);
+                String procDiff = scanner.findMethodByString(msgCtrlDesc, "APPLY PTS", false, "V", "I", "I", "I");
+                if (procDiff == null) {
+                    procDiff = scanner.findMethodByString(msgCtrlDesc, "APPLY PTS", false, "V", "I", "I", "I", "I");
+                }
+                if (procDiff != null) {
+                    addMethod("MessagesController", "processNewDifferenceParams", procDiff);
+                }
                 String inputChanChat = scanner.findSingleMethod(msgCtrlDesc, true, "Lorg/telegram/tgnet/TLRPC$InputChannel;", DexScanner.javaToDesc(ClassNames.TLRPC_CHAT));
                 if (inputChanChat != null) {
                     addMethod("MessagesController", "getInputChannel", inputChanChat);

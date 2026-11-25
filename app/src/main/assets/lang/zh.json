@@ -49,7 +49,7 @@
   "TodayAt": "今天 ",
   "YesterdayAt": "昨天 ",
   "MarkReadAfterSend": "发送消息后或点击反应后，将消息标记为已读",
-  "OfflineVisibilityInfo": "启用“隐藏在线状态”功能后，您的在线状态不会被完全隐藏，而是会减少您显示为在线的频率。当您与应用进行交互时，例如发送消息、对消息做出反应或阅读消息，您仍可能会显示为在线。大约30–60秒后，您的状态将恢复为离线。为了获得最佳效果，建议启用所有幽灵模式选项。",
+  "OfflineVisibilityInfo": "与 Telegram 自带的“最后上线时间”隐私设置不同，“隐藏在线状态”可在浏览时让您保持离线，同时仍能查看他人的精确最后上线时间（无需 Premium）。不过，发送消息、点击反应或已读消息时，Telegram 服务器仍会短暂将您标记为在线约 30–60 秒。为获得最佳效果，建议启用所有幽灵模式选项。",
   "DisableChannelSwipeBack": "禁用频道滑动返回",
   "DisableProfileSwipeBack": "禁用个人资料滑动返回",
   "HidePinnedMessages": "隐藏置顶消息",

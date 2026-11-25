@@ -20,7 +20,28 @@ public class MessagesController {
     }
 
     public void processNewDifferenceParams(int seq, int pts, int date, int pts_count) {
-        XposedHelpers.callMethod(messagesController, Obfuscate.getMethodName("MessagesController", "processNewDifferenceParams"), seq, pts, date, pts_count);
+        if (messagesController == null) return;
+        Class<?> cls = messagesController.getClass();
+        String mName = Obfuscate.getMethodName("MessagesController", "processNewDifferenceParams");
+        if (invokeDifferenceMethod(cls, mName, seq, pts, date, pts_count)) {
+            return;
+        }
+        if (!"processNewDifferenceParams".equals(mName)) {
+            invokeDifferenceMethod(cls, "processNewDifferenceParams", seq, pts, date, pts_count);
+        }
+    }
+
+    private boolean invokeDifferenceMethod(Class<?> cls, String name, int seq, int pts, int date, int pts_count) {
+        if (name == null) return false;
+        if (XposedHelpers.findMethodExactIfExists(cls, name, int.class, int.class, int.class, int.class) != null) {
+            XposedHelpers.callMethod(messagesController, name, seq, pts, date, pts_count);
+            return true;
+        }
+        if (XposedHelpers.findMethodExactIfExists(cls, name, int.class, int.class, int.class) != null) {
+            XposedHelpers.callMethod(messagesController, name, pts, date, pts_count);
+            return true;
+        }
+        return false;
     }
 
     public void processNewDifferenceParams(int pts, int date, int pts_count) {
