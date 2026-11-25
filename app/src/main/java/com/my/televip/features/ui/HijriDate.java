@@ -127,7 +127,7 @@ public class HijriDate {
             } else if (date instanceof Calendar) {
                 Calendar calendar = (Calendar) date;
                 dateCalendar = ConverterCalendar.toCalendar(calendar);
-                dateHour = sdfTime.format(calendar);
+                dateHour = sdfTime.format(calendar.getTime());
             } else if (date instanceof Date) {
                 Date date1 = (Date) date;
                 dateCalendar = ConverterCalendar.toCalendar(date1);

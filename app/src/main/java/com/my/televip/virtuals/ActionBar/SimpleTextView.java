@@ -25,7 +25,11 @@ public class SimpleTextView {
     }
 
     public void setText(CharSequence text, boolean force){
-        XposedHelpers.callMethod(simpleTextView, Obfuscate.getMethodName("SimpleTextView", "setText"), text, force);
+        String method = Obfuscate.getMethodName("SimpleTextView", "setTextForce");
+        if ("setTextForce".equals(method)) {
+            method = Obfuscate.getMethodName("SimpleTextView", "setText");
+        }
+        XposedHelpers.callMethod(simpleTextView, method, text, force);
     }
 
     public void setAlignment(Layout.Alignment alignment){

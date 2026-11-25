@@ -22,11 +22,17 @@ public class ProfileActivity {
     }
 
     public Object[] getNameTextView(){
-        return  (Object[]) XposedHelpers.getObjectField(profileActivity, Obfuscate.getFieldName("ProfileActivity", "nameTextView"));
+        Object val = XposedHelpers.getObjectField(profileActivity, Obfuscate.getFieldName("ProfileActivity", "nameTextView"));
+        if (val == null) return null;
+        if (val instanceof Object[]) return (Object[]) val;
+        return new Object[]{val};
     }
 
     public Object[] getOnlineTextView(){
-        return  (Object[]) XposedHelpers.getObjectField(profileActivity, Obfuscate.getFieldName("ProfileActivity", "onlineTextView"));
+        Object val = XposedHelpers.getObjectField(profileActivity, Obfuscate.getFieldName("ProfileActivity", "onlineTextView"));
+        if (val == null) return null;
+        if (val instanceof Object[]) return (Object[]) val;
+        return new Object[]{val};
     }
 
     public ActionBarMenuItem getOtherItem(){

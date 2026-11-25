@@ -884,6 +884,7 @@ public class SettingsActivity {
         } else if (isChannel) {
             row.setOnClickListener(v -> {
                 try {
+                    if (controller != null) controller.hide();
                     Browser.openUrl(context, "https://t.me/televipnext");
                 } catch (Throwable t) {
                     Logger.e(t);

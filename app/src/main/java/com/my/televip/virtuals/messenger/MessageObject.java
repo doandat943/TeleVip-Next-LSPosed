@@ -10,7 +10,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 public class MessageObject {
 
-    static Object messageObject;
+    private final Object messageObject;
 
     public MessageObject(Object obj){
         messageObject = obj;

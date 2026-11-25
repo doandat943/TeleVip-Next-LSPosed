@@ -18,22 +18,32 @@ import com.my.televip.utils.Utils;
 import com.my.televip.virtuals.ActionBar.SimpleTextView;
 import com.my.televip.virtuals.ui.ProfileActivity;
 
+import de.robv.android.xposed.XposedHelpers;
+
 public class CopyNameHook {
 
     public static void init() {
         try {
-            if (ClassLoad.getClass(ClassNames.PROFILE_ACTIVITY) != null) {
+            Class<?> profileClass = ClassLoad.getClass(ClassNames.PROFILE_ACTIVITY);
+            if (profileClass != null) {
+                String createViewName = Obfuscate.getMethodName("ProfileActivity", "createView");
+                Class<?>[] params = ArgsResolver.resolveObject("createView", new Class[]{Context.class});
+                if (params == null || XposedHelpers.findMethodExactIfExists(profileClass, createViewName, (Object[]) params) == null) {
+                    return;
+                }
 
-                HMethod.hookMethod(ClassLoad.getClass(ClassNames.PROFILE_ACTIVITY), Obfuscate.getMethodName("ProfileActivity", "createView"), ArgsResolver.merge("createView", new Class[]{Context.class}, new BaseMethodHook() {
+                HMethod.hookMethod(profileClass, createViewName, ArgsResolver.merge("createView", new Class[]{Context.class}, new BaseMethodHook() {
                     @Override
                     protected void afterMethod(MethodHookParam param) {
                         final ProfileActivity profileActivity = new ProfileActivity(param.thisObject);
 
                         Object[] nameTextViewArray = profileActivity.getNameTextView();
 
-                        if (nameTextViewArray != null && nameTextViewArray.length > 1) {
+                        if (nameTextViewArray != null && nameTextViewArray.length > 0) {
+                            Object target = nameTextViewArray.length > 1 ? nameTextViewArray[1] : nameTextViewArray[0];
+                            if (target == null) return;
 
-                            SimpleTextView simpleTextView = new SimpleTextView(nameTextViewArray[1]);
+                            SimpleTextView simpleTextView = new SimpleTextView(target);
 
                             if (simpleTextView.getSimpleTextView() != null) {
                                 simpleTextView.getSimpleTextView().setOnClickListener(v -> {

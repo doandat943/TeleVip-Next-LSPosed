@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 28;
+    private static final int SCHEMA_VERSION = 31;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -329,6 +329,7 @@ public class AutoMappingResolver {
             if (isSecretMethod != null) {
                 addMethod("MessageObject", "isSecret", isSecretMethod.name);
             }
+            resolveMessageObjectAudio(scanner, msgObjDesc);
         }
 
         if (chatActDesc != null) {
@@ -391,16 +392,8 @@ public class AutoMappingResolver {
                     }
                 }
             }
-        }
 
-        // ProfileActivity#updateProfileData: (Z) -> V reading online_count
-        String profileDesc = DexScanner.javaToDesc(ClassNames.PROFILE_ACTIVITY);
-        for (DexScanner.MethodInfo m : scanner.getMethods(profileDesc)) {
-            if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1 && "Z".equals(m.paramDescs[0])
-                    && m.readsFieldNamed("online_count")) {
-                addMethod("ProfileActivity", "updateProfileData", m.name);
-                break;
-            }
+            resolveChatPinnedMessageView(scanner, chatActDesc);
         }
 
         if (pvProviderDesc != null) {
@@ -425,10 +418,15 @@ public class AutoMappingResolver {
         }
 
         // 3. BaseController subclasses
+        String msgCtrlDesc = null;
         if (baseControllerDesc != null) {
             String userConfigDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "userconfing");
             if (userConfigDesc != null) {
                 addClass(ClassNames.USER_CONFIG, userConfigDesc);
+                if (baseFragmentDesc != null) {
+                    addMethod("BaseFragment", "getUserConfig",
+                            scanner.findSingleMethod(baseFragmentDesc, false, userConfigDesc));
+                }
                 String getInstName = scanner.findSingleMethod(userConfigDesc, true, userConfigDesc, "I");
                 addMethod("UserConfig", "getInstance", getInstName);
                 String selectedAccField = null;
@@ -517,7 +515,7 @@ public class AutoMappingResolver {
                 }
             }
 
-            String msgCtrlDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "telegramAntispamUserId");
+            msgCtrlDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "telegramAntispamUserId");
             if (msgCtrlDesc != null) {
                 addClass(ClassNames.MESSAGES_CONTROLLER, msgCtrlDesc);
                 addMethod("MessagesController", "getInstance",
@@ -608,6 +606,8 @@ public class AutoMappingResolver {
                     addMethod("LongSparseArray", "get", fallbackLsaGet);
                     addField("MessagesController", "dialogMessage", fallbackLsaField);
                 }
+
+                resolveMessagesControllerExtras(scanner, msgCtrlDesc);
             }
 
             String fileLoaderDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "create load operation fileName=");
@@ -682,11 +682,33 @@ public class AutoMappingResolver {
                 fmtShort = scanner.findSingleMethod(localeCtrlDesc, true, "Ljava/lang/String;", "[I", "I");
             }
             addMethod("LocaleController", "formatShortNumber", fmtShort);
+
+            for (DexScanner.MethodInfo m : scanner.getMethods(localeCtrlDesc)) {
+                if (m.isStatic && "Ljava/lang/String;".equals(m.returnDesc)
+                        && m.paramDescs.length == 2 && "J".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])
+                        && m.usesString(" ") && m.usesString("LOC_ERR")) {
+                    addMethod("LocaleController", "formatYearMont", m.name);
+                    break;
+                }
+            }
         }
+
+        resolveStoriesController(scanner);
+        resolveStoryItemHolder(scanner);
+        resolveProfileActivity(scanner, msgCtrlDesc);
 
         String sharedConfigDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null, "mainconfig", "saveIncomingPhotos");
         if (sharedConfigDesc != null) {
             addClass(ClassNames.SHARED_CONFIG, sharedConfigDesc);
+            resolveSharedConfigUpdate(scanner, sharedConfigDesc);
+        }
+
+        String browserDesc = scanner.findClassByStrings(null, null,
+                "com.android.browser.application_id", "android.support.customtabs.extra.SESSION");
+        if (browserDesc != null) {
+            addClass(ClassNames.BROWSER, browserDesc);
+            addMethod("Browser", "openUrl",
+                    scanner.findSingleMethod(browserDesc, true, "V", "Landroid/content/Context;", "Ljava/lang/String;"));
         }
 
         String themeDesc = findTheme(scanner);
@@ -763,6 +785,14 @@ public class AutoMappingResolver {
                         break;
                     }
                 }
+            }
+            String tlErrField = scanner.findReadStaticFieldBeforeString(
+                    DexScanner.javaToDesc(ClassNames.LAUNCH_ACTIVITY),
+                    "didReceivedNotification",
+                    new String[]{"I", "I", "[Ljava/lang/Object;"},
+                    notifCenterDesc, "I", "TL Error");
+            if (tlErrField != null) {
+                addField("NotificationCenter", "tlSchemeParseException", tlErrField);
             }
         }
 
@@ -989,6 +1019,386 @@ public class AutoMappingResolver {
         root.put("fields", fldArr);
         root.put("methods", mthArr);
         return root.toString();
+    }
+
+    private void resolveMessageObjectAudio(DexScanner scanner, String msgObjDesc) {
+        String docDesc = "Lorg/telegram/tgnet/TLRPC$Document;";
+        String msgDesc = DexScanner.javaToDesc(ClassNames.MESSAGE);
+        String audioAttrDesc = "Lorg/telegram/tgnet/TLRPC$TL_documentAttributeAudio;";
+        List<DexScanner.MethodInfo> methods = scanner.getMethods(msgObjDesc);
+
+        DexScanner.MethodInfo musicDoc = null;
+        DexScanner.MethodInfo voiceDoc = null;
+        for (DexScanner.MethodInfo m : methods) {
+            if (!m.isStatic || !"Z".equals(m.returnDesc) || m.paramDescs.length != 1 || !docDesc.equals(m.paramDescs[0])) {
+                continue;
+            }
+            if (!m.readsFieldNamed("voice")) continue;
+            if (m.usesString("audio/flac") || m.usesString("audio/ogg")) {
+                if (musicDoc == null || m.getInsnsSize() < musicDoc.getInsnsSize()) musicDoc = m;
+            } else if (m.checksInstanceOf(audioAttrDesc)) {
+                if (voiceDoc == null || m.getInsnsSize() < voiceDoc.getInsnsSize()) voiceDoc = m;
+            }
+        }
+
+        String musicMsg = findSmallestBoolCaller(scanner, msgObjDesc, methods, true, msgDesc,
+                musicDoc != null ? musicDoc.name : null);
+        String voiceMsg = findSmallestBoolCaller(scanner, msgObjDesc, methods, true, msgDesc,
+                voiceDoc != null ? voiceDoc.name : null);
+
+        String isMusicName = findSmallestBoolCaller(scanner, msgObjDesc, methods, false, null, musicMsg);
+        if (isMusicName != null) {
+            addMethod("MessageObject", "isMusic", isMusicName);
+        }
+        String isVoiceName = findSmallestBoolCaller(scanner, msgObjDesc, methods, false, null, voiceMsg);
+        if (isVoiceName != null) {
+            addMethod("MessageObject", "isVoice", isVoiceName);
+        }
+    }
+
+    private String findSmallestBoolCaller(DexScanner scanner, String classDesc, List<DexScanner.MethodInfo> methods,
+                                          boolean isStatic, String singleParamDesc, String targetMethodName) {
+        if (targetMethodName == null) return null;
+        String[] sig = singleParamDesc != null ? new String[]{singleParamDesc} : new String[0];
+        DexScanner.MethodInfo best = null;
+        for (DexScanner.MethodInfo m : methods) {
+            if (m.isStatic != isStatic || !"Z".equals(m.returnDesc) || !java.util.Arrays.equals(m.paramDescs, sig)) {
+                continue;
+            }
+            for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(classDesc, m.name, sig, classDesc)) {
+                if (targetMethodName.equals(mr.name)) {
+                    if (best == null || m.getInsnsSize() < best.getInsnsSize()) {
+                        best = m;
+                    }
+                    break;
+                }
+            }
+        }
+        return best != null ? best.name : null;
+    }
+
+    private void resolveSharedConfigUpdate(DexScanner scanner, String sharedConfigDesc) {
+        String tlAppUpdateDesc = DexScanner.javaToDesc(ClassNames.TL_HELP_APP_UPDATE);
+        String setVer = scanner.findSingleMethod(sharedConfigDesc, true, "Z", tlAppUpdateDesc);
+        if (setVer != null) {
+            addMethod("SharedConfig", "setNewAppVersionAvailable", setVer);
+        }
+
+        String appUpdateField = scanner.findSingleField(sharedConfigDesc, true, tlAppUpdateDesc);
+        if (appUpdateField != null) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(sharedConfigDesc)) {
+                if (!m.isStatic || !"Z".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(sharedConfigDesc, m.name, new String[0], sharedConfigDesc)) {
+                    if (appUpdateField.equals(rf.name)) {
+                        addMethod("SharedConfig", "isAppUpdateAvailable", m.name);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    private void resolveStoryItemHolder(DexScanner scanner) {
+        String storyItemDesc = "Lorg/telegram/tgnet/tl/TL_stories$StoryItem;";
+        final String[] allowMethodHolder = new String[1];
+        String holderDesc = scanner.findClassByPredicate(null, (desc, fields, methods) -> {
+            int storyItemFields = 0;
+            for (DexScanner.FieldInfo f : fields) {
+                if (!f.isStatic && storyItemDesc.equals(f.typeDesc)) {
+                    storyItemFields++;
+                }
+            }
+            if (storyItemFields < 2) return false;
+            for (DexScanner.MethodInfo m : methods) {
+                if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0 && m.readsFieldNamed("noforwards")) {
+                    allowMethodHolder[0] = m.name;
+                    return true;
+                }
+            }
+            return false;
+        });
+        if (holderDesc != null && allowMethodHolder[0] != null) {
+            addClass(ClassNames.STORY_ITEM_HOLDER, holderDesc);
+            addMethod("PeerStoriesView$StoryItemHolder", "allowScreenshots", allowMethodHolder[0]);
+        }
+    }
+
+    private void resolveChatPinnedMessageView(DexScanner scanner, String chatActDesc) {
+        String createPinnedName = null;
+        String pinnedFieldName = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
+            if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+            List<DexScanner.FieldInfo> writes = scanner.getWrittenFieldsInMethod(chatActDesc, m.name, new String[0], chatActDesc);
+            boolean hasNumberTv = false;
+            String frameField = null;
+            for (DexScanner.FieldInfo wf : writes) {
+                if ("Lorg/telegram/ui/Components/NumberTextView;".equals(wf.typeDesc)) {
+                    hasNumberTv = true;
+                } else if (frameField == null && scanner.isSubclassOf(wf.typeDesc, "Landroid/widget/FrameLayout;")) {
+                    frameField = wf.name;
+                }
+            }
+            if (hasNumberTv && frameField != null) {
+                createPinnedName = m.name;
+                pinnedFieldName = frameField;
+                break;
+            }
+        }
+        if (createPinnedName == null) return;
+
+        addMethod("ChatActivity", "createPinnedMessageView", createPinnedName);
+        addField("ChatActivity", "pinnedMessageView", pinnedFieldName);
+
+        DexScanner.MethodInfo bestUpdate = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
+            if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 2) continue;
+            boolean matchSig = ("I".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1]))
+                    || ("Z".equals(m.paramDescs[0]) && "I".equals(m.paramDescs[1]));
+            if (!matchSig) continue;
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(chatActDesc, m.name, m.paramDescs, chatActDesc)) {
+                if (pinnedFieldName.equals(rf.name)) {
+                    if (bestUpdate == null || m.getInsnsSize() > bestUpdate.getInsnsSize()) {
+                        bestUpdate = m;
+                    }
+                    break;
+                }
+            }
+        }
+        if (bestUpdate != null) {
+            addMethod("ChatActivity", "updatePinnedMessageView", bestUpdate.name);
+        }
+    }
+
+    private void resolveMessagesControllerExtras(DexScanner scanner, String msgCtrlDesc) {
+        String checkPromo = scanner.findMethodByString(msgCtrlDesc, "proxyDialogAddress", false, "V", "Z");
+        if (checkPromo != null) {
+            addMethod("MessagesController", "checkPromoInfoInternal", checkPromo);
+            for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(msgCtrlDesc, checkPromo, new String[]{"Z"}, msgCtrlDesc)) {
+                if (mr.paramDescs.length == 0 && "Landroid/content/SharedPreferences;".equals(mr.returnDesc)) {
+                    addMethod("MessagesController", "getGlobalMainSettings", mr.name);
+                    break;
+                }
+            }
+        }
+
+        String promoDlgField = scanner.findSingleField(msgCtrlDesc, false, "Lorg/telegram/tgnet/TLRPC$Dialog;");
+        if (promoDlgField != null) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(msgCtrlDesc)) {
+                if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(msgCtrlDesc, m.name, new String[0], msgCtrlDesc)) {
+                    if (promoDlgField.equals(wf.name)) {
+                        addMethod("MessagesController", "removePromoDialog", m.name);
+                        break;
+                    }
+                }
+            }
+        }
+
+        String userDesc = DexScanner.javaToDesc(ClassNames.TLRPC_USER);
+        String storyEntitiesUser = null;
+        String entitiesStrField = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(msgCtrlDesc)) {
+            if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 1
+                    && userDesc.equals(m.paramDescs[0])
+                    && m.usesString("disabled") && m.usesString("premium") && m.usesString("enabled")) {
+                storyEntitiesUser = m.name;
+                break;
+            }
+        }
+        if (storyEntitiesUser != null) {
+            addMethod("MessagesController", "storyEntitiesAllowed2", storyEntitiesUser);
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, storyEntitiesUser, new String[]{userDesc}, msgCtrlDesc)) {
+                if ("Ljava/lang/String;".equals(rf.typeDesc)) {
+                    entitiesStrField = rf.name;
+                    break;
+                }
+            }
+        }
+        for (DexScanner.MethodInfo m : scanner.getMethods(msgCtrlDesc)) {
+            if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0
+                    && m.usesString("disabled") && m.usesString("premium") && m.usesString("enabled")) {
+                boolean isEntities = false;
+                if (entitiesStrField != null) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, m.name, new String[0], msgCtrlDesc)) {
+                        if (entitiesStrField.equals(rf.name)) {
+                            isEntities = true;
+                            break;
+                        }
+                    }
+                }
+                addMethod("MessagesController", isEntities ? "storyEntitiesAllowed" : "storiesEnabled", m.name);
+            }
+        }
+    }
+
+    private void resolveStoriesController(DexScanner scanner) {
+        String storiesCtrlDesc = scanner.findClassByStrings(null, null, "StoriesController loadAllStoriesForDialog ");
+        if (storiesCtrlDesc == null) {
+            storiesCtrlDesc = scanner.findClassByStrings(null, null, "StoriesController cache=");
+        }
+        if (storiesCtrlDesc == null) return;
+
+        addClass(ClassNames.STORIES_CONTROLLER, storiesCtrlDesc);
+        DexScanner.MethodInfo bestHasForDialog = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(storiesCtrlDesc)) {
+            if (m.isStatic || !"Z".equals(m.returnDesc)) continue;
+            if (m.paramDescs.length == 0) {
+                boolean readsList = false;
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(storiesCtrlDesc, m.name, new String[0], storiesCtrlDesc)) {
+                    if ("Ljava/util/ArrayList;".equals(rf.typeDesc)) {
+                        readsList = true;
+                        break;
+                    }
+                }
+                if (readsList) {
+                    addMethod("StoriesController", "hasStories", m.name);
+                } else if (m.readsFieldNamed("stories")) {
+                    addMethod("StoriesController", "hasSelfStories", m.name);
+                }
+            } else if (m.paramDescs.length == 1 && "J".equals(m.paramDescs[0])) {
+                if (m.readsFieldNamed("stories")
+                        && !m.checksInstanceOf("Lorg/telegram/tgnet/TLRPC$TL_messageMediaVideoStream;")) {
+                    if (bestHasForDialog == null || m.getInsnsSize() < bestHasForDialog.getInsnsSize()) {
+                        bestHasForDialog = m;
+                    }
+                }
+            }
+        }
+        if (bestHasForDialog != null) {
+            addMethod("StoriesController", "hasStoriesForDialog", bestHasForDialog.name);
+        }
+    }
+
+    private void resolveProfileActivity(DexScanner scanner, String msgCtrlDesc) {
+        String simpleTextViewDesc = scanner.findClassByPredicate("Lorg/telegram/ui/ActionBar/", (desc, fields, methods) -> {
+            if (!"Landroid/view/View;".equals(scanner.getSuperClass(desc))) return false;
+            boolean hasGetText = false, hasSetText1 = false, hasSetText2 = false, hasSetMaxLines = false;
+            for (DexScanner.MethodInfo m : methods) {
+                if (m.isStatic) continue;
+                if ("Ljava/lang/CharSequence;".equals(m.returnDesc) && m.paramDescs.length == 0) hasGetText = true;
+                else if ("Z".equals(m.returnDesc) && m.paramDescs.length == 1 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])) hasSetText1 = true;
+                else if ("Z".equals(m.returnDesc) && m.paramDescs.length == 2 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])) hasSetText2 = true;
+                else if ("setMaxLines".equals(m.name) && "V".equals(m.returnDesc) && m.paramDescs.length == 1 && "I".equals(m.paramDescs[0])) hasSetMaxLines = true;
+            }
+            return hasGetText && hasSetText1 && hasSetText2 && hasSetMaxLines;
+        });
+
+        if (simpleTextViewDesc != null) {
+            addClass("org.telegram.ui.ActionBar.SimpleTextView", simpleTextViewDesc);
+            String getTextM = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(simpleTextViewDesc)) {
+                if (!m.isStatic && "getText".equals(m.name) && "Ljava/lang/CharSequence;".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                    getTextM = m.name;
+                    break;
+                }
+            }
+            if (getTextM == null) {
+                getTextM = scanner.findSingleMethod(simpleTextViewDesc, false, "Ljava/lang/CharSequence;");
+            }
+            addMethod("SimpleTextView", "getText", getTextM);
+            addMethod("SimpleTextView", "setText",
+                    scanner.findSingleMethod(simpleTextViewDesc, false, "Z", "Ljava/lang/CharSequence;"));
+            addMethod("SimpleTextView", "setTextForce",
+                    scanner.findSingleMethod(simpleTextViewDesc, false, "Z", "Ljava/lang/CharSequence;", "Z"));
+            addMethod("SimpleTextView", "setMaxLines", "setMaxLines");
+        }
+
+        String profileDesc = DexScanner.javaToDesc(ClassNames.PROFILE_ACTIVITY);
+        List<DexScanner.MethodInfo> profileMethods = scanner.getMethods(profileDesc);
+        DexScanner.MethodInfo bestUpdateData = null;
+        DexScanner.MethodInfo fallbackOnlineCount = null;
+        for (DexScanner.MethodInfo m : profileMethods) {
+            if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 1 || !"Z".equals(m.paramDescs[0])) continue;
+            if (m.readsFieldNamed("participants_count")) {
+                if (bestUpdateData == null || m.getInsnsSize() > bestUpdateData.getInsnsSize()) {
+                    bestUpdateData = m;
+                }
+            } else if (m.readsFieldNamed("online_count")) {
+                if (fallbackOnlineCount == null || m.getInsnsSize() > fallbackOnlineCount.getInsnsSize()) {
+                    fallbackOnlineCount = m;
+                }
+            }
+        }
+        if (bestUpdateData == null) bestUpdateData = fallbackOnlineCount;
+        if (bestUpdateData != null) {
+            addMethod("ProfileActivity", "updateProfileData", bestUpdateData.name);
+            if (msgCtrlDesc != null) {
+                String getUserM = methodMap.get("MessagesController#getUser");
+                if (getUserM != null) {
+                    addField("ProfileActivity", "userId",
+                            scanner.findReadFieldBeforeCall(profileDesc, bestUpdateData.name, new String[]{"Z"}, "J", msgCtrlDesc, getUserM));
+                }
+                String getChatM = methodMap.get("MessagesController#getChat");
+                if (getChatM != null) {
+                    addField("ProfileActivity", "chatId",
+                            scanner.findReadFieldBeforeCall(profileDesc, bestUpdateData.name, new String[]{"Z"}, "J", msgCtrlDesc, getChatM));
+                }
+            }
+        }
+
+        if (simpleTextViewDesc != null) {
+            List<DexScanner.FieldInfo> stvFields = new ArrayList<>();
+            for (DexScanner.FieldInfo f : scanner.getFields(profileDesc)) {
+                if (!f.isStatic && scanner.isSubclassOf(f.typeDesc, simpleTextViewDesc)) {
+                    stvFields.add(f);
+                }
+            }
+            String onlineField = null;
+            String updateOnlineMethod = null;
+            if (!stvFields.isEmpty()) {
+                for (DexScanner.MethodInfo m : profileMethods) {
+                    if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                    int sz = m.getInsnsSize();
+                    if (sz <= 0 || sz >= 120) continue;
+
+                    List<DexScanner.FieldInfo> reads = scanner.getReadInstanceFieldsInMethod(profileDesc, m.name, new String[0], profileDesc);
+                    DexScanner.FieldInfo matchedField = null;
+                    for (DexScanner.FieldInfo rf : reads) {
+                        for (DexScanner.FieldInfo sf : stvFields) {
+                            if (sf.name.equals(rf.name)) {
+                                matchedField = sf;
+                                break;
+                            }
+                        }
+                        if (matchedField != null) break;
+                    }
+                    if (matchedField == null) continue;
+
+                    for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(profileDesc, m.name, new String[0], null)) {
+                        if ("Z".equals(mr.returnDesc) && mr.paramDescs.length == 2
+                                && "Ljava/lang/CharSequence;".equals(mr.paramDescs[0]) && "Z".equals(mr.paramDescs[1])
+                                && scanner.isSubclassOf(matchedField.typeDesc, mr.ownerDesc)) {
+                            onlineField = matchedField.name;
+                            updateOnlineMethod = m.name;
+                            break;
+                        }
+                    }
+                    if (onlineField != null) break;
+                }
+                if (onlineField != null) {
+                    addField("ProfileActivity", "onlineTextView", onlineField);
+                    addMethod("ProfileActivity", "updateOnlineTextView", updateOnlineMethod);
+                    for (DexScanner.FieldInfo sf : stvFields) {
+                        if (!onlineField.equals(sf.name)) {
+                            addField("ProfileActivity", "nameTextView", sf.name);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                String arrDesc = "[" + simpleTextViewDesc;
+                List<String> arrNames = new ArrayList<>();
+                for (DexScanner.FieldInfo f : scanner.getFields(profileDesc)) {
+                    if (!f.isStatic && arrDesc.equals(f.typeDesc)) {
+                        arrNames.add(f.name);
+                    }
+                }
+                if (arrNames.size() == 2) {
+                    addField("ProfileActivity", "nameTextView", arrNames.get(0));
+                    addField("ProfileActivity", "onlineTextView", arrNames.get(1));
+                }
+            }
+        }
     }
 
     private void resolveSendMessagesHelper(DexScanner scanner, String baseControllerDesc) {

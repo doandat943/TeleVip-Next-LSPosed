@@ -5,13 +5,15 @@ import android.content.SharedPreferences;
 
 import com.my.televip.Class.ClassNames;
 import com.my.televip.Class.ClassLoad;
+import com.my.televip.Configs.ConfigManager;
 import com.my.televip.application.ApplicationLoaderHook;
+import com.my.televip.base.BaseMethodHook;
 import com.my.televip.hooks.HMethod;
 import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.ArgsResolver;
 import com.my.televip.obfuscate.Obfuscate;
 
-import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedHelpers;
 
 public class HideUpdateApp {
 
@@ -22,31 +24,39 @@ public class HideUpdateApp {
             if (!isEnable) {
                 isEnable = true;
 
-                SharedPreferences preferences = ApplicationLoaderHook.getApplicationContext().getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-                preferences.edit().remove("appUpdate").apply();
-                preferences.edit().remove("appUpdateCheckTime").apply();
-                preferences.edit().remove("appUpdateBuild").apply();
+                android.content.Context ctx = ApplicationLoaderHook.getApplicationContext();
+                if (ctx != null) {
+                    SharedPreferences preferences = ctx.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+                    preferences.edit().remove("appUpdate").apply();
+                    preferences.edit().remove("appUpdateCheckTime").apply();
+                    preferences.edit().remove("appUpdateBuild").apply();
+                }
 
-                if (ClassLoad.getClass(ClassNames.SHARED_CONFIG) != null) {
+                Class<?> sharedConfigClass = ClassLoad.getClass(ClassNames.SHARED_CONFIG);
+                if (sharedConfigClass != null) {
+                    BaseMethodHook hideUpdateHook = new BaseMethodHook() {
+                        @Override
+                        protected void beforeMethod(MethodHookParam param) {
+                            if (ConfigManager.hideUpdateApp != null && ConfigManager.hideUpdateApp.isEnable()) {
+                                param.setResult(false);
+                            }
+                        }
+                    };
 
-                    HMethod.hookMethod(
-                            ClassLoad.getClass(ClassNames.SHARED_CONFIG),
-                            Obfuscate.getMethodName("SharedConfig", "setNewAppVersionAvailable"),
-                            ArgsResolver.merge("setNewAppVersionAvailable", new Class[]{ClassLoad.getClass(ClassNames.TL_HELP_APP_UPDATE)}, new XC_MethodReplacement() {
-                                @Override
-                                protected Object replaceHookedMethod(MethodHookParam param) {
-                                    return false;
-                                }
-                            }));
+                    String setNewVer = Obfuscate.getMethodName("SharedConfig", "setNewAppVersionAvailable");
+                    Class<?>[] setParams = ArgsResolver.resolveObject("setNewAppVersionAvailable",
+                            new Class[]{ClassLoad.getClass(ClassNames.TL_HELP_APP_UPDATE)});
+                    if (setParams != null && setParams[0] != null
+                            && XposedHelpers.findMethodExactIfExists(sharedConfigClass, setNewVer, (Object[]) setParams) != null) {
+                        HMethod.hookMethod(sharedConfigClass, setNewVer,
+                                ArgsResolver.merge("setNewAppVersionAvailable",
+                                        new Class[]{ClassLoad.getClass(ClassNames.TL_HELP_APP_UPDATE)}, hideUpdateHook));
+                    }
 
-                    HMethod.hookMethod(
-                            ClassLoad.getClass(ClassNames.SHARED_CONFIG),
-                            Obfuscate.getMethodName("SharedConfig", "isAppUpdateAvailable"), new XC_MethodReplacement() {
-                                @Override
-                                protected Object replaceHookedMethod(MethodHookParam param) {
-                                    return false;
-                                }
-                            });
+                    String isAvail = Obfuscate.getMethodName("SharedConfig", "isAppUpdateAvailable");
+                    if (XposedHelpers.findMethodExactIfExists(sharedConfigClass, isAvail) != null) {
+                        HMethod.hookMethod(sharedConfigClass, isAvail, hideUpdateHook);
+                    }
                 }
             }
         } catch (Throwable t){

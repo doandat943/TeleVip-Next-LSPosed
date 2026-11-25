@@ -26,6 +26,20 @@ public class DexScanner {
         }
     }
 
+    public static final class MethodRef {
+        public final String ownerDesc;
+        public final String name;
+        public final String[] paramDescs;
+        public final String returnDesc;
+
+        public MethodRef(String ownerDesc, String name, String[] paramDescs, String returnDesc) {
+            this.ownerDesc = ownerDesc;
+            this.name = name;
+            this.paramDescs = paramDescs;
+            this.returnDesc = returnDesc;
+        }
+    }
+
     public static final class MethodInfo {
         public final boolean isStatic;
         public final String name;
@@ -123,6 +137,12 @@ public class DexScanner {
                 k += insnWidth(dex.buf, insnsOff, k, insnsSize);
             }
             return null;
+        }
+
+        public boolean usesString(String target) {
+            if (codeOff == 0 || target == null) return false;
+            int idx = dex.findStringIndex(target);
+            return idx >= 0 && dex.methodUsesString(codeOff, idx);
         }
     }
 
@@ -347,22 +367,25 @@ public class DexScanner {
                     boolean isStatic = (acc & 0x0008) != 0;
                     int pIdx = buf.getShort(methOff + idx * 8 + 2) & 0xFFFF;
                     int nIdx = buf.getInt(methOff + idx * 8 + 4);
-                    int retIdx = buf.getInt(protoOff + pIdx * 12 + 4);
-                    int paramsOff = buf.getInt(protoOff + pIdx * 12 + 8);
-                    String[] params;
-                    if (paramsOff != 0) {
-                        int pCnt = buf.getInt(paramsOff);
-                        params = new String[pCnt];
-                        for (int k = 0; k < pCnt; k++) {
-                            params[k] = getType(buf.getShort(paramsOff + 4 + k * 2) & 0xFFFF);
-                        }
-                    } else {
-                        params = new String[0];
-                    }
-                    out.add(new MethodInfo(this, isStatic, getString(nIdx), params, getType(retIdx), codeOff));
+                    out.add(new MethodInfo(this, isStatic, getString(nIdx), getProtoParams(pIdx), getProtoReturn(pIdx), codeOff));
                 }
             }
             return out;
+        }
+
+        String getProtoReturn(int pIdx) {
+            return getType(buf.getInt(protoOff + pIdx * 12 + 4));
+        }
+
+        String[] getProtoParams(int pIdx) {
+            int paramsOff = buf.getInt(protoOff + pIdx * 12 + 8);
+            if (paramsOff == 0) return new String[0];
+            int pCnt = buf.getInt(paramsOff);
+            String[] params = new String[pCnt];
+            for (int k = 0; k < pCnt; k++) {
+                params[k] = getType(buf.getShort(paramsOff + 4 + k * 2) & 0xFFFF);
+            }
+            return params;
         }
     }
 
@@ -596,6 +619,141 @@ public class DexScanner {
             break;
         }
         return out;
+    }
+
+    public String getSuperClass(String classDesc) {
+        if (classDesc == null) return null;
+        for (DexPart part : parts) {
+            Integer idx = part.classDefMap.get(classDesc);
+            if (idx != null) return part.getSuper(idx);
+        }
+        return null;
+    }
+
+    public boolean isSubclassOf(String classDesc, String targetSuperDesc) {
+        if (classDesc == null || targetSuperDesc == null) return false;
+        String cur = classDesc;
+        for (int hop = 0; hop < 8 && cur != null; hop++) {
+            if (targetSuperDesc.equals(cur)) return true;
+            cur = getSuperClass(cur);
+        }
+        return false;
+    }
+
+    private MethodInfo findCodeMethod(String classDesc, String methodName, String[] paramDescs) {
+        if (classDesc == null || methodName == null) return null;
+        for (MethodInfo m : getMethods(classDesc)) {
+            if (!m.name.equals(methodName) || m.codeOff == 0) continue;
+            if (paramDescs != null && !java.util.Arrays.equals(m.paramDescs, paramDescs)) continue;
+            return m;
+        }
+        return null;
+    }
+
+    public List<MethodRef> getCalledMethodsInMethod(String classDesc, String methodName, String[] paramDescs, String targetOwnerDesc) {
+        List<MethodRef> out = new ArrayList<>();
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null) return out;
+        DexPart part = m.dex;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            if (((op >= 0x6e && op <= 0x72) || (op >= 0x74 && op <= 0x78)) && k + 1 < insnsSize) {
+                int mIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (mIdx < part.methSz) {
+                    int cIdx = part.buf.getShort(part.methOff + mIdx * 8) & 0xFFFF;
+                    int pIdx = part.buf.getShort(part.methOff + mIdx * 8 + 2) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.methOff + mIdx * 8 + 4);
+                    String owner = part.getType(cIdx);
+                    if (targetOwnerDesc == null || targetOwnerDesc.equals(owner)) {
+                        out.add(new MethodRef(owner, part.getString(nIdx), part.getProtoParams(pIdx), part.getProtoReturn(pIdx)));
+                    }
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return out;
+    }
+
+    public String findReadFieldBeforeCall(String classDesc, String methodName, String[] paramDescs,
+                                          String fieldTypeDesc, String callOwnerDesc, String callMethodName) {
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null) return null;
+        DexPart part = m.dex;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        String lastField = null;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            if ((op >= 0x52 && op <= 0x58) && k + 1 < insnsSize) {
+                int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (fIdx < part.fieldSz) {
+                    int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;
+                    int tIdx = part.buf.getShort(part.fieldOff + fIdx * 8 + 2) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.fieldOff + fIdx * 8 + 4);
+                    if (classDesc.equals(part.getType(cIdx))
+                            && (fieldTypeDesc == null || fieldTypeDesc.equals(part.getType(tIdx)))) {
+                        lastField = part.getString(nIdx);
+                    }
+                }
+            } else if (((op >= 0x6e && op <= 0x72) || (op >= 0x74 && op <= 0x78)) && k + 1 < insnsSize) {
+                int mIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (mIdx < part.methSz) {
+                    int cIdx = part.buf.getShort(part.methOff + mIdx * 8) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.methOff + mIdx * 8 + 4);
+                    String owner = part.getType(cIdx);
+                    String name = part.getString(nIdx);
+                    if ((callOwnerDesc == null || callOwnerDesc.equals(owner))
+                            && (callMethodName == null || callMethodName.equals(name))
+                            && lastField != null) {
+                        return lastField;
+                    }
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return null;
+    }
+
+    public String findReadStaticFieldBeforeString(String classDesc, String methodName, String[] paramDescs,
+                                                  String targetOwnerDesc, String fieldTypeDesc, String targetString) {
+        MethodInfo m = findCodeMethod(classDesc, methodName, paramDescs);
+        if (m == null || targetString == null) return null;
+        DexPart part = m.dex;
+        int strIdx = part.findStringIndex(targetString);
+        if (strIdx < 0) return null;
+        int insnsSize = part.buf.getInt(m.codeOff + 12);
+        int insnsOff = m.codeOff + 16;
+        String lastField = null;
+        int k = 0;
+        while (k < insnsSize) {
+            int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+            if ((op >= 0x60 && op <= 0x66) && k + 1 < insnsSize) {
+                int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                if (fIdx < part.fieldSz) {
+                    int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;
+                    int tIdx = part.buf.getShort(part.fieldOff + fIdx * 8 + 2) & 0xFFFF;
+                    int nIdx = part.buf.getInt(part.fieldOff + fIdx * 8 + 4);
+                    if (targetOwnerDesc.equals(part.getType(cIdx))
+                            && (fieldTypeDesc == null || fieldTypeDesc.equals(part.getType(tIdx)))) {
+                        lastField = part.getString(nIdx);
+                    }
+                }
+            } else if (op == 0x1a && k + 1 < insnsSize) {
+                if ((part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF) == strIdx) {
+                    return lastField;
+                }
+            } else if (op == 0x1b && k + 2 < insnsSize) {
+                if (part.buf.getInt(insnsOff + (k + 1) * 2) == strIdx) {
+                    return lastField;
+                }
+            }
+            k += insnWidth(part.buf, insnsOff, k, insnsSize);
+        }
+        return null;
     }
 
     private static final int[] OPCODE_WIDTH = new int[]{
