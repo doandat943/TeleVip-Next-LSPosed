@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 27;
+    private static final int SCHEMA_VERSION = 28;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -659,8 +659,24 @@ public class AutoMappingResolver {
                     scanner.findSingleMethod(localeCtrlDesc, true, localeCtrlDesc));
             addField("LocaleController", "isRTL",
                     scanner.findSingleField(localeCtrlDesc, true, "Z"));
-            addField("LocaleController", "currentLocale",
-                    scanner.findSingleField(localeCtrlDesc, false, "Ljava/util/Locale;"));
+            String getCurLocale = scanner.findSingleMethod(localeCtrlDesc, false, "Ljava/util/Locale;");
+            if (getCurLocale != null) {
+                addMethod("LocaleController", "getCurrentLocale", getCurLocale);
+            }
+            String curLocaleField = null;
+            if (getCurLocale != null) {
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                        localeCtrlDesc, getCurLocale, new String[0], localeCtrlDesc)) {
+                    if ("Ljava/util/Locale;".equals(rf.typeDesc)) {
+                        curLocaleField = rf.name;
+                        break;
+                    }
+                }
+            }
+            if (curLocaleField == null) {
+                curLocaleField = scanner.findSingleField(localeCtrlDesc, false, "Ljava/util/Locale;");
+            }
+            addField("LocaleController", "currentLocale", curLocaleField);
             String fmtShort = scanner.findSingleMethod(localeCtrlDesc, true, "Ljava/lang/String;", "I", "[I");
             if (fmtShort == null) {
                 fmtShort = scanner.findSingleMethod(localeCtrlDesc, true, "Ljava/lang/String;", "[I", "I");

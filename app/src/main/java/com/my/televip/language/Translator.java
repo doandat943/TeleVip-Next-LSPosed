@@ -7,7 +7,9 @@ import com.my.televip.virtuals.messenger.LocaleController;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.IllegalFormatException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class Translator {
@@ -19,12 +21,12 @@ public class Translator {
     public static void init() {
         try {
             loadAllLanguages();
-
             localeController = new LocaleController();
         } catch (Throwable e) {
             Logger.e(e);
         }
     }
+
     private static void loadAllLanguages() {
         List<String> files = JsonAssetReader.listFiles("assets/lang/", ".json");
 
@@ -38,68 +40,53 @@ public class Translator {
         }
     }
 
-    public static String get(String key) {
-        if (localeController == null) return key;
+    private static String getCurrentLangCode() {
         try {
-            if (localeController.getCurrentLocale() != null) {
-                String lang = localeController.getCurrentLocale().getLanguage();
-                JSONObject langJson = langMap.get(lang);
-
-                if (langJson != null && langJson.has(key)) {
-                    return langJson.optString(key);
-                }
-                JSONObject enJson = langMap.get("en");
-                String text;
-                if (enJson != null && enJson.has(key)) {
-                    text = enJson.optString(key);
-                } else {
-                    text = key;
-                }
-
-                return text;
+            Locale locale = localeController != null ? localeController.getCurrentLocale() : null;
+            if (locale == null) {
+                locale = Locale.getDefault();
             }
+            if (locale != null) {
+                return locale.getLanguage().toLowerCase(Locale.ROOT);
+            }
+        } catch (Throwable ignored) {}
+        return "en";
+    }
 
+    public static String getOrDefault(String key, String defaultValue) {
+        if (key == null) return defaultValue;
+        try {
+            String lang = getCurrentLangCode();
+            JSONObject langJson = langMap.get(lang);
+            if (langJson != null && langJson.has(key)) {
+                String val = langJson.optString(key, null);
+                if (val != null) return val;
+            }
+            JSONObject enJson = langMap.get("en");
+            if (enJson != null && enJson.has(key)) {
+                String val = enJson.optString(key, null);
+                if (val != null) return val;
+            }
         } catch (Throwable e) {
             Logger.e(e);
         }
+        return defaultValue;
+    }
 
-        return key;
+    public static String get(String key) {
+        return getOrDefault(key, key);
     }
 
     public static String get(String key, Object... args) {
-        if (localeController == null) return key;
-        try {
-            if (localeController.getCurrentLocale() != null) {
-                String lang = localeController.getCurrentLocale().getLanguage();
-
-                String text = null;
-
-                JSONObject langJson = langMap.get(lang);
-
-                if (langJson != null && langJson.has(key)) {
-                    text = langJson.optString(key);
-                }
-
-                if (text == null) {
-                    JSONObject enJson = langMap.get("en");
-                    if (enJson != null && enJson.has(key)) {
-                        text = enJson.optString(key);
-                    } else {
-                        text = key;
-                    }
-                }
-
-                if (args != null && args.length > 0) {
-                    return String.format(text, args);
-                }
-
-                return text;
+        String text = getOrDefault(key, key);
+        if (args != null && args.length > 0 && text != null) {
+            try {
+                return String.format(text, args);
+            } catch (IllegalFormatException e) {
+                Logger.e(e);
             }
-        } catch (Throwable e) {
-            Logger.e(e);
         }
-
-        return key;
+        return text;
     }
 
 }

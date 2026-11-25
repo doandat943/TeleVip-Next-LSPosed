@@ -234,7 +234,7 @@ public class SettingsActivity {
         normalHeaderGroup.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         TextView titleTv = new TextView(context);
-        titleTv.setText("TeleVip Next Settings \uD83D\uDC7B");
+        titleTv.setText(Translator.getOrDefault(Keys.SettingsTitle, "TeleVip Next Settings \uD83D\uDC7B"));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
         titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
@@ -293,7 +293,7 @@ public class SettingsActivity {
         searchPill.setPadding(dp(16), 0, dp(16), 0);
 
         searchInput = new EditText(context);
-        searchInput.setHint("Search settings");
+        searchInput.setHint(Translator.getOrDefault(Keys.SearchSettings, "Search settings"));
         searchInput.setHintTextColor(p.textSecondary);
         searchInput.setTextColor(p.textPrimary);
         searchInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
@@ -335,7 +335,12 @@ public class SettingsActivity {
         headerBox.addView(topBarSlot, topSlotLp);
 
         // Segmented Tab Bar
-        String[] tabTitles = new String[]{"Privacy", "Chats", "Appearance", "Tools"};
+        String[] tabTitles = new String[]{
+                Translator.getOrDefault(Keys.TabPrivacy, "Privacy"),
+                Translator.getOrDefault(Keys.TabChats, "Chats"),
+                Translator.getOrDefault(Keys.TabAppearance, "Appearance"),
+                Translator.getOrDefault(Keys.TabTools, "Tools")
+        };
         GlassDesign.SegmentedTabBar tabBar = new GlassDesign.SegmentedTabBar(context, tabTitles, p, currentTab);
         tabBar.setOnTabSelectedListener(index -> {
             currentTab = index;
@@ -453,7 +458,7 @@ public class SettingsActivity {
         emptySearchCard.setPadding(dp(20), dp(24), dp(20), dp(24));
         emptySearchCard.setGravity(Gravity.CENTER);
         TextView emptyTv = new TextView(context);
-        emptyTv.setText("No matching settings found");
+        emptyTv.setText(Translator.getOrDefault(Keys.NoMatchingSettings, "No matching settings found"));
         emptyTv.setTextColor(p.textSecondary);
         emptyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         emptyTv.setGravity(Gravity.CENTER);
@@ -953,11 +958,14 @@ public class SettingsActivity {
 
     private String buildSubtitleText(ConfigItem item) {
         String key = item.getKey();
-        String desc = item.getValue();
+        String desc = Translator.getOrDefault(key + "Desc", null);
         if (desc == null || desc.isEmpty()) {
-            desc = SUBTITLE_DEFAULTS.get(key);
-        } else if (Keys.DisableNumberRounding.equals(key)) {
-            desc = "Shows exact counts, for example " + desc;
+            desc = item.getValue();
+            if (desc == null || desc.isEmpty()) {
+                desc = SUBTITLE_DEFAULTS.get(key);
+            } else if (Keys.DisableNumberRounding.equals(key)) {
+                desc = "Shows exact counts, for example " + desc;
+            }
         }
         if (item.isRestartRequired()) {
             String restartNote = Translator.get(Keys.RestartRequired);
