@@ -28,7 +28,7 @@
   "UserOffline": "الان آفلاینی",
   "DisableStories": "غیرفعال کردن استوری",
   "HideUpdateApp": "مخفی کردن پیام آپدیت برنامه",
-  "JoinTeleVip": "به کانال TeleVip بپیوند تا اولین نفری باشی که از آپدیتها و قابلیتهای جدید باخبر میشی",
+  "JoinTeleVip": "به کانال TeleVip Next بپیوند تا اولین نفری باشی که از آپدیتها و قابلیتهای جدید باخبر میشی",
   "Join": "عضویت",
   "DontShowAgain": "دیگه نشون نده",
   "RestartApp": "برنامه رو مجدد راهاندازی کن",
@@ -105,5 +105,6 @@
   "ApproximateCreationDate": "تاریخ تقریبی ایجاد",
   "Age": "سن",
   "ApproximateCreationDateNotice": "این تاریخ بر اساس تخمینی است که از شناسه تلگرام (Telegram ID) به دست آمده و ممکن است با تاریخ واقعی ایجاد حساب مطابقت نداشته باشد.",
-  "EnableVoiceMessageSaving": "فعال کردن ذخیره پیام‌های صوتی"
+  "EnableVoiceMessageSaving": "فعال کردن ذخیره پیام‌های صوتی",
+  "TeleVip": "TeleVip Next"
 }

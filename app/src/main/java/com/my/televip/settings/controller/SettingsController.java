@@ -148,7 +148,7 @@ public class SettingsController {
             if (!ConfigPreferences.getBoolean("JTV")) {
                 AlertDialog alertDialog = new AlertDialog(getContext());
 
-                alertDialog.setTitle(Translator.get(Keys.GhostMode));
+                alertDialog.setTitle("TeleVip Next \uD83D\uDC7B");
                 alertDialog.setMessage(Translator.get(Keys.JoinTeleVip));
 
                 alertDialog.setPositiveButton(Translator.get(Keys.Join), AlertDialog.click(() -> {

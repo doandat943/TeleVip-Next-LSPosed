@@ -28,7 +28,7 @@
   "UserOffline": "您当前处于离线状态",
   "DisableStories": "禁用 故事",
   "HideUpdateApp": "隐藏应用更新",
-  "JoinTeleVip": "加入 TeleVip 频道，第一时间获取最新更新和新功能",
+  "JoinTeleVip": "加入 TeleVip Next 频道，第一时间获取最新更新和新功能",
   "Join": "加入",
   "DontShowAgain": "不再显示",
   "RestartApp": "重新启动应用",
@@ -105,5 +105,6 @@
   "ApproximateCreationDate": "估计创建日期",
   "Age": "账号年龄",
   "ApproximateCreationDateNotice": "此日期是根据 Telegram ID 推算得出的估计值，可能与实际创建日期不一致。",
-  "EnableVoiceMessageSaving": "开启语音消息保存"
+  "EnableVoiceMessageSaving": "开启语音消息保存",
+  "TeleVip": "TeleVip Next"
 }

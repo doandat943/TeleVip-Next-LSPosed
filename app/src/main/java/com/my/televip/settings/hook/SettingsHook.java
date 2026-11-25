@@ -106,7 +106,7 @@ public class SettingsHook {
                                             int.class, int.class, int.class, int.class, CharSequence.class, CharSequence.class);
                                     if (m6 != null) {
                                         uItem = m6.invoke(null, 8353847, color1, color2, 8353847,
-                                                Translator.get(Keys.GhostMode), Translator.get(Keys.ByMustafa));
+                                                "TeleVip Next \uD83D\uDC7B", Translator.get(Keys.ByMustafa));
                                     } else {
                                         for (Method fm : SettingsActivity$SettingCell$FactoryClass.getDeclaredMethods()) {
                                             Class<?>[] pt = fm.getParameterTypes();
@@ -118,7 +118,7 @@ public class SettingsHook {
                                                 Object arg6 = pt[6] == boolean.class ? Boolean.FALSE
                                                         : (pt[6] == int.class ? Integer.valueOf(0) : null);
                                                 uItem = fm.invoke(null, 8353847, color1, color2, 8353847,
-                                                        Translator.get(Keys.GhostMode), Translator.get(Keys.ByMustafa), arg6);
+                                                        "TeleVip Next \uD83D\uDC7B", Translator.get(Keys.ByMustafa), arg6);
                                                 break;
                                             }
                                         }
@@ -187,7 +187,7 @@ public class SettingsHook {
                                 itemConstructor.setAccessible(true);
                             }
 
-                            Object newItem = itemConstructor.newInstance(8353847, Translator.get(Keys.GhostMode), SettingsIconResolver.getIconSettings());
+                            Object newItem = itemConstructor.newInstance(8353847, "TeleVip Next \uD83D\uDC7B", SettingsIconResolver.getIconSettings());
 
                             if (items instanceof ArrayList<?>) {
                                 ArrayList<Object> typedItems = (ArrayList<Object>) items;

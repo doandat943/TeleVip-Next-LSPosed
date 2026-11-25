@@ -15,7 +15,7 @@ public class Utils {
     public static String modulePath = null;
     public static String sourceDir = null;
     public static ClassLoader classLoader = null;
-    public static final String issue = "Your Telegram client may be an incompatible version with TeleVip. Please download the latest version that is compatible with TeleVip.";
+    public static final String issue = "Your Telegram client may be an incompatible version with TeleVip Next. Please download the latest version that is compatible with TeleVip Next.";
 
     private static WeakReference<Activity> currentActivity;
 

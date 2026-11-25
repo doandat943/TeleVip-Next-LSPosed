@@ -15,7 +15,7 @@
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="اضافة مميزات جديده لتيلجرام" />
+            android:value="TeleVip Next — LSPosed module adding privacy, media, and customization features to Telegram clients" />
         <meta-data
             android:name="xposedminversion"
             android:value="93+" />

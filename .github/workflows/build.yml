@@ -43,13 +43,13 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: TeleVip-debug-apk
+          name: TeleVip-Next-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: TeleVip-release-apk
+          name: TeleVip-Next-release-apk
           path: app/build/outputs/apk/release/*.apk
 
       - name: Create GitHub Release on tag
