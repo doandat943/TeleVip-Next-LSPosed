@@ -74,7 +74,6 @@ jobs:
           import os
           import shutil
           import subprocess
-          import urllib.request
 
           token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
           chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -126,23 +125,32 @@ jobs:
 
           caption = f"{header}\n\n<b>Changes:</b>\n{changes_text}{footer}"
 
-          def tg_post_message(text):
-              payload = json.dumps({
-                  "chat_id": chat_id,
-                  "text": text,
-                  "parse_mode": "HTML",
-                  "disable_web_page_preview": True,
-              }).encode("utf-8")
-              req = urllib.request.Request(
-                  f"https://api.telegram.org/bot{token}/sendMessage",
-                  data=payload,
-                  headers={"Content-Type": "application/json"},
-              )
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  data = json.loads(resp.read().decode("utf-8"))
+          def tg_curl_post(endpoint, form_args, max_time=120):
+              res = subprocess.run([
+                  "curl", "-sS", "-f",
+                  "-4", "--http1.1",
+                  "--connect-timeout", "15",
+                  "--max-time", str(max_time),
+                  "--retry", "4",
+                  "--retry-all-errors",
+                  "--retry-delay", "3",
+                  "--form-string", f"chat_id={chat_id}",
+                  "--form-string", "parse_mode=HTML",
+                  *form_args,
+                  f"https://api.telegram.org/bot{token}/{endpoint}",
+              ], capture_output=True, text=True)
+              if res.returncode != 0:
+                  raise RuntimeError(f"curl {endpoint} failed: {res.stderr}")
+              data = json.loads(res.stdout)
               if not data.get("ok"):
-                  raise RuntimeError(f"Telegram sendMessage failed: {data}")
-              print("Telegram sendMessage ok:", data["result"].get("message_id"))
+                  raise RuntimeError(f"Telegram {endpoint} failed: {data}")
+              print(f"Telegram {endpoint} ok:", data["result"].get("message_id"))
+
+          def tg_post_message(text):
+              tg_curl_post("sendMessage", [
+                  "--form-string", f"text={text}",
+                  "--form-string", "disable_web_page_preview=true",
+              ], max_time=60)
 
           apk_src = "app/build/outputs/apk/debug/app-debug.apk"
           if not os.path.exists(apk_src):
@@ -158,18 +166,8 @@ jobs:
               tg_post_message(caption[:4096])
               doc_caption = f"{header}{footer}"
 
-          res = subprocess.run([
-              "curl", "-sS", "-f",
-              "--form-string", f"chat_id={chat_id}",
-              "--form-string", "parse_mode=HTML",
+          tg_curl_post("sendDocument", [
               "--form-string", f"caption={doc_caption[:1024]}",
               "-F", f"document=@{apk_upload}",
-              f"https://api.telegram.org/bot{token}/sendDocument",
-          ], capture_output=True, text=True)
-          if res.returncode != 0:
-              raise RuntimeError(f"curl sendDocument failed: {res.stderr}")
-          data = json.loads(res.stdout)
-          if not data.get("ok"):
-              raise RuntimeError(f"Telegram sendDocument failed: {data}")
-          print("Telegram sendDocument ok:", data["result"].get("message_id"))
+          ], max_time=120)
           PY
