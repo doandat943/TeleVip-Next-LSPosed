@@ -424,7 +424,7 @@ public class SettingsActivity {
                     if (intent != null) {
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         act.startActivity(intent);
-                        Runtime.getRuntime().exit(0);
+                        row.postDelayed(() -> Runtime.getRuntime().exit(0), 150);
                     }
                 }
             });

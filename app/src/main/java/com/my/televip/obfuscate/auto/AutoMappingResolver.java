@@ -22,7 +22,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 16;
+    private static final int SCHEMA_VERSION = 17;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -142,15 +142,27 @@ public class AutoMappingResolver {
         String chatActDesc = null;
         String pvProviderDesc = null;
 
+        String chatOpenPhoto = null;
         for (DexScanner.MethodInfo m : scanner.getMethods(photoViewerDesc)) {
             if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 6
                     && "J".equals(m.paramDescs[2]) && "J".equals(m.paramDescs[3]) && "J".equals(m.paramDescs[4])) {
                 msgObjDesc = m.paramDescs[0];
                 chatActDesc = m.paramDescs[1];
                 pvProviderDesc = m.paramDescs[5];
-                addMethod("PhotoViewer", "openPhoto", m.name);
+                chatOpenPhoto = m.name;
                 break;
             }
+        }
+        // Prefer exact 6-arg overload used by virtuals/ui/PhotoViewer: (MessageObject, J, J, J, PhotoViewerProvider, Z)
+        String callerOpenPhoto = null;
+        if (msgObjDesc != null && pvProviderDesc != null) {
+            callerOpenPhoto = scanner.findSingleMethod(photoViewerDesc, false, "Z",
+                    msgObjDesc, "J", "J", "J", pvProviderDesc, "Z");
+        }
+        if (callerOpenPhoto != null) {
+            addMethod("PhotoViewer", "openPhoto", callerOpenPhoto);
+        } else if (chatOpenPhoto != null) {
+            addMethod("PhotoViewer", "openPhoto", chatOpenPhoto);
         }
         // PhotoViewer#setIsAboutToSwitchToIndex: smaller (I, Z, Z, Z) -> V
         DexScanner.MethodInfo bestSwitchIdx = null;
@@ -288,16 +300,16 @@ public class AutoMappingResolver {
                                 "J", "Ljava/util/ArrayList;", "Z", "Z", "I", "I"));
                 for (DexScanner.MethodInfo m : scanner.getMethods(msgStorageDesc)) {
                     if (!m.isStatic && m.paramDescs.length == 0 && m.returnDesc.startsWith("Lorg/telegram/messenger/")) {
-                        addMethod("MessagesStorage", "getStorageQueue", m.name);
-                        addClass("org.telegram.messenger.DispatchQueue", m.returnDesc);
                         String postRun = scanner.findSingleMethod(m.returnDesc, false, "Z", "Ljava/lang/Runnable;");
                         if (postRun == null) {
                             postRun = scanner.findSingleMethod(m.returnDesc, false, "V", "Ljava/lang/Runnable;");
                         }
                         if (postRun != null) {
+                            addMethod("MessagesStorage", "getStorageQueue", m.name);
+                            addClass("org.telegram.messenger.DispatchQueue", m.returnDesc);
                             addMethod("DispatchQueue", "postRunnable", postRun);
+                            break;
                         }
-                        break;
                     }
                 }
             }
@@ -327,10 +339,18 @@ public class AutoMappingResolver {
                 addField("MessagesController", "dialogMessagesByIds",
                         scanner.findSingleField(msgCtrlDesc, false, "Landroid/util/SparseArray;"));
 
-                // Find LongSparseArray via dialogMessage field or similar
+                // Identify LongSparseArray type and dialogMessage field (prefer field read in deleteMessages)
+                java.util.Set<String> delReadFields = new java.util.HashSet<>();
+                if (deleteMeth != null) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
+                        delReadFields.add(rf.name);
+                    }
+                }
+                String fallbackLsaField = null;
+                String fallbackLsaType = null;
+                String fallbackLsaGet = null;
                 for (DexScanner.FieldInfo f : scanner.getFields(msgCtrlDesc)) {
                     if (!f.isStatic && !f.typeDesc.startsWith("Lorg/telegram/") && !f.typeDesc.startsWith("Landroid/") && !f.typeDesc.startsWith("Ljava/")) {
-                        // Candidate obfuscated androidx.collection.LongSparseArray
                         List<DexScanner.MethodInfo> lsaMeths = scanner.getMethods(f.typeDesc);
                         String getLongName = null;
                         for (DexScanner.MethodInfo lm : lsaMeths) {
@@ -340,12 +360,25 @@ public class AutoMappingResolver {
                             }
                         }
                         if (getLongName != null) {
-                            addClass(ClassNames.LONG_SPARES_ARRAY, f.typeDesc);
-                            addMethod("LongSparseArray", "get", getLongName);
-                            addField("MessagesController", "dialogMessage", f.name);
-                            break;
+                            if (fallbackLsaField == null) {
+                                fallbackLsaField = f.name;
+                                fallbackLsaType = f.typeDesc;
+                                fallbackLsaGet = getLongName;
+                            }
+                            if (delReadFields.contains(f.name)) {
+                                addClass(ClassNames.LONG_SPARES_ARRAY, f.typeDesc);
+                                addMethod("LongSparseArray", "get", getLongName);
+                                addField("MessagesController", "dialogMessage", f.name);
+                                fallbackLsaField = null;
+                                break;
+                            }
                         }
                     }
+                }
+                if (fallbackLsaField != null) {
+                    addClass(ClassNames.LONG_SPARES_ARRAY, fallbackLsaType);
+                    addMethod("LongSparseArray", "get", fallbackLsaGet);
+                    addField("MessagesController", "dialogMessage", fallbackLsaField);
                 }
             }
 
@@ -525,7 +558,6 @@ public class AutoMappingResolver {
             // Find ChatActivity$ChatMessageCellDelegate on ChatMessageCell
             for (DexScanner.FieldInfo f : scanner.getFields(chatMsgCellDesc)) {
                 if (!f.isStatic && f.typeDesc.startsWith("Lorg/telegram/ui/")
-                        && !f.typeDesc.contains("$")
                         && !f.typeDesc.startsWith("Lorg/telegram/ui/Cells/")
                         && !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")
                         && !f.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
@@ -926,18 +958,15 @@ public class AutoMappingResolver {
         String negBtn = null, neuBtn = null, posBtn = null;
         for (DexScanner.MethodInfo m : methods) {
             if (!m.isStatic && m.paramDescs.length == 2
-                    && m.paramDescs[1].startsWith("Lorg/telegram/ui/ActionBar/")) {
-                Integer btnConst = m.getFirstConstInt();
-                if ("Ljava/lang/String;".equals(m.paramDescs[0])) {
-                    listenerDesc = m.paramDescs[1];
-                    if (btnConst != null && btnConst == -3) neuBtn = m.name;
-                    else if (btnConst != null && btnConst == -2) negBtn = m.name;
-                    else if (negBtn == null) negBtn = m.name;
-                    else if (neuBtn == null) neuBtn = m.name;
-                } else if ("Ljava/lang/CharSequence;".equals(m.paramDescs[0])) {
-                    listenerDesc = m.paramDescs[1];
-                    posBtn = m.name;
-                }
+                    && m.paramDescs[1].startsWith("Lorg/telegram/ui/ActionBar/")
+                    && ("Ljava/lang/String;".equals(m.paramDescs[0]) || "Ljava/lang/CharSequence;".equals(m.paramDescs[0]))) {
+                listenerDesc = m.paramDescs[1];
+                if (m.containsConstInt(-1)) posBtn = m.name;
+                else if (m.containsConstInt(-2)) negBtn = m.name;
+                else if (m.containsConstInt(-3)) neuBtn = m.name;
+                else if ("Ljava/lang/CharSequence;".equals(m.paramDescs[0]) && posBtn == null) posBtn = m.name;
+                else if (negBtn == null) negBtn = m.name;
+                else if (neuBtn == null) neuBtn = m.name;
             }
         }
         if (negBtn != null) addMethod("AlertDialog$Builder", "setNegativeButton", negBtn);

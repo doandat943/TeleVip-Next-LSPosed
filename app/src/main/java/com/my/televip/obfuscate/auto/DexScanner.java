@@ -55,12 +55,34 @@ public class DexScanner {
             int k = 0;
             while (k < insnsSize) {
                 int op = dex.buf.getShort(insnsOff + k * 2) & 0xFF;
-                if (op >= 0x52 && op <= 0x66 && k + 1 < insnsSize) {
+                if (((op >= 0x52 && op <= 0x58) || (op >= 0x60 && op <= 0x66)) && k + 1 < insnsSize) {
                     int fIdx = dex.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
                     if (fIdx < dex.fieldSz) {
                         int nIdx = dex.buf.getInt(dex.fieldOff + fIdx * 8 + 4);
                         if (fieldName.equals(dex.getString(nIdx))) return true;
                     }
+                }
+                k += insnWidth(dex.buf, insnsOff, k, insnsSize);
+            }
+            return false;
+        }
+
+        public boolean containsConstInt(int target) {
+            if (codeOff == 0) return false;
+            int insnsSize = dex.buf.getInt(codeOff + 12);
+            int insnsOff = codeOff + 16;
+            int k = 0;
+            while (k < insnsSize) {
+                int unit = dex.buf.getShort(insnsOff + k * 2) & 0xFFFF;
+                int op = unit & 0xFF;
+                if (op == 0x12) {
+                    int val = (unit >> 12) & 0xF;
+                    if (val >= 8) val -= 16;
+                    if (val == target) return true;
+                } else if (op == 0x13 && k + 1 < insnsSize) {
+                    if (dex.buf.getShort(insnsOff + (k + 1) * 2) == target) return true;
+                } else if (op == 0x14 && k + 2 < insnsSize) {
+                    if (dex.buf.getInt(insnsOff + (k + 1) * 2) == target) return true;
                 }
                 k += insnWidth(dex.buf, insnsOff, k, insnsSize);
             }
@@ -482,6 +504,36 @@ public class DexScanner {
             while (k < insnsSize) {
                 int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
                 if ((op == 0x59 || op == 0x5b || op == 0x5c) && k + 1 < insnsSize) {
+                    int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                    if (fIdx < part.fieldSz) {
+                        int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;
+                        int tIdx = part.buf.getShort(part.fieldOff + fIdx * 8 + 2) & 0xFFFF;
+                        int nIdx = part.buf.getInt(part.fieldOff + fIdx * 8 + 4);
+                        String fc = part.getType(cIdx);
+                        if (targetClassDesc == null || targetClassDesc.equals(fc)) {
+                            out.add(new FieldInfo(false, part.getString(nIdx), part.getType(tIdx)));
+                        }
+                    }
+                }
+                k += insnWidth(part.buf, insnsOff, k, insnsSize);
+            }
+            break;
+        }
+        return out;
+    }
+
+    public List<FieldInfo> getReadInstanceFieldsInMethod(String classDesc, String methodName, String[] paramDescs, String targetClassDesc) {
+        List<FieldInfo> out = new ArrayList<>();
+        for (MethodInfo m : getMethods(classDesc)) {
+            if (!m.name.equals(methodName) || m.codeOff == 0) continue;
+            if (paramDescs != null && !java.util.Arrays.equals(m.paramDescs, paramDescs)) continue;
+            DexPart part = m.dex;
+            int insnsSize = part.buf.getInt(m.codeOff + 12);
+            int insnsOff = m.codeOff + 16;
+            int k = 0;
+            while (k < insnsSize) {
+                int op = part.buf.getShort(insnsOff + k * 2) & 0xFF;
+                if ((op >= 0x52 && op <= 0x58) && k + 1 < insnsSize) {
                     int fIdx = part.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
                     if (fIdx < part.fieldSz) {
                         int cIdx = part.buf.getShort(part.fieldOff + fIdx * 8) & 0xFFFF;

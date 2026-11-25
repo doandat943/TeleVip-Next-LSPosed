@@ -12,6 +12,7 @@ import com.my.televip.logging.Logger;
 import com.my.televip.virtuals.SQLite.SQLiteCursor;
 import com.my.televip.virtuals.SQLite.SQLiteDatabase;
 import com.my.televip.virtuals.SQLite.SQLitePreparedStatement;
+import com.my.televip.virtuals.messenger.DispatchQueue;
 import com.my.televip.virtuals.messenger.MessagesStorage;
 import com.my.televip.virtuals.tgnet.NativeByteBuffer;
 
@@ -41,54 +42,78 @@ public class MessageStorage {
     }
 
     public static void markMessagesDeleted(MessagesStorage messagesStorage, final long dialogId, ArrayList<Integer> delMsg) {
-        try {
-            storage.post(() -> {
-                try {
-                    SQLiteDatabase db = messagesStorage.getDatabase();
+        if (messagesStorage == null || delMsg == null || delMsg.isEmpty()) return;
+
+        Runnable task = () -> {
+            try {
+                SQLiteDatabase db = messagesStorage.getDatabase();
+                if (db == null) return;
+                String joinedIds = TextUtils.join(",", delMsg);
                 for (int i = 0; i < 2; ++i) {
                     final String table = i == 0 ? "messages_v2" : "messages_topics";
+                    String query = "SELECT data,mid,uid FROM " + table + " WHERE "
+                            + (dialogId == 0 ? "is_channel" : "uid") + " = " + dialogId
+                            + " AND mid IN (" + joinedIds + ");";
+                    String update = "UPDATE " + table + " SET data = ? WHERE uid = ? AND mid = ?";
 
-                    String query = "SELECT data,mid,uid " +
-                            "FROM "+ table + " "+
-                            "WHERE " + (dialogId == 0 ? "is_channel" : "uid") + " = " + dialogId + " AND mid IN (" + TextUtils.join(",", delMsg) + ");";
+                    SQLiteCursor cursor = null;
+                    SQLitePreparedStatement state = null;
+                    try {
+                        cursor = db.queryFinalized(query, new Object[]{});
+                        state = db.executeFast(update);
+                        if (cursor == null || state == null) continue;
 
-                    String update = "UPDATE " + table +" SET data = ? WHERE uid = ? AND mid = ?";
-                    SQLiteCursor cursor = db.queryFinalized(query, new Object[]{});
-                    SQLitePreparedStatement state = db.executeFast(update);
+                        while (cursor.next()) {
+                            NativeByteBuffer data = cursor.byteBufferValue(0);
+                            if (data == null || data.nativeByteBuffer == null) continue;
+                            int mid = cursor.intValue(1);
+                            long lastDialogId = cursor.longValue(2);
 
-                    while (cursor.next()) {
-                        NativeByteBuffer data = cursor.byteBufferValue(0);
-                        int mid = cursor.intValue(1);
-                        long lastDialogId = cursor.longValue(2);
+                            data.position(4);
+                            int flags = data.readInt32(true);
+                            flags |= ShowDeletedMessages.FLAG_DELETED;
+                            data.position(4);
+                            data.writeInt32(flags);
+                            data.position(0);
 
-                        data.position(4);
-                        int flags = (int) data.readInt32(true);
-                        flags |= ShowDeletedMessages.FLAG_DELETED;
-                        data.position(4);
-                        data.writeInt32(flags);
-                        data.position(0);
+                            state.requery();
+                            state.bindByteBuffer(1, data);
+                            state.bindLong(2, lastDialogId);
+                            state.bindInteger(3, mid);
+                            state.step();
 
-                        state.requery();
-                        state.bindByteBuffer(1, data);
-                        state.bindLong(2, lastDialogId);
-                        state.bindInteger(3, mid);
-                        state.step();
-
-                        data.reuse();
+                            data.reuse();
+                        }
+                    } finally {
+                        if (cursor != null) {
+                            try { cursor.dispose(); } catch (Throwable ignored) {}
+                        }
+                        if (state != null) {
+                            try { state.dispose(); } catch (Throwable ignored) {}
+                        }
                     }
-                    cursor.dispose();
-                    state.step();
                 }
-                } catch (Throwable e) {
-                    Logger.e(e);
-                }
-            });
-        } catch (Throwable e){
+            } catch (Throwable e) {
+                Logger.e(e);
+            }
+        };
+
+        try {
+            DispatchQueue queue = messagesStorage.getStorageQueue();
+            if (queue != null) {
+                queue.postRunnable(task);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            storage.post(task);
+        } catch (Throwable e) {
             Logger.e(e);
         }
     }
 
-    public static Handler getStorage(){
+    public static Handler getStorage() {
         return storage;
     }
 

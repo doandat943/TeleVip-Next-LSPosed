@@ -16,28 +16,21 @@ public class DisableNumberRounding {
     public static void init() {
         try {
             if (!isEnable) {
-                isEnable = true;
-
                 Class<?> lcCls = ClassLoad.getClass(ClassNames.LOCALE_CONTROLLER);
                 if (lcCls != null) {
                     String method = Obfuscate.getMethodName("LocaleController", "formatShortNumber");
-                    Class<?>[] sig = de.robv.android.xposed.XposedHelpers.findMethodExactIfExists(lcCls, method, int.class, int[].class) != null
-                            ? new Class[]{int.class, int[].class}
-                            : new Class[]{int[].class, int.class};
+                    final boolean firstIsArray = de.robv.android.xposed.XposedHelpers
+                            .findMethodExactIfExists(lcCls, method, int.class, int[].class) == null;
+                    Class<?>[] sig = firstIsArray
+                            ? new Class[]{int[].class, int.class}
+                            : new Class[]{int.class, int[].class};
                     HMethod.hookMethod(lcCls, method, ArgsResolver.merge("formatShortNumber", sig,
                             new BaseMethodHook() {
                                 @Override
                                 protected void beforeMethod(MethodHookParam param) {
                                     if (ConfigManager.disableNumberRounding.isEnable()) {
-                                        int[] rounded;
-                                        int number;
-                                        if (param.args[0] instanceof int[]) {
-                                            rounded = (int[]) param.args[0];
-                                            number = (int) param.args[1];
-                                        } else {
-                                            number = (int) param.args[0];
-                                            rounded = (int[]) param.args[1];
-                                        }
+                                        int[] rounded = firstIsArray ? (int[]) param.args[0] : (int[]) param.args[1];
+                                        int number = firstIsArray ? (int) param.args[1] : (int) param.args[0];
                                         if (rounded != null && rounded.length > 0) {
                                             rounded[0] = number;
                                         }
@@ -45,9 +38,11 @@ public class DisableNumberRounding {
                                     }
                                 }
                             }));
+                    isEnable = true;
                 }
             }
         } catch (Throwable t) {
+            isEnable = false;
             Logger.e(t);
         }
     }

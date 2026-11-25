@@ -116,6 +116,15 @@ public class SettingsController {
                 };
                 settingsView.setClickable(true);
                 settingsView.setFocusable(true);
+                settingsView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                    @Override
+                    public void onViewAttachedToWindow(View v) {}
+
+                    @Override
+                    public void onViewDetachedFromWindow(View v) {
+                        SettingsActivity.isSettings = false;
+                    }
+                });
             }
 
             settingsView.removeAllViews();
