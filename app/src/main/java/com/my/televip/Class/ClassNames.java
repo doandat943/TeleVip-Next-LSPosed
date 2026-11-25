@@ -21,6 +21,7 @@ public class ClassNames {
     public static final String TLRPC_USER = "org.telegram.tgnet.TLRPC$User";
     public static final String STORIES_CONTROLLER = "org.telegram.ui.Stories.StoriesController";
     public static final String FILE_LOAD_OPERATION = "org.telegram.messenger.FileLoadOperation";
+    public static final String FILE_UPLOAD_OPERATION = "org.telegram.messenger.FileUploadOperation";
     public static final String CONNECTIONS_MANAGER = "org.telegram.tgnet.ConnectionsManager";
     public static final String TL_ACCOUNT_UPDATE_STATUS = "org.telegram.tgnet.tl.TL_account$updateStatus";
     public static final String REQUEST_DELEGATE = "org.telegram.tgnet.RequestDelegate";

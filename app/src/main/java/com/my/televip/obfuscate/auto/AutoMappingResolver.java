@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 34;
+    private static final int SCHEMA_VERSION = 35;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -845,6 +845,8 @@ public class AutoMappingResolver {
             }
         }
 
+        resolveFileUploadOperation(scanner);
+
         String chatMsgCellDesc = findChatMessageCell(scanner);
         if (chatMsgCellDesc != null) {
             addClass(ClassNames.CHAT_MESSAGE_CELL, chatMsgCellDesc);
@@ -1614,6 +1616,97 @@ public class AutoMappingResolver {
             }
             return hasBoolNoArgs && hasVoidInt;
         });
+    }
+
+    private void resolveFileUploadOperation(DexScanner scanner) {
+        String fuoDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null, "_uploaded", "_size");
+        if (fuoDesc == null) return;
+
+        addClass(ClassNames.FILE_UPLOAD_OPERATION, fuoDesc);
+
+        String calcMethod = null;
+        String startMethod = null;
+        String[] initParams = null;
+        String uploadChunkField = null;
+
+        for (DexScanner.MethodInfo m : scanner.getMethods(fuoDesc)) {
+            if (!m.isStatic && "<init>".equals(m.name) && m.paramDescs.length == 5) {
+                initParams = m.paramDescs;
+                continue;
+            }
+            if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                int insns = m.getInsnsSize();
+                if (calcMethod == null && insns >= 40 && insns <= 80) {
+                    List<String> intReads = new ArrayList<>();
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(fuoDesc, m.name, m.paramDescs, fuoDesc)) {
+                        if ("I".equals(rf.typeDesc)) {
+                            intReads.add(rf.name);
+                        }
+                    }
+                    if (intReads.size() == 3 && intReads.get(0).equals(intReads.get(1)) && intReads.get(0).equals(intReads.get(2))) {
+                        calcMethod = m.name;
+                        uploadChunkField = intReads.get(0);
+                    }
+                } else if (startMethod == null && insns > 400) {
+                    startMethod = m.name;
+                }
+            }
+        }
+
+        if (calcMethod != null) {
+            addMethod("FileUploadOperation", "calcTotalPartsCount", calcMethod);
+        }
+
+        String readBufferField = null;
+        String maxReqField = null;
+        String uploadConnField = null;
+
+        if (startMethod != null) {
+            List<String> uniqInts = new ArrayList<>();
+            for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(fuoDesc, startMethod, new String[0], fuoDesc)) {
+                if ("[B".equals(wf.typeDesc) && readBufferField == null) {
+                    readBufferField = wf.name;
+                } else if ("I".equals(wf.typeDesc) && !uniqInts.contains(wf.name)) {
+                    uniqInts.add(wf.name);
+                }
+            }
+            if (uploadChunkField == null && !uniqInts.isEmpty()) {
+                uploadChunkField = uniqInts.get(0);
+            }
+            for (String f : uniqInts) {
+                if (f.equals(uploadChunkField)) continue;
+                if (maxReqField == null) {
+                    maxReqField = f;
+                } else if (uploadConnField == null) {
+                    uploadConnField = f;
+                    break;
+                }
+            }
+        }
+
+        String reqPerConnField = null;
+        if (initParams != null) {
+            List<String> initInts = new ArrayList<>();
+            for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(fuoDesc, "<init>", initParams, fuoDesc)) {
+                if ("[I".equals(wf.typeDesc) && reqPerConnField == null) {
+                    reqPerConnField = wf.name;
+                } else if ("I".equals(wf.typeDesc) && !initInts.contains(wf.name)) {
+                    initInts.add(wf.name);
+                }
+            }
+            if (uploadConnField == null && !initInts.isEmpty()) {
+                uploadConnField = initInts.get(0);
+            }
+            if (uploadChunkField == null && initInts.size() >= 2) {
+                uploadChunkField = initInts.get(1);
+            }
+        }
+
+        if (readBufferField != null) addField("FileUploadOperation", "readBuffer", readBufferField);
+        if (uploadChunkField != null) addField("FileUploadOperation", "uploadChunkSize", uploadChunkField);
+        if (maxReqField != null) addField("FileUploadOperation", "maxRequestsCount", maxReqField);
+        if (uploadConnField != null) addField("FileUploadOperation", "uploadConnectionsCount", uploadConnField);
+        if (reqPerConnField != null) addField("FileUploadOperation", "uploadRequestsPerConnection", reqPerConnField);
     }
 
     private static String findFileLoadOperation(DexScanner scanner) {

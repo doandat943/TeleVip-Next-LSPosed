@@ -148,7 +148,7 @@
   "ShowDeletedMessagesDesc": "Giữ lại tin nhắn người khác đã xóa và đánh dấu trạng thái đã xóa",
   "ShowMessageIDDesc": "Hiển thị ID của từng tin nhắn ngay trong khung chat",
   "SaveEditsHistoryDesc": "Lưu lại các phiên bản trước của tin nhắn đã sửa để xem lại bất cứ lúc nào",
-  "DownloadSpeedDesc": "Tăng luồng kết nối song song giúp tải ảnh, video và tệp nhanh hơn",
+  "DownloadSpeedDesc": "Chọn mức tăng tốc độ tải xuống (Tắt / Nhanh / Siêu tốc)",
   "SecretMediaSaveDesc": "Cho phép lưu ảnh và video tự hủy về máy",
   "PreventMediaDesc": "Giữ nguyên media bí mật đã xem, không bị tự hủy biến mất",
   "EnableSavingStoriesDesc": "Cho phép tải và lưu trực tiếp Tin (Stories) về thiết bị",
@@ -179,5 +179,10 @@
   "ClearAction": "Dọn sạch",
   "ClearedDeletedCount": "Đã dọn %d tin nhắn đã xóa",
   "NoDeletedMessages": "Không có tin nhắn đã xóa nào",
-  "DeleteLocally": "Đã xóa"
+  "DeleteLocally": "Đã xóa",
+  "UploadSpeed": "Tăng tốc độ tải lên",
+  "UploadSpeedDesc": "Tăng kích thước gói tải lên và luồng kết nối song song giúp gửi tệp nhanh hơn",
+  "SpeedOff": "Tắt",
+  "SpeedFast": "Nhanh",
+  "SpeedUltra": "Siêu tốc"
 }

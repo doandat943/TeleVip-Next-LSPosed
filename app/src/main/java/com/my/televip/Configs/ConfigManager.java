@@ -7,6 +7,7 @@ import com.my.televip.features.ui.DisableNumberRounding;
 import com.my.televip.features.ui.DisableProfileSwipeBack;
 import com.my.televip.features.stories.DisableStories;
 import com.my.televip.features.connections.DownloadSpeed;
+import com.my.televip.features.connections.UploadSpeed;
 import com.my.televip.features.media.EnableSavingStories;
 import com.my.televip.features.other.FixTLError;
 import com.my.televip.features.ghostMode.GhostMode;
@@ -71,6 +72,7 @@ public class ConfigManager {
     // Connections
     public static ConfigItem connections;
     public static ConfigItem downloadSpeed;
+    public static ConfigItem uploadSpeed;
 
     // Media
     public static ConfigItem media;
@@ -192,11 +194,19 @@ public class ConfigManager {
         items.add(shadows);
 
         // Connections
+        if (!ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
+                && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
+            ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
+        }
+
         connections = new ConfigItem(ConfigItem.HEADER, Keys.ConnectionsSettings);
         items.add(connections);
 
-        downloadSpeed = new ConfigItem(ConfigItem.SWITCH, Keys.DownloadSpeed, ConfigPreferences.getBoolean(Keys.DownloadSpeed), DownloadSpeed::init);
+        downloadSpeed = new ConfigItem(ConfigItem.TEXT, Keys.DownloadSpeed, false, DownloadSpeed::init);
         items.add(downloadSpeed);
+
+        uploadSpeed = new ConfigItem(ConfigItem.SWITCH, Keys.UploadSpeed, ConfigPreferences.getBoolean(Keys.UploadSpeed), UploadSpeed::init);
+        items.add(uploadSpeed);
 
         items.add(shadows);
 
@@ -301,8 +311,10 @@ public class ConfigManager {
                     }
                     continue;
                 }
-                if (item.getType() != ConfigItem.SWITCH && item.getCustomCalendar() == 0) continue;
-                if (item.isEnable()) item.run();
+                if (item.getType() != ConfigItem.SWITCH && item.getIntValue() == 0) continue;
+                if (item.isEnable() || (item.getType() == ConfigItem.TEXT && item.getIntValue() > 0)) {
+                    item.run();
+                }
             }
 
             if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {

@@ -148,7 +148,7 @@
   "ShowDeletedMessagesDesc": "Keeps messages others delete and marks them as deleted",
   "ShowMessageIDDesc": "Shows the ID of each message in the chat",
   "SaveEditsHistoryDesc": "Keeps earlier versions of edited messages so you can look back at them",
-  "DownloadSpeedDesc": "Increases parallel connection throughput for faster media downloads",
+  "DownloadSpeedDesc": "Choose download speed boost level (Off / Fast / Ultra)",
   "SecretMediaSaveDesc": "Allows saving self-destructing photos and videos",
   "PreventMediaDesc": "Keeps disappearing secret media visible after viewing",
   "EnableSavingStoriesDesc": "Enables saving stories directly to your device",
@@ -179,5 +179,10 @@
   "ClearAction": "Clear",
   "ClearedDeletedCount": "Cleared %d deleted messages",
   "NoDeletedMessages": "No deleted messages to clear",
-  "DeleteLocally": "Deleted"
+  "DeleteLocally": "Deleted",
+  "UploadSpeed": "Upload Speed Boost",
+  "UploadSpeedDesc": "Increases upload chunk size and parallel connections for faster file uploads",
+  "SpeedOff": "Off",
+  "SpeedFast": "Fast",
+  "SpeedUltra": "Ultra"
 }

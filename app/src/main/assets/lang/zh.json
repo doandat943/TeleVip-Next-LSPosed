@@ -148,7 +148,7 @@
   "ShowDeletedMessagesDesc": "保留他人删除的消息并标记为已删除",
   "ShowMessageIDDesc": "在聊天中显示每条消息的 ID",
   "SaveEditsHistoryDesc": "保留已编辑消息的旧版本以便随时回看",
-  "DownloadSpeedDesc": "增加并行连接吞吐量以加快媒体下载速度",
+  "DownloadSpeedDesc": "选择下载加速档位（关闭 / 快速 / 极速）",
   "SecretMediaSaveDesc": "允许保存阅后即焚的照片和视频",
   "PreventMediaDesc": "查看后保持私密媒体可见而不自毁",
   "EnableSavingStoriesDesc": "允许将故事直接保存到您的设备",
@@ -179,5 +179,10 @@
   "ClearAction": "清理",
   "ClearedDeletedCount": "已清理 %d 条已删除消息",
   "NoDeletedMessages": "没有可清理的已删除消息",
-  "DeleteLocally": "已删除"
+  "DeleteLocally": "已删除",
+  "UploadSpeed": "上传速度加速",
+  "UploadSpeedDesc": "增大上传分块并增加并行连接以加快文件上传速度",
+  "SpeedOff": "关闭",
+  "SpeedFast": "快速",
+  "SpeedUltra": "极速"
 }

@@ -50,6 +50,10 @@ public class Keys {
     public static final String FixTLError = "FixTLError";
     public static final String ShowMessageID = "ShowMessageID";
     public static final String DownloadSpeed = "DownloadSpeed";
+    public static final String UploadSpeed = "UploadSpeed";
+    public static final String SpeedOff = "SpeedOff";
+    public static final String SpeedFast = "SpeedFast";
+    public static final String SpeedUltra = "SpeedUltra";
     public static final String ConnectionsSettings = "ConnectionsSettings";
     public static final String Message = "Message";
     public static final String Edited = "Edited";

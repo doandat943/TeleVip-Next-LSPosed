@@ -148,7 +148,7 @@
   "ShowDeletedMessagesDesc": "الاحتفاظ بالرسائل التي يحذفها الآخرون وتمييزها كمحذوفة",
   "ShowMessageIDDesc": "إظهار معرّف كل رسالة داخل المحادثة",
   "SaveEditsHistoryDesc": "حفظ النسخ السابقة للرسائل المعدّلة للرجوع إليها لاحقاً",
-  "DownloadSpeedDesc": "زيادة الاتصالات المتوازية لتسريع تنزيل الوسائط",
+  "DownloadSpeedDesc": "اختر مستوى تسريع التنزيل (إيقاف / سريع / فائق)",
   "SecretMediaSaveDesc": "السماح بحفظ الصور ومقاطع الفيديو ذاتية التدمير",
   "PreventMediaDesc": "إبقاء الوسائط السرية ظاهرة وعدم حذفها بعد المشاهدة",
   "EnableSavingStoriesDesc": "يتيح حفظ القصص مباشرة على جهازك",
@@ -179,5 +179,10 @@
   "ClearAction": "مسح",
   "ClearedDeletedCount": "تم مسح %d رسالة محذوفة",
   "NoDeletedMessages": "لا توجد رسائل محذوفة لمسحها",
-  "DeleteLocally": "محذوف"
+  "DeleteLocally": "محذوف",
+  "UploadSpeed": "تسريع الرفع",
+  "UploadSpeedDesc": "زيادة حجم أجزاء الرفع والاتصالات المتوازية لتسريع إرسال الملفات",
+  "SpeedOff": "إيقاف",
+  "SpeedFast": "سريع",
+  "SpeedUltra": "فائق"
 }

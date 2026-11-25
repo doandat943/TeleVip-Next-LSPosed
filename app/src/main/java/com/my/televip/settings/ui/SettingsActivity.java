@@ -839,6 +839,7 @@ public class SettingsActivity {
         boolean isChannel = Keys.DeveloperChannel.equals(key);
         boolean isRestart = Keys.RestartApp.equals(key);
         boolean isCalendar = Keys.Calendar.equals(key);
+        boolean isDownloadSpeed = Keys.DownloadSpeed.equals(key);
 
         if (isChannel || isRestart) {
             ImageView iconBadge = new ImageView(context);
@@ -881,12 +882,12 @@ public class SettingsActivity {
 
         row.addView(textCol, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        if (isCalendar) {
+        if (isCalendar || isDownloadSpeed) {
             TextView valTv = new TextView(context);
             valTv.setTextColor(p.accentBlue);
             valTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
             valTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            valTv.setText(getCalendarLabel(item.getCustomCalendar()));
+            valTv.setText(isCalendar ? getCalendarLabel(item.getIntValue()) : getDownloadSpeedLabel(item.getIntValue()));
             valTv.setPadding(dp(10), dp(4), dp(10), dp(4));
             GradientDrawable pill = new GradientDrawable();
             pill.setColor(p.accentSoft);
@@ -894,7 +895,21 @@ public class SettingsActivity {
             valTv.setBackground(pill);
             row.addView(valTv);
 
-            row.setOnClickListener(v -> showCalendarPicker(item, valTv));
+            row.setOnClickListener(v -> {
+                if (isCalendar) {
+                    showOptionPicker(Translator.get(Keys.Calendar), new String[]{
+                            Translator.get(Keys.Gregorian),
+                            Translator.get(Keys.Hijri),
+                            Translator.get(Keys.Persian)
+                    }, item, valTv, true);
+                } else {
+                    showOptionPicker(Translator.get(Keys.DownloadSpeed), new String[]{
+                            Translator.get(Keys.SpeedOff),
+                            Translator.get(Keys.SpeedFast),
+                            Translator.get(Keys.SpeedUltra)
+                    }, item, valTv, false);
+                }
+            });
         } else if (isChannel) {
             row.setOnClickListener(v -> {
                 try {
@@ -934,22 +949,19 @@ public class SettingsActivity {
         return tv;
     }
 
-    private void showCalendarPicker(ConfigItem item, TextView valTv) {
-        String[] options = new String[]{
-                Translator.get(Keys.Gregorian),
-                Translator.get(Keys.Hijri),
-                Translator.get(Keys.Persian)
-        };
+    private void showOptionPicker(String title, String[] options, ConfigItem item, TextView valTv, boolean isCalendar) {
+        int current = item.getIntValue();
+        if (current < 0 || current >= options.length) current = 0;
         try {
             int themeRes = Theme.isLight()
                     ? android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
                     : android.R.style.Theme_DeviceDefault_Dialog_Alert;
             new AlertDialog.Builder(context, themeRes)
-                    .setTitle(Translator.get(Keys.Calendar))
-                    .setSingleChoiceItems(options, item.getCustomCalendar(), (dialog, which) -> {
-                        item.setCustomCalendar(which);
+                    .setTitle(title)
+                    .setSingleChoiceItems(options, current, (dialog, which) -> {
+                        item.setIntValue(which);
                         item.run();
-                        valTv.setText(getCalendarLabel(which));
+                        valTv.setText(isCalendar ? getCalendarLabel(which) : getDownloadSpeedLabel(which));
                         dialog.dismiss();
                     })
                     .setNegativeButton(Translator.get(Keys.Cancel), null)
@@ -1164,6 +1176,12 @@ public class SettingsActivity {
         if (type == 1) return Translator.get(Keys.Hijri);
         if (type == 2) return Translator.get(Keys.Persian);
         return Translator.get(Keys.Gregorian);
+    }
+
+    private String getDownloadSpeedLabel(int mode) {
+        if (mode == 1) return Translator.get(Keys.SpeedFast);
+        if (mode == 2) return Translator.get(Keys.SpeedUltra);
+        return Translator.get(Keys.SpeedOff);
     }
 
     private LinearLayout.LayoutParams marginLp(int l, int t, int r, int b) {
