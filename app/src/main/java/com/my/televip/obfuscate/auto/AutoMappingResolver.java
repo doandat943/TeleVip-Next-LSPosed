@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 25;
+    private static final int SCHEMA_VERSION = 26;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -668,6 +668,34 @@ public class AutoMappingResolver {
             }
             addField("Theme", "chat_timePaint",
                     scanner.findSingleField(themeDesc, true, "Landroid/text/TextPaint;"));
+
+            String getThemeMethod = null;
+            String themeInfoDesc = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(themeDesc)) {
+                if (m.isStatic && m.paramDescs.length == 1
+                        && "Ljava/lang/String;".equals(m.paramDescs[0])
+                        && m.returnDesc.startsWith("Lorg/telegram/ui/ActionBar/")
+                        && m.getInsnsSize() > 0 && m.getInsnsSize() < 30) {
+                    getThemeMethod = m.name;
+                    themeInfoDesc = m.returnDesc;
+                    break;
+                }
+            }
+            if (getThemeMethod != null && themeInfoDesc != null) {
+                addMethod("Theme", "getTheme", getThemeMethod);
+                String applyAnim = scanner.findSingleMethod(themeDesc, true, "V", themeInfoDesc, "Z", "I", "Landroid/view/View;");
+                if (applyAnim != null) {
+                    addMethod("Theme", "applyThemeAnimated", applyAnim);
+                }
+                String applyDirect = scanner.findSingleMethod(themeDesc, true, "V", themeInfoDesc, "Z", "Z");
+                if (applyDirect != null) {
+                    addMethod("Theme", "applyTheme", applyDirect);
+                }
+                String infoIsDark = scanner.findSingleMethod(themeInfoDesc, false, "Z");
+                if (infoIsDark != null) {
+                    addMethod("ThemeInfo", "isDark", infoIsDark);
+                }
+            }
         }
 
         String shadowCellDesc = findShadowSectionCell(scanner);

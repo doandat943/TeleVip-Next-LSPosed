@@ -42,7 +42,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.my.televip.Configs.ConfigPreferences;
 import com.my.televip.settings.ui.GlassDesign;
 import com.my.televip.virtuals.ActionBar.AlertDialog;
 import com.my.televip.virtuals.ActionBar.Theme;
@@ -54,7 +53,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Edits History bottom sheet following the Re: TeleVIP Settings-matched redesign
+ * Edits History bottom sheet styled to match TeleVip Next Settings
  * using shared {@link GlassDesign} surfaces, segmented tabs, icon badges, and line+word diff.
  */
 final class EditHistorySheet {
@@ -72,10 +71,6 @@ final class EditHistorySheet {
             this.isCurrent = isCurrent;
         }
     }
-
-    private static final String PREF_THEME_MODE = "televip_theme_mode";
-    private static final int THEME_LIGHT = 1;
-    private static final int THEME_DARK = 2;
 
     private static final Pattern WORD_TOKEN_PATTERN = Pattern.compile("\\S+|[ \\t]+");
 
@@ -128,7 +123,7 @@ final class EditHistorySheet {
     static void show(Activity activity, String title, int msgId, List<VersionEntry> chronologicalEntries) {
         if (activity == null || chronologicalEntries == null || chronologicalEntries.isEmpty()) return;
 
-        final boolean light = isEffectiveLight();
+        final boolean light = Theme.isLight();
         final int[] tabState = new int[]{0}; // 0 = History, 1 = Changes
         final boolean[] showUnchangedDiff = new boolean[]{true};
         final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -1082,13 +1077,6 @@ final class EditHistorySheet {
                     .setPositiveButton(safeDone, null)
                     .show();
         }
-    }
-
-    private static boolean isEffectiveLight() {
-        int mode = ConfigPreferences.getInt(PREF_THEME_MODE);
-        if (mode == THEME_LIGHT) return true;
-        if (mode == THEME_DARK) return false;
-        return Theme.isLight();
     }
 
     private static int getNavBarHeight(Context ctx) {

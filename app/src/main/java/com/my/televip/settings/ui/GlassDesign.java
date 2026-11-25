@@ -194,7 +194,7 @@ public final class GlassDesign {
     }
 
     /**
-     * Ambient mesh/aurora backdrop matching the soft radial glow behind Re: TeleVIP's glass cards.
+     * Ambient mesh/aurora backdrop with soft radial glows behind the glass cards.
      */
     private static final class AuroraDrawable extends Drawable {
         private final Palette p;

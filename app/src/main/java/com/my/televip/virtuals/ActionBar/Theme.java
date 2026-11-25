@@ -1,10 +1,19 @@
 package com.my.televip.virtuals.ActionBar;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.text.TextPaint;
+import android.view.View;
 
 import com.my.televip.Class.ClassLoad;
 import com.my.televip.Class.ClassNames;
+import com.my.televip.application.ApplicationLoaderHook;
+import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.Obfuscate;
+import com.my.televip.utils.Utils;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 import de.robv.android.xposed.XposedHelpers;
 
@@ -12,7 +21,7 @@ public class Theme {
 
     public static TextPaint getTextPaint() {
         try {
-            Class<?> themeCls = ClassLoad.getClass(ClassNames.THEME, com.my.televip.utils.Utils.classLoader, false);
+            Class<?> themeCls = ClassLoad.getClass(ClassNames.THEME, Utils.classLoader, false);
             if (themeCls != null) {
                 Object val = XposedHelpers.getStaticObjectField(themeCls, Obfuscate.getFieldName("Theme", "chat_timePaint"));
                 if (val instanceof TextPaint) return (TextPaint) val;
@@ -23,21 +32,179 @@ public class Theme {
 
     public static boolean isLight(){
         try {
-            Class<?> themeCls = ClassLoad.getClass(ClassNames.THEME, com.my.televip.utils.Utils.classLoader, false);
+            Class<?> themeCls = ClassLoad.getClass(ClassNames.THEME, Utils.classLoader, false);
             if (themeCls != null) {
                 String method = Obfuscate.getMethodName("Theme", "isCurrentThemeDark");
-                if (de.robv.android.xposed.XposedHelpers.findMethodExactIfExists(themeCls, method) != null) {
+                if (XposedHelpers.findMethodExactIfExists(themeCls, method) != null) {
                     return !((boolean) XposedHelpers.callStaticMethod(themeCls, method));
                 }
             }
         } catch (Throwable ignored) {}
         try {
-            android.app.Activity act = com.my.televip.utils.Utils.getCurrentActivity();
+            android.app.Activity act = Utils.getCurrentActivity();
             if (act != null) {
                 int night = act.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
                 return night != android.content.res.Configuration.UI_MODE_NIGHT_YES;
             }
         } catch (Throwable ignored) {}
         return true;
+    }
+
+    /**
+     * Switches Telegram's active theme between its configured Day and Night themes.
+     */
+    public static boolean toggleDayNight(View anchorView) {
+        try {
+            Class<?> themeCls = ClassLoad.getClass(ClassNames.THEME, Utils.classLoader, false);
+            if (themeCls == null) return false;
+
+            Method getThemeMethod = findGetThemeMethod(themeCls);
+            if (getThemeMethod == null) return false;
+
+            Context ctx = ApplicationLoaderHook.getApplicationContext();
+            if (ctx == null) ctx = Utils.getCurrentActivity();
+            SharedPreferences prefs = ctx != null ? ctx.getSharedPreferences("themeconfig", Context.MODE_PRIVATE) : null;
+            String dayName = prefs != null ? prefs.getString("lastDayTheme", "Blue") : "Blue";
+            String nightName = prefs != null ? prefs.getString("lastDarkTheme", "Dark Blue") : "Dark Blue";
+
+            Object dayTheme = invokeGetTheme(getThemeMethod, dayName);
+            if (dayTheme == null || isThemeInfoDark(dayTheme)) {
+                dayTheme = invokeGetTheme(getThemeMethod, "Blue");
+                if (dayTheme == null || isThemeInfoDark(dayTheme)) {
+                    dayTheme = invokeGetTheme(getThemeMethod, "Day");
+                }
+            }
+
+            Object nightTheme = invokeGetTheme(getThemeMethod, nightName);
+            if (nightTheme == null || !isThemeInfoDark(nightTheme)) {
+                nightTheme = invokeGetTheme(getThemeMethod, "Dark Blue");
+                if (nightTheme == null || !isThemeInfoDark(nightTheme)) {
+                    nightTheme = invokeGetTheme(getThemeMethod, "Night");
+                }
+            }
+
+            Object targetTheme = isLight() ? nightTheme : dayTheme;
+            if (targetTheme == null) return false;
+
+            Class<?> themeInfoCls = targetTheme.getClass();
+            Method applyAnim = findStaticMethod(
+                    themeCls,
+                    Obfuscate.getMethodName("Theme", "applyThemeAnimated"),
+                    null,
+                    themeInfoCls, boolean.class, int.class, View.class);
+            if (applyAnim != null) {
+                applyAnim.invoke(null, targetTheme, false, -1, anchorView);
+                return true;
+            }
+
+            String applyDirectName = Obfuscate.getMethodName("Theme", "applyTheme");
+            Method applyDirect3 = findStaticMethod(
+                    themeCls, applyDirectName, "applyTheme",
+                    themeInfoCls, boolean.class, boolean.class);
+            if (applyDirect3 != null) {
+                applyDirect3.invoke(null, targetTheme, false, false);
+                return true;
+            }
+
+            Method applyDirect2 = findStaticMethod(
+                    themeCls, applyDirectName, "applyTheme",
+                    themeInfoCls, boolean.class);
+            if (applyDirect2 != null) {
+                applyDirect2.invoke(null, targetTheme, false);
+                return true;
+            }
+        } catch (Throwable t) {
+            Logger.e(t);
+        }
+        return false;
+    }
+
+    private static Method findGetThemeMethod(Class<?> themeCls) {
+        Method m = XposedHelpers.findMethodExactIfExists(
+                themeCls, Obfuscate.getMethodName("Theme", "getTheme"), String.class);
+        if (m == null) {
+            m = XposedHelpers.findMethodExactIfExists(themeCls, "getTheme", String.class);
+        }
+        if (m != null && Modifier.isStatic(m.getModifiers())) {
+            m.setAccessible(true);
+            return m;
+        }
+        for (Method cand : themeCls.getDeclaredMethods()) {
+            if (!Modifier.isStatic(cand.getModifiers())) continue;
+            Class<?>[] params = cand.getParameterTypes();
+            if (params.length == 1 && params[0] == String.class
+                    && cand.getReturnType().getName().startsWith("org.telegram.ui.ActionBar.")) {
+                cand.setAccessible(true);
+                return cand;
+            }
+        }
+        return null;
+    }
+
+    private static Method findStaticMethod(
+            Class<?> cls, String mappedName, String fallbackName, Class<?>... paramTypes) {
+        Method m = null;
+        if (mappedName != null) {
+            m = XposedHelpers.findMethodExactIfExists(cls, mappedName, (Object[]) paramTypes);
+        }
+        if (m == null && fallbackName != null && !fallbackName.equals(mappedName)) {
+            m = XposedHelpers.findMethodExactIfExists(cls, fallbackName, (Object[]) paramTypes);
+        }
+        if (m != null && Modifier.isStatic(m.getModifiers())) {
+            m.setAccessible(true);
+            return m;
+        }
+        for (Method cand : cls.getDeclaredMethods()) {
+            if (!Modifier.isStatic(cand.getModifiers())) continue;
+            Class<?>[] p = cand.getParameterTypes();
+            if (p.length != paramTypes.length) continue;
+            boolean match = true;
+            for (int i = 0; i < p.length; i++) {
+                if (p[i] != paramTypes[i]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                cand.setAccessible(true);
+                return cand;
+            }
+        }
+        return null;
+    }
+
+    private static Object invokeGetTheme(Method getThemeMethod, String name) {
+        if (name == null) return null;
+        try {
+            return getThemeMethod.invoke(null, name);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static boolean isThemeInfoDark(Object themeInfo) {
+        if (themeInfo == null) return false;
+        try {
+            Class<?> cls = themeInfo.getClass();
+            Method m = XposedHelpers.findMethodExactIfExists(cls, Obfuscate.getMethodName("ThemeInfo", "isDark"));
+            if (m == null) {
+                m = XposedHelpers.findMethodExactIfExists(cls, "isDark");
+            }
+            if (m == null) {
+                for (Method cand : cls.getDeclaredMethods()) {
+                    if (!Modifier.isStatic(cand.getModifiers())
+                            && cand.getParameterTypes().length == 0
+                            && cand.getReturnType() == boolean.class) {
+                        m = cand;
+                        break;
+                    }
+                }
+            }
+            if (m != null) {
+                m.setAccessible(true);
+                return (boolean) m.invoke(themeInfo);
+            }
+        } catch (Throwable ignored) {}
+        return false;
     }
 }

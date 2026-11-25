@@ -29,7 +29,6 @@ import com.my.televip.Class.ClassLoad;
 import com.my.televip.Class.ClassNames;
 import com.my.televip.Configs.ConfigItem;
 import com.my.televip.Configs.ConfigManager;
-import com.my.televip.Configs.ConfigPreferences;
 import com.my.televip.base.BaseMethodHook;
 import com.my.televip.hooks.HMethod;
 import com.my.televip.language.Keys;
@@ -51,11 +50,6 @@ import java.util.Map;
 public class SettingsActivity {
 
     public static boolean isSettings;
-
-    private static final String PREF_THEME_MODE = "TeleVipUiThemeMode";
-    private static final int THEME_FOLLOW = 0;
-    private static final int THEME_LIGHT = 1;
-    private static final int THEME_DARK = 2;
 
     private static final int TAB_PRIVACY = 0;
     private static final int TAB_CHATS = 1;
@@ -140,21 +134,29 @@ public class SettingsActivity {
         return true;
     }
 
-    private boolean isEffectiveLight() {
-        int mode = ConfigPreferences.getInt(PREF_THEME_MODE);
-        if (mode == THEME_LIGHT) return true;
-        if (mode == THEME_DARK) return false;
-        return Theme.isLight();
-    }
-
-    private void toggleTheme() {
-        boolean nextLight = !isEffectiveLight();
-        ConfigPreferences.putInt(PREF_THEME_MODE, nextLight ? THEME_LIGHT : THEME_DARK);
+    private void toggleTheme(View anchorView) {
+        boolean wasLight = Theme.isLight();
         hideKeyboard();
-        rebuildUi();
+        boolean switched = Theme.toggleDayNight(anchorView);
+        if (!switched) {
+            return;
+        }
+        boolean nowLight = Theme.isLight();
+        if (nowLight != wasLight) {
+            rebuildUi(nowLight);
+        } else {
+            rebuildUi(!wasLight);
+            if (rootView != null) {
+                rootView.postDelayed(this::rebuildUi, 250);
+            }
+        }
     }
 
     private void rebuildUi() {
+        rebuildUi(Theme.isLight());
+    }
+
+    private void rebuildUi(boolean light) {
         if (rootView == null) return;
         rootView.removeAllViews();
         allTabSections.clear();
@@ -165,7 +167,6 @@ public class SettingsActivity {
         footerCreditView = null;
         emptySearchCard = null;
 
-        final boolean light = isEffectiveLight();
         final GlassDesign.Palette p = GlassDesign.Palette.of(light);
         rootView.setBackground(GlassDesign.createAuroraBackground(p));
 
@@ -260,7 +261,7 @@ public class SettingsActivity {
         themeBtn.setScaleType(ImageView.ScaleType.CENTER);
         themeBtn.setPadding(dp(10), dp(10), dp(10), dp(10));
         themeBtn.setBackground(GlassDesign.createPillRippleOverlay(p.ripple, dp(21)));
-        themeBtn.setOnClickListener(v -> toggleTheme());
+        themeBtn.setOnClickListener(v -> toggleTheme(v));
         actionPill.addView(themeBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         ImageView searchBtn = new ImageView(context);
@@ -854,7 +855,7 @@ public class SettingsActivity {
                 Translator.get(Keys.Persian)
         };
         try {
-            int themeRes = isEffectiveLight()
+            int themeRes = Theme.isLight()
                     ? android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
                     : android.R.style.Theme_DeviceDefault_Dialog_Alert;
             new AlertDialog.Builder(context, themeRes)
