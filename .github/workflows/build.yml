@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -58,3 +60,116 @@ jobs:
           files: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
+
+      - name: Notify Telegram Channel
+        if: github.event_name == 'push'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          python3 - <<'PY'
+          import html
+          import json
+          import os
+          import shutil
+          import subprocess
+          import urllib.request
+
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+          if not token or not chat_id:
+              print("Telegram secrets not configured; skipping notification.")
+              raise SystemExit(0)
+
+          repo = os.environ.get("GITHUB_REPOSITORY", "")
+          ref_name = os.environ.get("GITHUB_REF_NAME", "main")
+          ref_type = os.environ.get("GITHUB_REF_TYPE", "branch")
+          sha = os.environ.get("GITHUB_SHA", "")[:7]
+          run_id = os.environ.get("GITHUB_RUN_ID", "")
+          before = os.environ.get("EVENT_BEFORE", "").strip()
+
+          commits = []
+          if before and set(before) != {"0"}:
+              res = subprocess.run(
+                  ["git", "log", "--pretty=format:%h %s", f"{before}..HEAD"],
+                  capture_output=True, text=True
+              )
+              if res.returncode == 0 and res.stdout.strip():
+                  commits = [line.strip() for line in res.stdout.strip().splitlines() if line.strip()]
+          if not commits:
+              res = subprocess.run(
+                  ["git", "log", "-n", "1", "--pretty=format:%h %s"],
+                  capture_output=True, text=True
+              )
+              if res.returncode == 0 and res.stdout.strip():
+                  commits = [res.stdout.strip()]
+
+          max_items = 8
+          bullet_lines = []
+          for c in commits[:max_items]:
+              parts = c.split(" ", 1)
+              c_hash = html.escape(parts[0])
+              c_msg = html.escape(parts[1]) if len(parts) > 1 else ""
+              bullet_lines.append(f"• <code>{c_hash}</code> {c_msg}")
+          if len(commits) > max_items:
+              bullet_lines.append(f"• ... (+{len(commits) - max_items} more commits)")
+          changes_text = "\n".join(bullet_lines) if bullet_lines else "• Build completed"
+
+          run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
+          release_url = f"https://github.com/{repo}/releases/tag/{ref_name}" if ref_type == "tag" else ""
+
+          header = f"🚀 <b>TeleVip Next Build</b> (<code>{html.escape(ref_name)}</code> @ <code>{html.escape(sha)}</code>)"
+          footer = f'\n\n🔗 <a href="{html.escape(run_url)}">GitHub Actions Run</a>'
+          if release_url:
+              footer += f'  |  <a href="{html.escape(release_url)}">Release</a>'
+
+          caption = f"{header}\n\n<b>Changes:</b>\n{changes_text}{footer}"
+
+          def tg_post_message(text):
+              payload = json.dumps({
+                  "chat_id": chat_id,
+                  "text": text,
+                  "parse_mode": "HTML",
+                  "disable_web_page_preview": True,
+              }).encode("utf-8")
+              req = urllib.request.Request(
+                  f"https://api.telegram.org/bot{token}/sendMessage",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  data = json.loads(resp.read().decode("utf-8"))
+              if not data.get("ok"):
+                  raise RuntimeError(f"Telegram sendMessage failed: {data}")
+              print("Telegram sendMessage ok:", data["result"].get("message_id"))
+
+          apk_src = "app/build/outputs/apk/debug/app-debug.apk"
+          if not os.path.exists(apk_src):
+              tg_post_message(caption[:4096])
+              raise SystemExit(0)
+
+          safe_ref = "".join(ch if ch.isalnum() or ch in "._-" else "-" for ch in ref_name)
+          apk_upload = f"/tmp/TeleVip-Next-{safe_ref}-{sha}.apk"
+          shutil.copyfile(apk_src, apk_upload)
+
+          doc_caption = caption
+          if len(caption) > 1024:
+              tg_post_message(caption[:4096])
+              doc_caption = f"{header}{footer}"
+
+          res = subprocess.run([
+              "curl", "-sS", "-f",
+              "-F", f"chat_id={chat_id}",
+              "-F", "parse_mode=HTML",
+              "-F", f"caption={doc_caption[:1024]}",
+              "-F", f"document=@{apk_upload}",
+              f"https://api.telegram.org/bot{token}/sendDocument",
+          ], capture_output=True, text=True)
+          if res.returncode != 0:
+              raise RuntimeError(f"curl sendDocument failed: {res.stderr}")
+          data = json.loads(res.stdout)
+          if not data.get("ok"):
+              raise RuntimeError(f"Telegram sendDocument failed: {data}")
+          print("Telegram sendDocument ok:", data["result"].get("message_id"))
+          PY
