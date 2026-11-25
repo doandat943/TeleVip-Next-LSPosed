@@ -40,13 +40,6 @@ public class Theme {
                 }
             }
         } catch (Throwable ignored) {}
-        try {
-            android.app.Activity act = Utils.getCurrentActivity();
-            if (act != null) {
-                int night = act.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-                return night != android.content.res.Configuration.UI_MODE_NIGHT_YES;
-            }
-        } catch (Throwable ignored) {}
         return true;
     }
 
@@ -129,15 +122,6 @@ public class Theme {
             m.setAccessible(true);
             return m;
         }
-        for (Method cand : themeCls.getDeclaredMethods()) {
-            if (!Modifier.isStatic(cand.getModifiers())) continue;
-            Class<?>[] params = cand.getParameterTypes();
-            if (params.length == 1 && params[0] == String.class
-                    && cand.getReturnType().getName().startsWith("org.telegram.ui.ActionBar.")) {
-                cand.setAccessible(true);
-                return cand;
-            }
-        }
         return null;
     }
 
@@ -153,22 +137,6 @@ public class Theme {
         if (m != null && Modifier.isStatic(m.getModifiers())) {
             m.setAccessible(true);
             return m;
-        }
-        for (Method cand : cls.getDeclaredMethods()) {
-            if (!Modifier.isStatic(cand.getModifiers())) continue;
-            Class<?>[] p = cand.getParameterTypes();
-            if (p.length != paramTypes.length) continue;
-            boolean match = true;
-            for (int i = 0; i < p.length; i++) {
-                if (p[i] != paramTypes[i]) {
-                    match = false;
-                    break;
-                }
-            }
-            if (match) {
-                cand.setAccessible(true);
-                return cand;
-            }
         }
         return null;
     }
@@ -189,16 +157,6 @@ public class Theme {
             Method m = XposedHelpers.findMethodExactIfExists(cls, Obfuscate.getMethodName("ThemeInfo", "isDark"));
             if (m == null) {
                 m = XposedHelpers.findMethodExactIfExists(cls, "isDark");
-            }
-            if (m == null) {
-                for (Method cand : cls.getDeclaredMethods()) {
-                    if (!Modifier.isStatic(cand.getModifiers())
-                            && cand.getParameterTypes().length == 0
-                            && cand.getReturnType() == boolean.class) {
-                        m = cand;
-                        break;
-                    }
-                }
             }
             if (m != null) {
                 m.setAccessible(true);

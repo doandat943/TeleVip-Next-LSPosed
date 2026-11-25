@@ -15,7 +15,6 @@ public class ClassNames {
     public static final String NOTIFICATION_CENTER = "org.telegram.messenger.NotificationCenter";
     public static final String LAUNCH_ACTIVITY = "org.telegram.ui.LaunchActivity";
     public static final String ALERT_DIALOG_BUILDER = "org.telegram.ui.ActionBar.AlertDialog$Builder";
-    public static final String TEXT_SETTINGS_CELL = "org.telegram.ui.Cells.TextSettingsCell";
     public static final String TLRPC_ENCRYPTED_CHAT = "org.telegram.tgnet.TLRPC$EncryptedChat";
     public static final String TL_OBJECT = "org.telegram.tgnet.TLObject";
     public static final String STORY_ITEM_HOLDER = "org.telegram.ui.Stories.PeerStoriesView$StoryItemHolder";
@@ -45,13 +44,7 @@ public class ClassNames {
     public static final String TLRPC_CHAT = "org.telegram.tgnet.TLRPC$Chat";
     public static final String CHAT_MESSAGE_CELL_DELEGATE = "org.telegram.ui.ChatActivity$ChatMessageCellDelegate";
     public static final String FILE_LOADER = "org.telegram.messenger.FileLoader";
-    public static final String SETTINGS_ADAPTER_LIST_ADAPTER = "com.televip.SettingsAdapter.SettingsAdapter$ListAdapter";
     public static final String ANDROID_UTILITIES = "org.telegram.messenger.AndroidUtilities";
-    public static final String SETTINGS_ADAPTER_RECYCLER_LIST_VIEW = "com.televip.SettingsAdapter.SettingsAdapter$RecyclerListView";
-    public static final String SETTINGS_ADAPTER = "com.televip.SettingsAdapter.SettingsAdapter";
-    public static final String TEXT_CHECK_CELL = "org.telegram.ui.Cells.TextCheckCell";
-    public static final String SHADOW_SECTION_CELL = "org.telegram.ui.Cells.ShadowSectionCell";
-    public static final String HEADER_CELL = "org.telegram.ui.Cells.HeaderCell";
     public static final String FAST_DATE_FORMAT = "org.telegram.messenger.time.FastDateFormat";
     public static final String BROWSER = "org.telegram.messenger.browser.Browser";
     public static final String ACTION_BAR_MENU_ON_ITEM_CLICK = "org.telegram.ui.ActionBar.ActionBar$ActionBarMenuOnItemClick";

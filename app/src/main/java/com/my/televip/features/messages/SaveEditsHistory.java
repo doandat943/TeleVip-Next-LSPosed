@@ -625,14 +625,11 @@ public class SaveEditsHistory {
 
         String title = Translator.get(Keys.EditsHistory);
         if (TextUtils.isEmpty(title)) title = "Edits History";
-        String doneText = Translator.get(Keys.Done);
-        if (TextUtils.isEmpty(doneText)) doneText = "Done";
 
         try {
             EditHistorySheet.show(activity, title, msgId, entries);
         } catch (Throwable t) {
             Logger.e(t);
-            EditHistorySheet.showPlainFallback(activity, title, doneText, entries);
         }
     }
 

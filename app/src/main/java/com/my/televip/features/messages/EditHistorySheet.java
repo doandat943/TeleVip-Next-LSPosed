@@ -24,7 +24,6 @@ import android.os.Looper;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StrikethroughSpan;
@@ -45,7 +44,6 @@ import android.widget.TextView;
 import com.my.televip.language.Keys;
 import com.my.televip.language.Translator;
 import com.my.televip.settings.ui.GlassDesign;
-import com.my.televip.virtuals.ActionBar.AlertDialog;
 import com.my.televip.virtuals.ActionBar.Theme;
 
 import java.util.ArrayList;
@@ -263,7 +261,7 @@ final class EditHistorySheet {
         topBar.addView(titleCol, titleColLp);
 
         TextView titleTv = new TextView(activity);
-        titleTv.setText(!TextUtils.isEmpty(title) ? title : "Edits History");
+        titleTv.setText(!TextUtils.isEmpty(title) ? title : Translator.get(Keys.EditsHistory));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f);
         titleTv.setTypeface(mediumTf);
@@ -276,12 +274,10 @@ final class EditHistorySheet {
         String subStr;
         if (msgId > 0) {
             String fmtKey = total == 1 ? Keys.MessageVersionSummaryOne : Keys.MessageVersionSummaryMany;
-            String defFmt = total == 1 ? "Message #%1$d  ·  %2$d version" : "Message #%1$d  ·  %2$d versions";
-            subStr = String.format(Translator.getOrDefault(fmtKey, defFmt), msgId, total);
+            subStr = String.format(Translator.get(fmtKey), msgId, total);
         } else {
             String fmtKey = total == 1 ? Keys.VersionsCountOne : Keys.VersionsCountMany;
-            String defFmt = total == 1 ? "%d version" : "%d versions";
-            subStr = String.format(Translator.getOrDefault(fmtKey, defFmt), total);
+            subStr = String.format(Translator.get(fmtKey), total);
         }
         TextView subTv = new TextView(activity);
         subTv.setText(subStr);
@@ -306,8 +302,8 @@ final class EditHistorySheet {
             tabBar = new GlassDesign.SegmentedTabBar(
                     activity,
                     new String[]{
-                            Translator.getOrDefault(Keys.HistoryTab, "History"),
-                            Translator.getOrDefault(Keys.ChangesTab, "Changes")
+                            Translator.get(Keys.HistoryTab),
+                            Translator.get(Keys.ChangesTab)
                     },
                     p, tabState[0]);
             LinearLayout.LayoutParams tabLp = new LinearLayout.LayoutParams(
@@ -392,14 +388,14 @@ final class EditHistorySheet {
                     0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
             TextView ft = new TextView(activity);
-            ft.setText(Translator.getOrDefault(Keys.ShowUnchangedLines, "Show unchanged lines"));
+            ft.setText(Translator.get(Keys.ShowUnchangedLines));
             ft.setTextColor(p.textPrimary);
             ft.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
             ft.setTypeface(mediumTf);
             textCol.addView(ft);
 
             TextView fs = new TextView(activity);
-            fs.setText(Translator.getOrDefault(Keys.HideContextLines, "Hide context lines to focus on diffs"));
+            fs.setText(Translator.get(Keys.HideContextLines));
             fs.setTextColor(p.textMuted);
             fs.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
             textCol.addView(fs);
@@ -442,7 +438,7 @@ final class EditHistorySheet {
         ccHeader.addView(ccBadge, ccbLp);
 
         TextView ccTitle = new TextView(activity);
-        ccTitle.setText(Translator.getOrDefault(Keys.CurrentVersion, "Current"));
+        ccTitle.setText(Translator.get(Keys.CurrentVersion));
         ccTitle.setTextColor(p.accentBlue);
         ccTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
         ccTitle.setTypeface(boldTf);
@@ -452,7 +448,7 @@ final class EditHistorySheet {
         ccHeader.addView(ccTitle, cctLp);
 
         TextView latestPill = new TextView(activity);
-        latestPill.setText(Translator.getOrDefault(Keys.LatestBadge, "Latest"));
+        latestPill.setText(Translator.get(Keys.LatestBadge));
         latestPill.setTextColor(dc.copyText);
         latestPill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
         latestPill.setTypeface(boldTf);
@@ -463,11 +459,11 @@ final class EditHistorySheet {
 
         ccHeader.addView(new View(activity), new LinearLayout.LayoutParams(0, 1, 1f));
 
-        final String copyLabel = Translator.getOrDefault(Keys.CopyAction, "Copy");
+        final String copyLabel = Translator.get(Keys.CopyAction);
         View ccCopy = buildCopyPillButton(activity, dc, p.ripple, copyLabel, copyGlyph(dc.copyText), v -> {
             copyToClipboard(activity, currentEntry.text);
             showFloatingToast(mainHandler, toastView, hideToastHolder,
-                    Translator.getOrDefault(Keys.CopiedCurrent, "Copied Current"));
+                    Translator.get(Keys.CopiedCurrent));
         });
         ccHeader.addView(ccCopy);
 
@@ -499,8 +495,7 @@ final class EditHistorySheet {
             CharSequence diff = buildLineWordDiff(prevToCurrent.text, currentEntry.text, dc, p, showUnchangedDiff[0]);
             if (TextUtils.isEmpty(diff)) {
                 currentTextTv.setTextColor(p.textMuted);
-                currentTextTv.setText(Translator.getOrDefault(
-                        Keys.NoTextChangesPrev, "No text changes from previous version"));
+                currentTextTv.setText(Translator.get(Keys.NoTextChangesPrev));
             } else {
                 currentTextTv.setText(diff);
             }
@@ -532,7 +527,7 @@ final class EditHistorySheet {
             pcHeader.addView(pcBadge, pcbLp);
 
             TextView pcTitle = new TextView(activity);
-            pcTitle.setText(Translator.getOrDefault(Keys.PreviousEdits, "Previous Edits"));
+            pcTitle.setText(Translator.get(Keys.PreviousEdits));
             pcTitle.setTextColor(p.accentBlue);
             pcTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
             pcTitle.setTypeface(boldTf);
@@ -540,7 +535,7 @@ final class EditHistorySheet {
                     0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
             View copyAllBtn = buildCopyPillButton(activity, dc, p.ripple,
-                    Translator.getOrDefault(Keys.CopyAllAction, "Copy all"),
+                    Translator.get(Keys.CopyAllAction),
                     copyCheckGlyph(dc.copyText), v -> {
                 StringBuilder all = new StringBuilder();
                 for (int r = total - 1; r >= 0; r--) {
@@ -555,7 +550,7 @@ final class EditHistorySheet {
                 }
                 copyToClipboard(activity, all.toString());
                 showFloatingToast(mainHandler, toastView, hideToastHolder,
-                        String.format(Translator.getOrDefault(Keys.CopiedAllVersions, "Copied all %d versions"), total));
+                        String.format(Translator.get(Keys.CopiedAllVersions), total));
             });
             pcHeader.addView(copyAllBtn);
 
@@ -607,7 +602,7 @@ final class EditHistorySheet {
                 View rowCopy = buildCopyPillButton(activity, dc, p.ripple, copyLabel, copyGlyph(dc.copyText), v -> {
                     copyToClipboard(activity, entry.text);
                     showFloatingToast(mainHandler, toastView, hideToastHolder,
-                            String.format(Translator.getOrDefault(Keys.CopiedItem, "Copied %s"), rowLabel));
+                            String.format(Translator.get(Keys.CopiedItem), rowLabel));
                 });
                 metaRow.addView(rowCopy);
 
@@ -620,7 +615,7 @@ final class EditHistorySheet {
                     CharSequence diff = buildLineWordDiff(prevEntry.text, entry.text, dc, p, showUnchangedDiff[0]);
                     if (TextUtils.isEmpty(diff)) {
                         bodyTv.setTextColor(p.textMuted);
-                        bodyTv.setText(Translator.getOrDefault(Keys.NoTextChanges, "No text changes"));
+                        bodyTv.setText(Translator.get(Keys.NoTextChanges));
                     } else {
                         bodyTv.setText(diff);
                     }
@@ -633,8 +628,7 @@ final class EditHistorySheet {
 
         // Muted Settings-Style Footer Note
         TextView noteTv = new TextView(activity);
-        noteTv.setText(Translator.getOrDefault(Keys.EditHistoryFooterNote,
-                "Tap Copy on any version to save it to your clipboard, or switch to Changes to inspect word-level edits."));
+        noteTv.setText(Translator.get(Keys.EditHistoryFooterNote));
         noteTv.setTextColor(p.textMuted);
         noteTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
         noteTv.setLineSpacing(0f, 1.35f);
@@ -645,9 +639,9 @@ final class EditHistorySheet {
     }
 
     private static String formatVersionLabel(VersionEntry entry, int chronologicalIndex) {
-        if (entry.isCurrent) return Translator.getOrDefault(Keys.CurrentVersion, "Current");
-        if (chronologicalIndex == 0) return Translator.getOrDefault(Keys.OriginalVersion, "Original");
-        return String.format(Translator.getOrDefault(Keys.EditVersionNum, "Edit #%d"), entry.versionNumber);
+        if (entry.isCurrent) return Translator.get(Keys.CurrentVersion);
+        if (chronologicalIndex == 0) return Translator.get(Keys.OriginalVersion);
+        return String.format(Translator.get(Keys.EditVersionNum), entry.versionNumber);
     }
 
     private static View buildCopyPillButton(
@@ -1057,50 +1051,6 @@ final class EditHistorySheet {
         @Override public void setAlpha(int alpha) {}
         @Override public void setColorFilter(ColorFilter colorFilter) {}
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
-    }
-
-    static void showPlainFallback(Activity activity, String title, String doneText, List<VersionEntry> entries) {
-        if (activity == null) return;
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < entries.size(); i++) {
-            VersionEntry e = entries.get(i);
-            if (i > 0) builder.append("\n\n");
-            String label = e.isCurrent
-                    ? Translator.getOrDefault(Keys.CurrentVersion, "Current")
-                    : String.format(Translator.getOrDefault(Keys.EditVersionNum, "Edit #%d"), e.versionNumber);
-            builder.append(label);
-            if (!TextUtils.isEmpty(e.formattedDate)) {
-                builder.append(" (").append(e.formattedDate).append(")");
-            }
-            builder.append("\n").append(e.text);
-        }
-
-        TextView textView = new TextView(activity);
-        textView.setText(builder.toString().trim());
-        textView.setPadding(48, 32, 48, 32);
-        textView.setTextSize(15);
-        textView.setTextColor(Theme.isLight() ? Color.BLACK : Color.WHITE);
-        textView.setMovementMethod(new ScrollingMovementMethod());
-        textView.setTextIsSelectable(true);
-
-        ScrollView scrollView = new ScrollView(activity);
-        scrollView.addView(textView);
-
-        String safeTitle = !TextUtils.isEmpty(title) ? title : "Edits History";
-        String safeDone = !TextUtils.isEmpty(doneText) ? doneText : "Done";
-        try {
-            AlertDialog alertDialog = new AlertDialog(activity);
-            alertDialog.setTitle(safeTitle);
-            alertDialog.setView(scrollView);
-            alertDialog.setPositiveButton(safeDone, null);
-            alertDialog.show();
-        } catch (Throwable ignored) {
-            new android.app.AlertDialog.Builder(activity)
-                    .setTitle(safeTitle)
-                    .setView(scrollView)
-                    .setPositiveButton(safeDone, null)
-                    .show();
-        }
     }
 
     private static int getNavBarHeight(Context ctx) {

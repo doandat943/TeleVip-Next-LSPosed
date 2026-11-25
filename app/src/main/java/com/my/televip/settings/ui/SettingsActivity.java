@@ -40,16 +40,14 @@ import com.my.televip.language.Translator;
 import com.my.televip.logging.Logger;
 import com.my.televip.obfuscate.Obfuscate;
 import com.my.televip.settings.controller.SettingsController;
+import com.my.televip.utils.DialogUtils;
 import com.my.televip.utils.Utils;
 import com.my.televip.virtuals.ActionBar.Theme;
 import com.my.televip.virtuals.messenger.browser.Browser;
-import com.my.televip.virtuals.ui.Components.RecyclerListView;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class SettingsActivity {
 
@@ -60,44 +58,7 @@ public class SettingsActivity {
     private static final int TAB_APPEARANCE = 2;
     private static final int TAB_TOOLS = 3;
 
-    private static final Map<String, String> SUBTITLE_DEFAULTS = new HashMap<>();
-
-    static {
-        SUBTITLE_DEFAULTS.put(Keys.HideSeen, "Read messages without sending read receipts");
-        SUBTITLE_DEFAULTS.put(Keys.HideSeenPrivateChat, "Hide read receipts in private chats");
-        SUBTITLE_DEFAULTS.put(Keys.HideSeenChannel, "Hide read receipts in channels and groups");
-        SUBTITLE_DEFAULTS.put(Keys.MarkReadAfterSend, "With 'Seen' hidden, a chat is still marked as read once you reply or react in it");
-        SUBTITLE_DEFAULTS.put(Keys.HideTyping, "Others won't see that you are typing");
-        SUBTITLE_DEFAULTS.put(Keys.HideStoryView, "Watch stories without appearing in their viewers list");
-        SUBTITLE_DEFAULTS.put(Keys.HidePhone, "Hides your own phone number across the app, handy for screenshots");
-        SUBTITLE_DEFAULTS.put(Keys.HideOnline, "Stay offline while browsing without losing others' exact Last Seen. Tap the note below for details");
-        SUBTITLE_DEFAULTS.put(Keys.DisableStories, "Hides the stories bar from the chat list");
-        SUBTITLE_DEFAULTS.put(Keys.ShowDeletedMessages, "Keeps messages others delete and marks them as deleted");
-        SUBTITLE_DEFAULTS.put(Keys.ShowMessageID, "Shows the ID of each message in the chat");
-        SUBTITLE_DEFAULTS.put(Keys.SaveEditsHistory, "Keeps earlier versions of edited messages so you can look back at them");
-        SUBTITLE_DEFAULTS.put(Keys.DownloadSpeed, "Increases parallel connection throughput for faster media downloads");
-        SUBTITLE_DEFAULTS.put(Keys.SecretMediaSave, "Allows saving self-destructing photos and videos");
-        SUBTITLE_DEFAULTS.put(Keys.PreventMedia, "Keeps disappearing secret media visible after viewing");
-        SUBTITLE_DEFAULTS.put(Keys.EnableSavingStories, "Enables saving stories directly to your device");
-        SUBTITLE_DEFAULTS.put(Keys.EnableVoiceMessageSaving, "Save voice messages directly as audio files");
-        SUBTITLE_DEFAULTS.put(Keys.HidePinnedMessages, "Hides the pinned message bar at the top of chats");
-        SUBTITLE_DEFAULTS.put(Keys.DisableChannelSwipeBack, "Disables swiping left/right to jump between channels");
-        SUBTITLE_DEFAULTS.put(Keys.DisableProfileSwipeBack, "Prevents accidental swipe-back gestures on profile screens");
-        SUBTITLE_DEFAULTS.put(Keys.HideProxySponsor, "Removes the sponsored channel entry when connected via proxy");
-        SUBTITLE_DEFAULTS.put(Keys.ShowUserID, "Shows numeric Telegram user IDs on profile pages");
-        SUBTITLE_DEFAULTS.put(Keys.Calendar, "Display Hijri or Persian dates in chat headers and timestamps");
-        SUBTITLE_DEFAULTS.put(Keys.RemovesContentSaving, "Forward, copy and save from chats and channels that restrict it");
-        SUBTITLE_DEFAULTS.put(Keys.SayWhereCopyCameFrom, "Add a clickable \"Forwarded from\" header linking to the sender and original message when copying from restricted chats");
-        SUBTITLE_DEFAULTS.put(Keys.TelegramPremium, "Unlocks local Telegram Premium features on this device only");
-        SUBTITLE_DEFAULTS.put(Keys.DisableNumberRounding, "Shows exact counts, for example 5300 instead of 5.3K");
-        SUBTITLE_DEFAULTS.put(Keys.HideUpdateApp, "Suppresses in-app Telegram client update prompts");
-        SUBTITLE_DEFAULTS.put(Keys.FixTLError, "Hides occasional 'TL error' pop-ups shown by the client");
-        SUBTITLE_DEFAULTS.put(Keys.DeveloperChannel, "t.me/televipnext");
-        SUBTITLE_DEFAULTS.put(Keys.RestartApp, "Applies the settings marked 'Restart required'");
-    }
-
     private final Context context;
-    public RecyclerListView listView;
 
     private static final int TAB_COUNT = 4;
 
@@ -290,7 +251,7 @@ public class SettingsActivity {
         normalHeaderGroup.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         TextView titleTv = new TextView(context);
-        titleTv.setText(Translator.getOrDefault(Keys.SettingsTitle, "TeleVip Next"));
+        titleTv.setText(Translator.get(Keys.SettingsTitle));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18.5f);
         titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
@@ -349,7 +310,7 @@ public class SettingsActivity {
         searchPill.setPadding(dp(16), 0, dp(16), 0);
 
         searchInput = new EditText(context);
-        searchInput.setHint(Translator.getOrDefault(Keys.SearchSettings, "Search settings"));
+        searchInput.setHint(Translator.get(Keys.SearchSettings));
         searchInput.setHintTextColor(p.textSecondary);
         searchInput.setTextColor(p.textPrimary);
         searchInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
@@ -392,10 +353,10 @@ public class SettingsActivity {
 
         // Segmented Tab Bar
         String[] tabTitles = new String[]{
-                Translator.getOrDefault(Keys.TabPrivacy, "Privacy"),
-                Translator.getOrDefault(Keys.TabChats, "Chats"),
-                Translator.getOrDefault(Keys.TabAppearance, "Appearance"),
-                Translator.getOrDefault(Keys.TabTools, "Tools")
+                Translator.get(Keys.TabPrivacy),
+                Translator.get(Keys.TabChats),
+                Translator.get(Keys.TabAppearance),
+                Translator.get(Keys.TabTools)
         };
         tabBar = new GlassDesign.SegmentedTabBar(context, tabTitles, p, currentTab);
         tabBar.setOnTabSelectedListener(index -> {
@@ -519,7 +480,7 @@ public class SettingsActivity {
         emptySearchCard.setPadding(dp(20), dp(24), dp(20), dp(24));
         emptySearchCard.setGravity(Gravity.CENTER);
         TextView emptyTv = new TextView(context);
-        emptyTv.setText(Translator.getOrDefault(Keys.NoMatchingSettings, "No matching settings found"));
+        emptyTv.setText(Translator.get(Keys.NoMatchingSettings));
         emptyTv.setTextColor(p.textSecondary);
         emptyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         emptyTv.setGravity(Gravity.CENTER);
@@ -659,7 +620,7 @@ public class SettingsActivity {
             item.run();
         });
         row.setOnLongClickListener(v -> {
-            SettingsAdapter.playAudio(context);
+            playAudio(context);
             return true;
         });
 
@@ -1082,15 +1043,9 @@ public class SettingsActivity {
     }
 
     private String buildSubtitleText(ConfigItem item) {
-        String key = item.getKey();
-        String desc = Translator.getOrDefault(key + "Desc", null);
+        String desc = Translator.getOrDefault(item.getKey() + "Desc", null);
         if (desc == null || desc.isEmpty()) {
             desc = item.getValue();
-            if (desc == null || desc.isEmpty()) {
-                desc = SUBTITLE_DEFAULTS.get(key);
-            } else if (Keys.DisableNumberRounding.equals(key)) {
-                desc = "Shows exact counts, for example " + desc;
-            }
         }
         if (item.isRestartRequired()) {
             String restartNote = Translator.get(Keys.RestartRequired);
@@ -1100,6 +1055,15 @@ public class SettingsActivity {
             return restartNote;
         }
         return desc;
+    }
+
+    private static void playAudio(Context context) {
+        if (Audio.playing) {
+            Audio.stop();
+        } else {
+            Audio.start();
+            DialogUtils.showQuranAlert(context);
+        }
     }
 
     private Drawable createSectionBadge(String headerKey) {

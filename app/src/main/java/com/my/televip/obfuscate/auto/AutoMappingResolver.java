@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 31;
+    private static final int SCHEMA_VERSION = 32;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -750,11 +750,6 @@ public class AutoMappingResolver {
             }
         }
 
-        String shadowCellDesc = findShadowSectionCell(scanner);
-        if (shadowCellDesc != null) {
-            addClass(ClassNames.SHADOW_SECTION_CELL, shadowCellDesc);
-        }
-
         // 5. Signature-based core classes (NotificationCenter, AndroidUtilities, ActionBarMenuOnItemClick)
         String notifCenterDesc = findNotificationCenter(scanner);
         if (notifCenterDesc != null) {
@@ -981,10 +976,7 @@ public class AutoMappingResolver {
         // 6. SettingsActivity, SettingCell$Factory, UItem
         resolveSettingsClasses(scanner);
 
-        // 7. Settings UI Cells (TextCheckCell, TextSettingsCell, HeaderCell)
-        resolveCells(scanner);
-
-        // 8. AlertDialog$Builder & OnButtonClickListener
+        // 7. AlertDialog$Builder & OnButtonClickListener
         resolveAlertDialog(scanner);
 
         // Serialize to JSON
@@ -1723,100 +1715,6 @@ public class AutoMappingResolver {
         }
     }
 
-    private void resolveCells(DexScanner scanner) {
-        // TextCheckCell: has (CharSequence, Z, Z) -> V and (CharSequence, String, Z, Z, Z) -> V, plus (Z) -> V (setChecked)
-        final String[] tccSetAndCheck = new String[1];
-        final String[] tccSetAndValAndCheck = new String[1];
-        String tccDesc = scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) -> {
-            String setCheck = null;
-            String setValCheck = null;
-            int textViews = 0;
-            for (DexScanner.FieldInfo f : fields) {
-                if (!f.isStatic && "Landroid/widget/TextView;".equals(f.typeDesc)) textViews++;
-            }
-            if (textViews < 1) return false;
-            for (DexScanner.MethodInfo m : methods) {
-                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 3
-                        && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])
-                        && "Z".equals(m.paramDescs[1]) && "Z".equals(m.paramDescs[2])) {
-                    setCheck = m.name;
-                }
-                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 5
-                        && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])
-                        && "Ljava/lang/String;".equals(m.paramDescs[1])
-                        && "Z".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3]) && "Z".equals(m.paramDescs[4])) {
-                    setValCheck = m.name;
-                }
-            }
-            if (setCheck != null && setValCheck != null) {
-                tccSetAndCheck[0] = setCheck;
-                tccSetAndValAndCheck[0] = setValCheck;
-                return true;
-            }
-            return false;
-        });
-        if (tccDesc != null) {
-            addClass(ClassNames.TEXT_CHECK_CELL, tccDesc);
-            addMethod("TextCheckCell", "setTextAndCheck", tccSetAndCheck[0]);
-            addMethod("TextCheckCell", "setTextAndValueAndCheck", tccSetAndValAndCheck[0]);
-            String checkedM = scanner.findSingleMethod(tccDesc, false, "V", "Z");
-            if (checkedM != null) addMethod("TextCheckCell", "setChecked", checkedM);
-            String isCheckedM = scanner.findSingleMethod(tccDesc, false, "Z");
-            if (isCheckedM != null) addMethod("TextCheckCell", "isChecked", isCheckedM);
-            addField("TextCheckCell", "textView", scanner.findSingleField(tccDesc, false, "Landroid/widget/TextView;"));
-        }
-
-        // TextSettingsCell: has (CharSequence, Z) -> V and (CharSequence, CharSequence, Z, Z) -> V
-        final String[] tscSetText = new String[1];
-        final String[] tscSetTextAndVal = new String[1];
-        String tscDesc = scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) -> {
-            String st = null, stv = null;
-            for (DexScanner.MethodInfo m : methods) {
-                if (!m.isStatic && "V".equals(m.returnDesc)) {
-                    if (m.paramDescs.length == 2 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])) {
-                        st = m.name;
-                    } else if (m.paramDescs.length == 4 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])
-                            && "Ljava/lang/CharSequence;".equals(m.paramDescs[1]) && "Z".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3])) {
-                        stv = m.name;
-                    }
-                }
-            }
-            if (st != null && stv != null) {
-                tscSetText[0] = st;
-                tscSetTextAndVal[0] = stv;
-                return true;
-            }
-            return false;
-        });
-        if (tscDesc != null) {
-            addClass(ClassNames.TEXT_SETTINGS_CELL, tscDesc);
-            addMethod("TextSettingsCell", "setText", tscSetText[0]);
-            addMethod("TextSettingsCell", "setTextAndValue", tscSetTextAndVal[0]);
-            addField("TextSettingsCell", "textView", scanner.findSingleField(tscDesc, false, "Landroid/widget/TextView;"));
-        }
-
-        // HeaderCell: has (CharSequence) -> V, <init>(Context) -> V, and < 30 methods (no (CharSequence, Z)V)
-        String hcDesc = scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) -> {
-            if (methods.size() >= 30) return false;
-            boolean hasSetText = false, hasCtxInit = false, hasTwoArg = false;
-            for (DexScanner.MethodInfo m : methods) {
-                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])) {
-                    hasSetText = true;
-                }
-                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 2 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])) {
-                    hasTwoArg = true;
-                }
-                if ("<init>".equals(m.name) && m.paramDescs.length == 1 && "Landroid/content/Context;".equals(m.paramDescs[0])) {
-                    hasCtxInit = true;
-                }
-            }
-            return hasSetText && hasCtxInit && !hasTwoArg;
-        });
-        if (hcDesc != null) {
-            addClass(ClassNames.HEADER_CELL, hcDesc);
-        }
-    }
-
     private static String findTheme(DexScanner scanner) {
         return scanner.findClassByPredicate("Lorg/telegram/ui/ActionBar/", (desc, fields, methods) -> {
             int staticInts = 0;
@@ -1840,26 +1738,6 @@ public class AutoMappingResolver {
             }
         }
         return best;
-    }
-
-    private static String findShadowSectionCell(DexScanner scanner) {
-        return scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) -> {
-            if (methods.size() > 10 || fields.size() > 6) return false;
-            boolean hasCtxInit = false, hasCtxIIInit = false, hasOnMeasure = false, hasSetSize = false;
-            for (DexScanner.MethodInfo m : methods) {
-                if ("<init>".equals(m.name) && m.paramDescs.length == 1 && "Landroid/content/Context;".equals(m.paramDescs[0])) {
-                    hasCtxInit = true;
-                } else if ("<init>".equals(m.name) && m.paramDescs.length == 3 && "Landroid/content/Context;".equals(m.paramDescs[0])
-                        && "I".equals(m.paramDescs[1]) && "I".equals(m.paramDescs[2])) {
-                    hasCtxIIInit = true;
-                } else if ("onMeasure".equals(m.name)) {
-                    hasOnMeasure = true;
-                } else if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1 && "I".equals(m.paramDescs[0])) {
-                    hasSetSize = true;
-                }
-            }
-            return hasCtxInit && hasCtxIIInit && hasOnMeasure && hasSetSize;
-        });
     }
 
     private void resolveAlertDialog(DexScanner scanner) {
