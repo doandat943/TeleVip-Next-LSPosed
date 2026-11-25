@@ -2,6 +2,7 @@ package com.my.televip.Configs;
 
 import com.my.televip.Clients.ClientManager;
 import com.my.televip.Clients.Telegraph;
+import com.my.televip.features.ui.AlwaysShowProxy;
 import com.my.televip.features.ui.DisableChannelSwipeBack;
 import com.my.televip.features.ui.DisableNumberRounding;
 import com.my.televip.features.ui.DisableProfileSwipeBack;
@@ -90,6 +91,7 @@ public class ConfigManager {
     public static ConfigItem showUserID;
     public static ConfigItem customCalendar;
     public static ConfigItem showTimeSeconds;
+    public static ConfigItem alwaysShowProxy;
 
     // Other Features
     public static ConfigItem otherFeatures;
@@ -254,6 +256,12 @@ public class ConfigManager {
             items.add(customCalendar);
             showTimeSeconds = new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init);
             items.add(showTimeSeconds);
+            if (!ConfigPreferences.contains(Keys.AlwaysShowProxy + "Int")
+                    && ConfigPreferences.getBoolean(Keys.AlwaysShowProxy)) {
+                ConfigPreferences.putInt(Keys.AlwaysShowProxy + "Int", AlwaysShowProxy.MODE_TOP_BAR);
+            }
+            alwaysShowProxy = new ConfigItem(ConfigItem.TEXT, Keys.AlwaysShowProxy, false, AlwaysShowProxy::init);
+            items.add(alwaysShowProxy);
         }
 
         items.add(shadows);
@@ -324,6 +332,7 @@ public class ConfigManager {
                 FeatureInitializer.init();
                 CopyNameHook.init();
                 EditOnlineTextView.init();
+                AlwaysShowProxy.init();
             }
             AlwaysSaveMedia.init();
             ShowDeletedMessages.initMenuHooks();

@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "Código fuente, reporte de errores y pull requests",
   "CreditsCopiedInfo": "Información de versión y cliente copiada",
   "ShowTimeSeconds": "Mostrar segundos",
-  "ShowTimeSecondsDesc": "Muestra los segundos en las horas de toda la app (14:32 → 14:32:05)"
+  "ShowTimeSecondsDesc": "Muestra los segundos en las horas de toda la app (14:32 → 14:32:05)",
+  "AlwaysShowProxy": "Mostrar siempre Proxy",
+  "AlwaysShowProxyDesc": "Elige dónde mantener visible el acceso directo de Proxy cuando está desactivado",
+  "ProxyDisplayOff": "Desactivado",
+  "ProxyDisplayMenu": "En el menú (⋮)",
+  "ProxyDisplayTopBar": "Barra superior"
 }

@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "کد منبع، گزارش باگ و مشارکت‌ها",
   "CreditsCopiedInfo": "اطلاعات نسخه و کلاینت کپی شد",
   "ShowTimeSeconds": "نمایش ثانیه",
-  "ShowTimeSecondsDesc": "نمایش ثانیه در زمان‌ها در سراسر برنامه (14:32 → 14:32:05)"
+  "ShowTimeSecondsDesc": "نمایش ثانیه در زمان‌ها در سراسر برنامه (14:32 → 14:32:05)",
+  "AlwaysShowProxy": "نمایش همیشگی پروکسی",
+  "AlwaysShowProxyDesc": "محل نمایش همیشگی میانبر پروکسی را هنگام خاموش بودن آن انتخاب کنید",
+  "ProxyDisplayOff": "خاموش",
+  "ProxyDisplayMenu": "در منو (⋮)",
+  "ProxyDisplayTopBar": "نوار بالا"
 }

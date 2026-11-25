@@ -871,6 +871,7 @@ public class SettingsActivity {
         boolean isRestart = Keys.RestartApp.equals(key);
         boolean isCalendar = Keys.Calendar.equals(key);
         boolean isDownloadSpeed = Keys.DownloadSpeed.equals(key);
+        boolean isAlwaysShowProxy = Keys.AlwaysShowProxy.equals(key);
 
         if (isChannel || isRestart) {
             ImageView iconBadge = new ImageView(context);
@@ -913,12 +914,18 @@ public class SettingsActivity {
 
         row.addView(textCol, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        if (isCalendar || isDownloadSpeed) {
+        if (isCalendar || isDownloadSpeed || isAlwaysShowProxy) {
             TextView valTv = new TextView(context);
             valTv.setTextColor(p.accentBlue);
             valTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
             valTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            valTv.setText(isCalendar ? getCalendarLabel(item.getIntValue()) : getDownloadSpeedLabel(item.getIntValue()));
+            if (isCalendar) {
+                valTv.setText(getCalendarLabel(item.getIntValue()));
+            } else if (isDownloadSpeed) {
+                valTv.setText(getDownloadSpeedLabel(item.getIntValue()));
+            } else {
+                valTv.setText(getProxyDisplayLabel(item.getIntValue()));
+            }
             valTv.setPadding(dp(10), dp(4), dp(10), dp(4));
             GradientDrawable pill = new GradientDrawable();
             pill.setColor(p.accentSoft);
@@ -932,13 +939,19 @@ public class SettingsActivity {
                             Translator.get(Keys.Gregorian),
                             Translator.get(Keys.Hijri),
                             Translator.get(Keys.Persian)
-                    }, item, valTv, true);
-                } else {
+                    }, item, valTv);
+                } else if (isDownloadSpeed) {
                     showOptionPicker(Translator.get(Keys.DownloadSpeed), new String[]{
                             Translator.get(Keys.SpeedOff),
                             Translator.get(Keys.SpeedFast),
                             Translator.get(Keys.SpeedUltra)
-                    }, item, valTv, false);
+                    }, item, valTv);
+                } else {
+                    showOptionPicker(Translator.get(Keys.AlwaysShowProxy), new String[]{
+                            Translator.get(Keys.ProxyDisplayOff),
+                            Translator.get(Keys.ProxyDisplayMenu),
+                            Translator.get(Keys.ProxyDisplayTopBar)
+                    }, item, valTv);
                 }
             });
         } else if (isChannel) {
@@ -980,7 +993,7 @@ public class SettingsActivity {
         return tv;
     }
 
-    private void showOptionPicker(String title, String[] options, ConfigItem item, TextView valTv, boolean isCalendar) {
+    private void showOptionPicker(String title, String[] options, ConfigItem item, TextView valTv) {
         int current = item.getIntValue();
         if (current < 0 || current >= options.length) current = 0;
         try {
@@ -992,7 +1005,7 @@ public class SettingsActivity {
                     .setSingleChoiceItems(options, current, (dialog, which) -> {
                         item.setIntValue(which);
                         item.run();
-                        valTv.setText(isCalendar ? getCalendarLabel(which) : getDownloadSpeedLabel(which));
+                        valTv.setText(options[which]);
                         dialog.dismiss();
                     })
                     .setNegativeButton(Translator.get(Keys.Cancel), null)
@@ -1213,6 +1226,12 @@ public class SettingsActivity {
         if (mode == 1) return Translator.get(Keys.SpeedFast);
         if (mode == 2) return Translator.get(Keys.SpeedUltra);
         return Translator.get(Keys.SpeedOff);
+    }
+
+    private String getProxyDisplayLabel(int mode) {
+        if (mode == 1) return Translator.get(Keys.ProxyDisplayMenu);
+        if (mode == 2) return Translator.get(Keys.ProxyDisplayTopBar);
+        return Translator.get(Keys.ProxyDisplayOff);
     }
 
     private LinearLayout.LayoutParams marginLp(int l, int t, int r, int b) {

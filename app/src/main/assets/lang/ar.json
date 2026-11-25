@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "الكود المصدري وتتبع المشكلات وطلبات الدمج",
   "CreditsCopiedInfo": "تم نسخ معلومات الإصدار والعميل",
   "ShowTimeSeconds": "عرض الثواني",
-  "ShowTimeSecondsDesc": "عرض الثواني في الطوابع الزمنية في جميع أنحاء التطبيق (14:32 → 14:32:05)"
+  "ShowTimeSecondsDesc": "عرض الثواني في الطوابع الزمنية في جميع أنحاء التطبيق (14:32 → 14:32:05)",
+  "AlwaysShowProxy": "إظهار البروكسي دائماً",
+  "AlwaysShowProxyDesc": "اختر مكان إبقاء اختصار البروكسي ظاهراً حتى عند إيقافه",
+  "ProxyDisplayOff": "إيقاف",
+  "ProxyDisplayMenu": "في القائمة (⋮)",
+  "ProxyDisplayTopBar": "الشريط العلوي"
 }

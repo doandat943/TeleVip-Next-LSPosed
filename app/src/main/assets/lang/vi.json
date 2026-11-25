@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "Mã nguồn mở, báo lỗi & đóng góp PR",
   "CreditsCopiedInfo": "Đã sao chép thông tin phiên bản và client",
   "ShowTimeSeconds": "Hiển thị giây",
-  "ShowTimeSecondsDesc": "Hiển thị giây trong mốc thời gian toàn ứng dụng (14:32 → 14:32:05)"
+  "ShowTimeSecondsDesc": "Hiển thị giây trong mốc thời gian toàn ứng dụng (14:32 → 14:32:05)",
+  "AlwaysShowProxy": "Luôn hiện Proxy",
+  "AlwaysShowProxyDesc": "Chọn vị trí giữ nút Proxy luôn hiển thị kể cả khi tắt Proxy",
+  "ProxyDisplayOff": "Tắt",
+  "ProxyDisplayMenu": "Trong menu (⋮)",
+  "ProxyDisplayTopBar": "Thanh trên cùng"
 }

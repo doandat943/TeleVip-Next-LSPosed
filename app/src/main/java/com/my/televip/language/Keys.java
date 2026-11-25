@@ -158,4 +158,8 @@ public class Keys {
     public static final String CreditsSourceCodeRole = "CreditsSourceCodeRole";
     public static final String CreditsCopiedInfo = "CreditsCopiedInfo";
     public static final String ShowTimeSeconds = "ShowTimeSeconds";
+    public static final String AlwaysShowProxy = "AlwaysShowProxy";
+    public static final String ProxyDisplayOff = "ProxyDisplayOff";
+    public static final String ProxyDisplayMenu = "ProxyDisplayMenu";
+    public static final String ProxyDisplayTopBar = "ProxyDisplayTopBar";
 }

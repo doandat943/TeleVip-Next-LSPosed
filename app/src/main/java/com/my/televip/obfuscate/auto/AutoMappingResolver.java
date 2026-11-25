@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 36;
+    private static final int SCHEMA_VERSION = 38;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -117,6 +117,7 @@ public class AutoMappingResolver {
         addField("LaunchActivity", "frameLayout",
                 scanner.findSingleField(launchActDesc, false, "Landroid/widget/FrameLayout;"));
 
+        String actionBarDesc = null;
         if (baseFragmentDesc != null) {
             addClass("org.telegram.ui.ActionBar.BaseFragment", baseFragmentDesc);
             // Resolve ActionBar via BaseFragment method (Context) -> ActionBar (largest ActionBar/ non-SimpleActionBar return type)
@@ -133,6 +134,7 @@ public class AutoMappingResolver {
                 }
             }
             if (bestActionBar != null) {
+                actionBarDesc = bestActionBar;
                 addClass("org.telegram.ui.ActionBar.ActionBar", bestActionBar);
             }
         }
@@ -706,6 +708,7 @@ public class AutoMappingResolver {
         resolveStoriesController(scanner);
         resolveStoryItemHolder(scanner);
         resolveProfileActivity(scanner, msgCtrlDesc);
+        resolveDialogsActivityProxy(scanner, baseFragmentDesc, actionBarDesc);
 
         String sharedConfigDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null, "mainconfig", "saveIncomingPhotos");
         if (sharedConfigDesc != null) {
@@ -1949,6 +1952,166 @@ public class AutoMappingResolver {
                 addMethod("AlertDialog$Builder", "show", dlgMeths.get(dlgMeths.size() - 1).name);
             } else if (dlgMeths.size() == 1) {
                 addMethod("AlertDialog$Builder", "create", dlgMeths.get(0).name);
+            }
+        }
+    }
+
+    private void resolveDialogsActivityProxy(DexScanner scanner, String baseFragmentDesc, String actionBarDesc) {
+        String dialogsActDesc = scanner.findClassByStrings(
+                "Lorg/telegram/ui/", baseFragmentDesc, "dialogsType", "proxy_enabled");
+        if (dialogsActDesc == null) return;
+        addClass(ClassNames.DIALOGS_ACTIVITY, dialogsActDesc);
+
+        String proxyDrawableDesc = null;
+        String setConnectedName = null;
+        for (DexScanner.FieldInfo f : scanner.getFields(dialogsActDesc)) {
+            if (f.isStatic || !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")) continue;
+            if (!scanner.isSubclassOf(f.typeDesc, "Landroid/graphics/drawable/Drawable;")) continue;
+            String setConn = scanner.findSingleMethod(f.typeDesc, false, "V", "Z", "Z", "Z");
+            if (setConn != null) {
+                proxyDrawableDesc = f.typeDesc;
+                setConnectedName = setConn;
+                addClass(ClassNames.PROXY_DRAWABLE, proxyDrawableDesc);
+                addMethod("ProxyDrawable", "setConnected", setConnectedName);
+                addField("DialogsActivity", "proxyDrawable", f.name);
+                break;
+            }
+        }
+
+        String menuItemDesc = null;
+        if (actionBarDesc != null) {
+            for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                    dialogsActDesc, "createView", new String[]{"Landroid/content/Context;"}, actionBarDesc)) {
+                if (ref.paramDescs.length != 0 || ref.returnDesc == null
+                        || !ref.returnDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
+                    continue;
+                }
+                if (!scanner.isSubclassOf(ref.returnDesc, "Landroid/widget/LinearLayout;")) {
+                    continue;
+                }
+                for (DexScanner.MethodInfo m : scanner.getMethods(ref.returnDesc)) {
+                    if (!m.isStatic && m.paramDescs.length == 2
+                            && "I".equals(m.paramDescs[0])
+                            && "Landroid/graphics/drawable/Drawable;".equals(m.paramDescs[1])
+                            && m.returnDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
+                        addMethod("ActionBar", "createMenu", ref.name);
+                        addClass(ClassNames.ACTION_BAR_MENU, ref.returnDesc);
+                        addMethod("ActionBarMenu", "addItemDrawable", m.name);
+                        menuItemDesc = m.returnDesc;
+                        break;
+                    }
+                }
+                if (menuItemDesc != null) break;
+            }
+        }
+
+        if (proxyDrawableDesc != null && setConnectedName != null) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
+                if (m.isStatic || !"V".equals(m.returnDesc)) continue;
+                boolean callsSetConn = false;
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                        dialogsActDesc, m.name, m.paramDescs, proxyDrawableDesc)) {
+                    if (setConnectedName.equals(ref.name)) {
+                        callsSetConn = true;
+                        break;
+                    }
+                }
+                if (callsSetConn) {
+                    addMethod("DialogsActivity", "updateProxyButton", m.name);
+                    break;
+                }
+            }
+        }
+
+        for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
+            if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+            int selfVoidCalls = 0;
+            boolean callsAlphaHelper = false;
+            for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                    dialogsActDesc, m.name, m.paramDescs, null)) {
+                if (dialogsActDesc.equals(ref.ownerDesc) && ref.paramDescs.length == 0 && "V".equals(ref.returnDesc)) {
+                    selfVoidCalls++;
+                } else if (ref.paramDescs.length == 2
+                        && "Landroid/view/View;".equals(ref.paramDescs[0])
+                        && "F".equals(ref.paramDescs[1])
+                        && "V".equals(ref.returnDesc)) {
+                    callsAlphaHelper = true;
+                }
+            }
+            if (callsAlphaHelper && selfVoidCalls >= 3) {
+                addMethod("DialogsActivity", "updateHeaderVisibility", m.name);
+                if (menuItemDesc != null) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                            dialogsActDesc, m.name, m.paramDescs, dialogsActDesc)) {
+                        if (menuItemDesc.equals(rf.typeDesc)) {
+                            addField("DialogsActivity", "overflowItem", rf.name);
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        String showMenuName = scanner.findMethodByString(dialogsActDesc, "proxy_enabled", false, "V");
+        if (showMenuName != null) {
+            addMethod("DialogsActivity", "showOverflowMenu", showMenuName);
+            String[] noParams = new String[0];
+            String itemOptionsDesc = null;
+            String addViewName = null;
+            String subItemDesc = null;
+            for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                    dialogsActDesc, showMenuName, noParams, null)) {
+                if (ref.ownerDesc.startsWith("Lorg/telegram/ui/Components/")
+                        && ("V".equals(ref.returnDesc) || ref.ownerDesc.equals(ref.returnDesc))
+                        && ref.paramDescs.length == 1
+                        && ref.paramDescs[0].startsWith("Lorg/telegram/ui/ActionBar/")) {
+                    itemOptionsDesc = ref.ownerDesc;
+                    addViewName = ref.name;
+                    subItemDesc = ref.paramDescs[0];
+                    addClass(ClassNames.ITEM_OPTIONS, itemOptionsDesc);
+                    addMethod("ItemOptions", "addViewSubItem", addViewName);
+                    break;
+                }
+            }
+            if (subItemDesc != null) {
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                        dialogsActDesc, showMenuName, noParams, dialogsActDesc)) {
+                    if (subItemDesc.equals(rf.typeDesc)) {
+                        addField("DialogsActivity", "proxySubItem", rf.name);
+                        break;
+                    }
+                }
+            }
+            if (itemOptionsDesc != null && addViewName != null) {
+                List<DexScanner.MethodRef> optCalls = scanner.getCalledMethodsInMethod(
+                        dialogsActDesc, showMenuName, noParams, itemOptionsDesc);
+                int addIdx = -1;
+                for (int i = 0; i < optCalls.size(); i++) {
+                    DexScanner.MethodRef c = optCalls.get(i);
+                    if (addViewName.equals(c.name) && c.paramDescs.length == 1) {
+                        addIdx = i;
+                        break;
+                    }
+                }
+                if (addIdx >= 0) {
+                    for (int i = addIdx - 1; i >= 0; i--) {
+                        DexScanner.MethodRef c = optCalls.get(i);
+                        if (c.paramDescs.length == 0
+                                && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
+                            addMethod("ItemOptions", "addGap", c.name);
+                            break;
+                        }
+                    }
+                    for (int i = addIdx + 1; i < optCalls.size(); i++) {
+                        DexScanner.MethodRef c = optCalls.get(i);
+                        if (c.paramDescs.length == 0
+                                && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
+                            addMethod("ItemOptions", "show", c.name);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }

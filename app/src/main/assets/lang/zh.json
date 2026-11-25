@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "开源代码、问题反馈与 Pull Request",
   "CreditsCopiedInfo": "已复制版本与客户端信息",
   "ShowTimeSeconds": "显示秒数",
-  "ShowTimeSecondsDesc": "在应用内所有时间戳中显示秒数（14:32 → 14:32:05）"
+  "ShowTimeSecondsDesc": "在应用内所有时间戳中显示秒数（14:32 → 14:32:05）",
+  "AlwaysShowProxy": "始终显示代理",
+  "AlwaysShowProxyDesc": "选择关闭代理时保留代理快捷入口的显示位置",
+  "ProxyDisplayOff": "关闭",
+  "ProxyDisplayMenu": "菜单内 (⋮)",
+  "ProxyDisplayTopBar": "顶部栏"
 }

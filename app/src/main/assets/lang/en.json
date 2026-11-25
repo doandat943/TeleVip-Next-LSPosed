@@ -196,5 +196,10 @@
   "CreditsSourceCodeRole": "Source code, issue tracker & pull requests",
   "CreditsCopiedInfo": "Copied version & client info",
   "ShowTimeSeconds": "Show Seconds",
-  "ShowTimeSecondsDesc": "Show seconds in timestamps across the app (14:32 → 14:32:05)"
+  "ShowTimeSecondsDesc": "Show seconds in timestamps across the app (14:32 → 14:32:05)",
+  "AlwaysShowProxy": "Always Show Proxy",
+  "AlwaysShowProxyDesc": "Choose where to keep the proxy shortcut visible when proxy is off",
+  "ProxyDisplayOff": "Off",
+  "ProxyDisplayMenu": "In Menu (⋮)",
+  "ProxyDisplayTopBar": "Top Bar"
 }

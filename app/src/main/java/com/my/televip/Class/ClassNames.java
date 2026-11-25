@@ -74,4 +74,9 @@ public class ClassNames {
     public static final String SEND_MESSAGE_PARAMS = "org.telegram.messenger.SendMessagesHelper$SendMessageParams";
     public static final String SENDING_MEDIA_INFO = "org.telegram.messenger.SendMessagesHelper$SendingMediaInfo";
     public static final String ACCOUNT_INSTANCE = "org.telegram.messenger.AccountInstance";
+    public static final String DIALOGS_ACTIVITY = "org.telegram.ui.DialogsActivity";
+    public static final String PROXY_DRAWABLE = "org.telegram.ui.Components.ProxyDrawable";
+    public static final String PROXY_LIST_ACTIVITY = "org.telegram.ui.ProxyListActivity";
+    public static final String ACTION_BAR_MENU = "org.telegram.ui.ActionBar.ActionBarMenu";
+    public static final String ITEM_OPTIONS = "org.telegram.ui.Components.ItemOptions";
    }
