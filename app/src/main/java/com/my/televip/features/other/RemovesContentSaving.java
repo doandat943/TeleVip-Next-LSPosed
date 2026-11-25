@@ -49,6 +49,8 @@ public class RemovesContentSaving {
                         }
                     });
                 }
+
+                ForwardAsCopyHelper.init();
             }
         } catch (Throwable t) {
             Logger.e(t);

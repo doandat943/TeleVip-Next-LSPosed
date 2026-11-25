@@ -64,4 +64,8 @@ public class MessagesController {
         return getInstance(UserConfig.getSelectedAccount());
     }
 
+    public Object getMessagesControllerObject() {
+        return messagesController;
+    }
+
 }

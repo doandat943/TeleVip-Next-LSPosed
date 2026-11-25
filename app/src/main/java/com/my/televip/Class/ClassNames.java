@@ -76,4 +76,8 @@ public class ClassNames {
     public static final String TL_STORIES_READ_STORIES = "org.telegram.tgnet.tl.TL_stories$TL_stories_readStories";
     public static final String TL_STORIES_INCREMENT_STORY_VIEWS = "org.telegram.tgnet.tl.TL_stories$TL_stories_incrementStoryViews";
     public static final String LONG_SPARES_ARRAY = "androidx.collection.LongSparseArray";
+    public static final String SEND_MESSAGES_HELPER = "org.telegram.messenger.SendMessagesHelper";
+    public static final String SEND_MESSAGE_PARAMS = "org.telegram.messenger.SendMessagesHelper$SendMessageParams";
+    public static final String SENDING_MEDIA_INFO = "org.telegram.messenger.SendMessagesHelper$SendingMediaInfo";
+    public static final String ACCOUNT_INSTANCE = "org.telegram.messenger.AccountInstance";
    }

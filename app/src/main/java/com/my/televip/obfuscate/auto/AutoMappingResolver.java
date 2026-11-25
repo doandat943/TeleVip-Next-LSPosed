@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 18;
+    private static final int SCHEMA_VERSION = 21;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -165,29 +165,96 @@ public class AutoMappingResolver {
         } else if (chatOpenPhoto != null) {
             addMethod("PhotoViewer", "openPhoto", chatOpenPhoto);
         }
-        // PhotoViewer#setIsAboutToSwitchToIndex: smaller (I, Z, Z, Z) -> V
+        // PhotoViewer#getInstance: largest static () -> PhotoViewer
+        DexScanner.MethodInfo bestPvInst = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(photoViewerDesc)) {
+            if (m.isStatic && photoViewerDesc.equals(m.returnDesc) && m.paramDescs.length == 0) {
+                if (bestPvInst == null || m.getInsnsSize() > bestPvInst.getInsnsSize()) {
+                    bestPvInst = m;
+                }
+            }
+        }
+        if (bestPvInst != null) {
+            addMethod("PhotoViewer", "getInstance", bestPvInst.name);
+        }
+
+        // PhotoViewer#setParentActivity: prefer 1-arg (Activity) -> V, else largest (Activity, ...) -> V
+        String setParentExact = scanner.findSingleMethod(photoViewerDesc, false, "V", "Landroid/app/Activity;");
+        if (setParentExact != null) {
+            addMethod("PhotoViewer", "setParentActivity", setParentExact);
+        } else {
+            DexScanner.MethodInfo bestSetParent = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(photoViewerDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 1 && m.paramDescs.length <= 3
+                        && "Landroid/app/Activity;".equals(m.paramDescs[0])) {
+                    if (bestSetParent == null || m.getInsnsSize() > bestSetParent.getInsnsSize()) {
+                        bestSetParent = m;
+                    }
+                }
+            }
+            if (bestSetParent != null) {
+                addMethod("PhotoViewer", "setParentActivity", bestSetParent.name);
+            }
+        }
+
+        // PhotoViewer#setIsAboutToSwitchToIndex: larger (I, Z, Z, Z) -> V
         DexScanner.MethodInfo bestSwitchIdx = null;
+        DexScanner.MethodInfo smallSwitchIdx = null;
         for (DexScanner.MethodInfo m : scanner.getMethods(photoViewerDesc)) {
             if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 4
                     && "I".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])
                     && "Z".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3])) {
-                if (bestSwitchIdx == null || m.getInsnsSize() < bestSwitchIdx.getInsnsSize()) {
+                if (bestSwitchIdx == null || m.getInsnsSize() > bestSwitchIdx.getInsnsSize()) {
                     bestSwitchIdx = m;
+                }
+                if (smallSwitchIdx == null || m.getInsnsSize() < smallSwitchIdx.getInsnsSize()) {
+                    smallSwitchIdx = m;
                 }
             }
         }
         if (bestSwitchIdx != null) {
             addMethod("PhotoViewer", "setIsAboutToSwitchToIndex", bestSwitchIdx.name);
+            if (smallSwitchIdx != null && !smallSwitchIdx.name.equals(bestSwitchIdx.name)) {
+                java.util.Set<String> smallSubItems = new java.util.HashSet<>();
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(photoViewerDesc, smallSwitchIdx.name, new String[]{"I", "Z", "Z", "Z"}, photoViewerDesc)) {
+                    if (rf.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
+                        int mCnt = scanner.getMethods(rf.typeDesc).size();
+                        if (mCnt >= 20 && mCnt <= 70) {
+                            smallSubItems.add(rf.name);
+                        }
+                    }
+                }
+                String galleryField = null;
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(photoViewerDesc, bestSwitchIdx.name, new String[]{"I", "Z", "Z", "Z"}, photoViewerDesc)) {
+                    if (smallSubItems.contains(rf.name)) {
+                        galleryField = rf.name;
+                        break;
+                    }
+                }
+                if (galleryField != null) {
+                    addField("PhotoViewer", "galleryButton", galleryField);
+                }
+            }
         }
 
-        // SecretMediaViewer#closePhoto: larger (Z, Z) -> V
+        // SecretMediaViewer#closePhoto & openMedia & onClose
         String secretViewerDesc = DexScanner.javaToDesc(ClassNames.SECRET_MEDIA_VIEWER);
         DexScanner.MethodInfo bestClosePhoto = null;
         for (DexScanner.MethodInfo m : scanner.getMethods(secretViewerDesc)) {
-            if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 2
+            if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 2
                     && "Z".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])) {
                 if (bestClosePhoto == null || m.getInsnsSize() > bestClosePhoto.getInsnsSize()) {
                     bestClosePhoto = m;
+                }
+            }
+        }
+        if (bestClosePhoto == null) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(secretViewerDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 2
+                        && "Z".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])) {
+                    if (bestClosePhoto == null || m.getInsnsSize() > bestClosePhoto.getInsnsSize()) {
+                        bestClosePhoto = m;
+                    }
                 }
             }
         }
@@ -196,6 +263,25 @@ public class AutoMappingResolver {
         }
 
         if (msgObjDesc != null) {
+            DexScanner.MethodInfo openMediaMethod = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(secretViewerDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 4
+                        && msgObjDesc.equals(m.paramDescs[0])) {
+                    if (openMediaMethod == null || m.getInsnsSize() > openMediaMethod.getInsnsSize()) {
+                        openMediaMethod = m;
+                    }
+                }
+            }
+            if (openMediaMethod != null) {
+                addMethod("SecretMediaViewer", "openMedia", openMediaMethod.name);
+                for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(secretViewerDesc, openMediaMethod.name, openMediaMethod.paramDescs, secretViewerDesc)) {
+                    if ("Ljava/lang/Runnable;".equals(wf.typeDesc)) {
+                        addField("SecretMediaViewer", "onClose", wf.name);
+                        break;
+                    }
+                }
+            }
+
             addClass(ClassNames.MESSAGE_OBJECT, msgObjDesc);
             addField("MessageObject", "messageOwner",
                     scanner.findSingleField(msgObjDesc, false, DexScanner.javaToDesc(ClassNames.MESSAGE)));
@@ -203,19 +289,45 @@ public class AutoMappingResolver {
             if (instDialogId != null) {
                 addMethod("MessageObject", "getDialogId", instDialogId);
             } else {
-                String staticDialogId = scanner.findSingleMethod(msgObjDesc, true, "J", DexScanner.javaToDesc(ClassNames.MESSAGE));
+                String msgDesc = DexScanner.javaToDesc(ClassNames.MESSAGE);
+                String staticDialogId = scanner.findSingleMethod(msgObjDesc, true, "J", msgDesc);
+                if (staticDialogId == null) {
+                    for (DexScanner.MethodInfo m : scanner.getMethods(msgObjDesc)) {
+                        if (m.isStatic && "J".equals(m.returnDesc) && m.paramDescs.length == 1
+                                && msgDesc.equals(m.paramDescs[0]) && m.readsFieldNamed("dialog_id")) {
+                            staticDialogId = m.name;
+                            break;
+                        }
+                    }
+                }
                 if (staticDialogId != null) {
                     addMethod("MessageObject", "getDialogId", staticDialogId);
                 }
             }
+            DexScanner.MethodInfo isSecretMethod = null;
+            String secretMsgDesc = "Lorg/telegram/tgnet/TLRPC$TL_message_secret;";
             for (DexScanner.MethodInfo m : scanner.getMethods(msgObjDesc)) {
                 if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0) {
                     if (m.readsFieldNamed("voice")) addMethod("MessageObject", "isVoice", m.name);
                     else if (m.readsFieldNamed("noforwards")) addMethod("MessageObject", "canForwardMessage", m.name);
-                    else if (m.readsFieldNamed("destroyTime") || m.readsFieldNamed("destroyTimeMillis")) {
-                        addMethod("MessageObject", "isSecret", m.name);
+                    else if (m.checksInstanceOf(secretMsgDesc)) {
+                        if (isSecretMethod == null || m.getInsnsSize() < isSecretMethod.getInsnsSize()) {
+                            isSecretMethod = m;
+                        }
                     }
                 }
+            }
+            if (isSecretMethod == null) {
+                for (DexScanner.MethodInfo m : scanner.getMethods(msgObjDesc)) {
+                    if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 0
+                            && (m.readsFieldNamed("destroyTime") || m.readsFieldNamed("destroyTimeMillis"))) {
+                        isSecretMethod = m;
+                        break;
+                    }
+                }
+            }
+            if (isSecretMethod != null) {
+                addMethod("MessageObject", "isSecret", isSecretMethod.name);
             }
         }
 
@@ -227,6 +339,17 @@ public class AutoMappingResolver {
                 addMethod("ChatActivity", "fillMessageMenu",
                         scanner.findSingleMethod(chatActDesc, false, "V", msgObjDesc,
                                 "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"));
+                for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
+                    if (!m.isStatic && !"V".equals(m.returnDesc)) {
+                        if (m.paramDescs.length == 2 && msgObjDesc.equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])
+                                && m.readsFieldNamed("ttl") && m.readsFieldNamed("destroyTime")) {
+                            addMethod("ChatActivity", "sendSecretMessageRead", m.name);
+                        } else if (m.paramDescs.length == 1 && msgObjDesc.equals(m.paramDescs[0])
+                                && m.readsFieldNamed("ttl") && m.containsConstInt(0x7FFFFFFF)) {
+                            addMethod("ChatActivity", "sendSecretMediaDelete", m.name);
+                        }
+                    }
+                }
             }
             DexScanner.MethodInfo bestOpt = null;
             for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
@@ -255,6 +378,23 @@ public class AutoMappingResolver {
 
         if (pvProviderDesc != null) {
             addClass(ClassNames.PHOTO_VIEWER_PROVIDER, pvProviderDesc);
+            if (msgObjDesc != null) {
+                for (DexScanner.MethodInfo m : scanner.getMethods(pvProviderDesc)) {
+                    if (!m.isStatic && m.paramDescs.length == 5 && msgObjDesc.equals(m.paramDescs[0])
+                            && "I".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3]) && "Z".equals(m.paramDescs[4])) {
+                        addMethod("PhotoViewer$PhotoViewerProvider", "getPlaceForPhoto", m.name);
+                        String placeDesc = m.returnDesc;
+                        if (placeDesc != null && placeDesc.startsWith("L")) {
+                            addClass("org.telegram.ui.PhotoViewer$PlaceProviderObject", placeDesc);
+                            String imgRecvField = scanner.findSingleField(placeDesc, false, "Lorg/telegram/messenger/ImageReceiver;");
+                            if (imgRecvField != null) {
+                                addField("PhotoViewer$PlaceProviderObject", "imageReceiver", imgRecvField);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
         // 3. BaseController subclasses
@@ -322,6 +462,24 @@ public class AutoMappingResolver {
                         scanner.findSingleMethod(msgCtrlDesc, true, msgCtrlDesc, "I"));
                 addMethod("MessagesController", "isChatNoForwards",
                         scanner.findSingleMethod(msgCtrlDesc, false, "Z", DexScanner.javaToDesc(ClassNames.TLRPC_CHAT)));
+                String getChatBoxed = scanner.findSingleMethod(msgCtrlDesc, false, DexScanner.javaToDesc(ClassNames.TLRPC_CHAT), "Ljava/lang/Long;");
+                if (getChatBoxed != null) {
+                    addMethod("MessagesController", "getChat", getChatBoxed);
+                } else {
+                    String getChatPrim = scanner.findSingleMethod(msgCtrlDesc, false, DexScanner.javaToDesc(ClassNames.TLRPC_CHAT), "J");
+                    if (getChatPrim != null) {
+                        addMethod("MessagesController", "getChat", getChatPrim);
+                    }
+                }
+                String getUserBoxed = scanner.findSingleMethod(msgCtrlDesc, false, DexScanner.javaToDesc(ClassNames.TLRPC_USER), "Ljava/lang/Long;");
+                if (getUserBoxed != null) {
+                    addMethod("MessagesController", "getUser", getUserBoxed);
+                } else {
+                    String getUserPrim = scanner.findSingleMethod(msgCtrlDesc, false, DexScanner.javaToDesc(ClassNames.TLRPC_USER), "J");
+                    if (getUserPrim != null) {
+                        addMethod("MessagesController", "getUser", getUserPrim);
+                    }
+                }
                 addMethod("MessagesController", "processUpdateArray",
                         scanner.findSingleMethod(msgCtrlDesc, false, "Z",
                                 "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Z", "I"));
@@ -388,14 +546,28 @@ public class AutoMappingResolver {
                 addClass(ClassNames.FILE_LOADER, fileLoaderDesc);
                 addMethod("FileLoader", "getInstance",
                         scanner.findSingleMethod(fileLoaderDesc, true, fileLoaderDesc, "I"));
+                DexScanner.MethodInfo bestGetDir = null;
                 for (DexScanner.MethodInfo m : scanner.getMethods(fileLoaderDesc)) {
                     if ("Ljava/io/File;".equals(m.returnDesc) && m.paramDescs.length == 1
                             && DexScanner.javaToDesc(ClassNames.MESSAGE).equals(m.paramDescs[0])) {
                         addMethod("FileLoader", "getPathToMessage", m.name);
-                        break;
+                    } else if ("Ljava/io/File;".equals(m.returnDesc) && m.paramDescs.length == 1
+                            && DexScanner.javaToDesc(ClassNames.TL_OBJECT).equals(m.paramDescs[0])) {
+                        addMethod("FileLoader", "getPathToAttach", m.name);
+                    } else if (m.isStatic && "Ljava/io/File;".equals(m.returnDesc) && m.paramDescs.length == 1
+                            && "I".equals(m.paramDescs[0])) {
+                        if (bestGetDir == null || m.getInsnsSize() > bestGetDir.getInsnsSize()) {
+                            bestGetDir = m;
+                        }
                     }
                 }
+                if (bestGetDir != null) {
+                    addMethod("FileLoader", "getDirectory", bestGetDir.name);
+                }
             }
+
+            // SendMessagesHelper, SendMessageParams, SendingMediaInfo, AccountInstance
+            resolveSendMessagesHelper(scanner, baseControllerDesc);
 
             String notifCtrlDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", baseControllerDesc, "show extra notifications chatId ");
             if (notifCtrlDesc != null) {
@@ -611,16 +783,53 @@ public class AutoMappingResolver {
                     }
                 }
             }
-            // Find ChatActivity$ChatMessageCellDelegate on ChatMessageCell
-            for (DexScanner.FieldInfo f : scanner.getFields(chatMsgCellDesc)) {
-                if (!f.isStatic && f.typeDesc.startsWith("Lorg/telegram/ui/")
-                        && !f.typeDesc.startsWith("Lorg/telegram/ui/Cells/")
-                        && !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")
-                        && !f.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
-                    List<DexScanner.MethodInfo> dm = scanner.getMethods(f.typeDesc);
-                    if (dm.size() >= 10) {
-                        addClass(ClassNames.CHAT_MESSAGE_CELL_DELEGATE, f.typeDesc);
-                        break;
+            if (msgObjDesc != null) {
+                DexScanner.MethodInfo getMsgObjM = null;
+                for (DexScanner.MethodInfo m : scanner.getMethods(chatMsgCellDesc)) {
+                    if (!m.isStatic && m.paramDescs.length == 0 && msgObjDesc.equals(m.returnDesc)) {
+                        if (getMsgObjM == null || m.getInsnsSize() < getMsgObjM.getInsnsSize()) {
+                            getMsgObjM = m;
+                        }
+                    }
+                }
+                if (getMsgObjM != null) {
+                    addMethod("ChatMessageCell", "getMessageObject", getMsgObjM.name);
+                }
+            }
+            // Find ChatActivity$ChatMessageCellDelegate implementation on ChatActivity (largest didPressImage)
+            boolean resolvedDelegateImpl = false;
+            if (chatActDesc != null) {
+                for (DexScanner.FieldInfo f : scanner.getFields(chatActDesc)) {
+                    if (!f.isStatic && f.typeDesc.startsWith("Lorg/telegram/ui/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/Cells/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
+                        for (DexScanner.MethodInfo m : scanner.getMethods(f.typeDesc)) {
+                            if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 4
+                                    && chatMsgCellDesc.equals(m.paramDescs[0]) && "F".equals(m.paramDescs[1])
+                                    && "F".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3])
+                                    && m.getInsnsSize() > 500) {
+                                addClass(ClassNames.CHAT_MESSAGE_CELL_DELEGATE, f.typeDesc);
+                                addMethod("ChatActivity$ChatMessageCellDelegate", "didPressImage", m.name);
+                                resolvedDelegateImpl = true;
+                                break;
+                            }
+                        }
+                        if (resolvedDelegateImpl) break;
+                    }
+                }
+            }
+            if (!resolvedDelegateImpl) {
+                for (DexScanner.FieldInfo f : scanner.getFields(chatMsgCellDesc)) {
+                    if (!f.isStatic && f.typeDesc.startsWith("Lorg/telegram/ui/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/Cells/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")
+                            && !f.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")) {
+                        List<DexScanner.MethodInfo> dm = scanner.getMethods(f.typeDesc);
+                        if (dm.size() >= 10) {
+                            addClass(ClassNames.CHAT_MESSAGE_CELL_DELEGATE, f.typeDesc);
+                            break;
+                        }
                     }
                 }
             }
@@ -667,6 +876,133 @@ public class AutoMappingResolver {
         root.put("fields", fldArr);
         root.put("methods", mthArr);
         return root.toString();
+    }
+
+    private void resolveSendMessagesHelper(DexScanner scanner, String baseControllerDesc) {
+        String smhDesc = scanner.findClassByPredicate("Lorg/telegram/messenger/", (desc, fields, methods) -> {
+            if (methods.size() < 80) return false;
+            for (DexScanner.MethodInfo m : methods) {
+                if (!m.isStatic && "I".equals(m.returnDesc) && m.paramDescs.length >= 6
+                        && "Ljava/util/ArrayList;".equals(m.paramDescs[0]) && "J".equals(m.paramDescs[1])
+                        && "Z".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3])) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        if (smhDesc == null) return;
+
+        addClass(ClassNames.SEND_MESSAGES_HELPER, smhDesc);
+        String getInst = scanner.findSingleMethod(smhDesc, true, smhDesc, "I");
+        if (getInst != null) addMethod("SendMessagesHelper", "getInstance", getInst);
+
+        DexScanner.MethodInfo fwdMethod = null;
+        DexScanner.MethodInfo sendParamsMethod = null;
+        DexScanner.MethodInfo prepPhoto = null;
+        DexScanner.MethodInfo prepDoc = null;
+        DexScanner.MethodInfo prepMedia = null;
+        String accInstDesc = null;
+
+        for (DexScanner.MethodInfo m : scanner.getMethods(smhDesc)) {
+            if (!m.isStatic && "I".equals(m.returnDesc) && m.paramDescs.length >= 6
+                    && "Ljava/util/ArrayList;".equals(m.paramDescs[0]) && "J".equals(m.paramDescs[1])
+                    && "Z".equals(m.paramDescs[2]) && "Z".equals(m.paramDescs[3])) {
+                if (fwdMethod == null || m.getInsnsSize() > fwdMethod.getInsnsSize()) {
+                    fwdMethod = m;
+                }
+            } else if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1
+                    && m.paramDescs[0].startsWith("Lorg/telegram/messenger/") && m.getInsnsSize() > 400) {
+                if (sendParamsMethod == null || m.getInsnsSize() > sendParamsMethod.getInsnsSize()) {
+                    sendParamsMethod = m;
+                }
+            } else if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 18
+                    && "Ljava/lang/String;".equals(m.paramDescs[1])
+                    && "Ljava/lang/String;".equals(m.paramDescs[2])
+                    && "Landroid/net/Uri;".equals(m.paramDescs[3])
+                    && "J".equals(m.paramDescs[4])) {
+                if (prepPhoto == null || m.paramDescs.length > prepPhoto.paramDescs.length) {
+                    prepPhoto = m;
+                    accInstDesc = m.paramDescs[0];
+                }
+            } else if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 12
+                    && "Ljava/lang/String;".equals(m.paramDescs[1])
+                    && "Ljava/lang/String;".equals(m.paramDescs[2])
+                    && "Landroid/net/Uri;".equals(m.paramDescs[3])
+                    && "Ljava/lang/String;".equals(m.paramDescs[4])
+                    && "Ljava/lang/String;".equals(m.paramDescs[5])
+                    && "J".equals(m.paramDescs[6])) {
+                prepDoc = m;
+            } else if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 20
+                    && "Ljava/util/ArrayList;".equals(m.paramDescs[1])
+                    && "J".equals(m.paramDescs[2])) {
+                prepMedia = m;
+            }
+        }
+
+        if (fwdMethod != null) addMethod("SendMessagesHelper", "sendMessageForward", fwdMethod.name);
+        if (prepPhoto != null) addMethod("SendMessagesHelper", "prepareSendingPhoto", prepPhoto.name);
+        if (prepDoc != null) addMethod("SendMessagesHelper", "prepareSendingDocument", prepDoc.name);
+        if (prepMedia != null) addMethod("SendMessagesHelper", "prepareSendingMedia", prepMedia.name);
+
+        if (accInstDesc != null) {
+            addClass(ClassNames.ACCOUNT_INSTANCE, accInstDesc);
+            String accGetInst = scanner.findSingleMethod(accInstDesc, true, accInstDesc, "I");
+            if (accGetInst != null) addMethod("AccountInstance", "getInstance", accGetInst);
+        }
+
+        if (sendParamsMethod != null) {
+            addMethod("SendMessagesHelper", "sendMessageParams", sendParamsMethod.name);
+            String paramsDesc = sendParamsMethod.paramDescs[0];
+            addClass(ClassNames.SEND_MESSAGE_PARAMS, paramsDesc);
+            for (DexScanner.MethodInfo pm : scanner.getMethods(paramsDesc)) {
+                if (pm.isStatic && paramsDesc.equals(pm.returnDesc) && pm.paramDescs.length >= 8) {
+                    if ("Ljava/lang/String;".equals(pm.paramDescs[0]) && "J".equals(pm.paramDescs[1]) && pm.paramDescs.length <= 16) {
+                        addMethod("SendMessageParams", "ofText", pm.name);
+                    } else if ("Lorg/telegram/tgnet/TLRPC$MessageMedia;".equals(pm.paramDescs[0]) && "J".equals(pm.paramDescs[1])) {
+                        addMethod("SendMessageParams", "ofMedia", pm.name);
+                    } else if ("Lorg/telegram/tgnet/TLRPC$User;".equals(pm.paramDescs[0]) && "J".equals(pm.paramDescs[1])) {
+                        addMethod("SendMessageParams", "ofUser", pm.name);
+                    } else if ("Lorg/telegram/tgnet/TLRPC$TL_document;".equals(pm.paramDescs[0]) && pm.paramDescs.length >= 16) {
+                        addMethod("SendMessageParams", "ofDocument", pm.name);
+                    }
+                }
+            }
+        }
+
+        String smiDesc = scanner.findClassByPredicate("Lorg/telegram/messenger/", (d, fs, ms) -> {
+            int strs = 0, bools = 0, lists = 0;
+            for (DexScanner.FieldInfo f : fs) {
+                if (!f.isStatic) {
+                    if ("Ljava/lang/String;".equals(f.typeDesc)) strs++;
+                    else if ("Z".equals(f.typeDesc)) bools++;
+                    else if ("Ljava/util/ArrayList;".equals(f.typeDesc)) lists++;
+                }
+            }
+            return strs >= 3 && bools >= 3 && lists >= 1 && fs.size() >= 10 && fs.size() <= 35 && ms.size() <= 10;
+        });
+        if (smiDesc != null) {
+            addClass(ClassNames.SENDING_MEDIA_INFO, smiDesc);
+            if (prepPhoto != null) {
+                List<String> writtenStrs = new ArrayList<>();
+                String firstList = null;
+                for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(smhDesc, prepPhoto.name, prepPhoto.paramDescs, smiDesc)) {
+                    if ("Ljava/lang/String;".equals(wf.typeDesc)) {
+                        writtenStrs.add(wf.name);
+                    } else if ("Ljava/util/ArrayList;".equals(wf.typeDesc) && firstList == null) {
+                        firstList = wf.name;
+                    }
+                }
+                if (writtenStrs.size() >= 1) addField("SendingMediaInfo", "path", writtenStrs.get(0));
+                if (writtenStrs.size() >= 3) addField("SendingMediaInfo", "caption", writtenStrs.get(2));
+                if (firstList != null) addField("SendingMediaInfo", "entities", firstList);
+            }
+            for (DexScanner.FieldInfo f : scanner.getFields(smiDesc)) {
+                if (!f.isStatic && "Z".equals(f.typeDesc)) {
+                    addField("SendingMediaInfo", "isVideo", f.name);
+                    break;
+                }
+            }
+        }
     }
 
     private static String findNotificationCenter(DexScanner scanner) {

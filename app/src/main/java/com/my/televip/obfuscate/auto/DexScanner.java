@@ -67,6 +67,22 @@ public class DexScanner {
             return false;
         }
 
+        public boolean checksInstanceOf(String typeDesc) {
+            if (codeOff == 0 || typeDesc == null) return false;
+            int insnsSize = dex.buf.getInt(codeOff + 12);
+            int insnsOff = codeOff + 16;
+            int k = 0;
+            while (k < insnsSize) {
+                int op = dex.buf.getShort(insnsOff + k * 2) & 0xFF;
+                if (op == 0x20 && k + 1 < insnsSize) {
+                    int tIdx = dex.buf.getShort(insnsOff + (k + 1) * 2) & 0xFFFF;
+                    if (typeDesc.equals(dex.getType(tIdx))) return true;
+                }
+                k += insnWidth(dex.buf, insnsOff, k, insnsSize);
+            }
+            return false;
+        }
+
         public boolean containsConstInt(int target) {
             if (codeOff == 0) return false;
             int insnsSize = dex.buf.getInt(codeOff + 12);

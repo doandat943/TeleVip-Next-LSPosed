@@ -89,6 +89,7 @@ public class SettingsActivity {
         SUBTITLE_DEFAULTS.put(Keys.ShowUserID, "Shows numeric Telegram user IDs on profile pages");
         SUBTITLE_DEFAULTS.put(Keys.Calendar, "Display Hijri or Persian dates in chat headers and timestamps");
         SUBTITLE_DEFAULTS.put(Keys.RemovesContentSaving, "Forward, copy and save from chats and channels that restrict it");
+        SUBTITLE_DEFAULTS.put(Keys.SayWhereCopyCameFrom, "Add a clickable \"Forwarded from\" header linking to the sender and original message when copying from restricted chats");
         SUBTITLE_DEFAULTS.put(Keys.TelegramPremium, "Unlocks local Telegram Premium features on this device only");
         SUBTITLE_DEFAULTS.put(Keys.DisableNumberRounding, "Shows exact counts, for example 5300 instead of 5.3K");
         SUBTITLE_DEFAULTS.put(Keys.HideUpdateApp, "Suppresses in-app Telegram client update prompts");

@@ -21,7 +21,19 @@ public class MessageObject {
     }
 
     public long getDialogId() {
-        return (long) XposedHelpers.callMethod(messageObject, Obfuscate.getMethodName("MessageObject", "getDialogId"));
+        String method = Obfuscate.getMethodName("MessageObject", "getDialogId");
+        if (messageObject != null && XposedHelpers.findMethodExactIfExists(messageObject.getClass(), method) != null) {
+            return (long) XposedHelpers.callMethod(messageObject, method);
+        }
+        TLRPC.Message owner = getMessageOwner();
+        if (owner != null && owner.get_Message() != null) {
+            try {
+                return getDialogId(owner);
+            } catch (Throwable ignored) {
+                return XposedHelpers.getLongField(owner.get_Message(), Obfuscate.getFieldName("Message", "dialog_id"));
+            }
+        }
+        return 0L;
     }
 
     public boolean isVoice() {

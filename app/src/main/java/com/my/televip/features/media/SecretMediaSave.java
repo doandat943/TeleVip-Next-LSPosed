@@ -45,15 +45,23 @@ public class SecretMediaSave {
                         @Override
                         protected void beforeMethod(MethodHookParam param) {
                             try {
-                                if (ConfigManager.secretMediaSave.isEnable() && param.args[0] != null) {
+                                boolean saveOn = ConfigManager.secretMediaSave != null && ConfigManager.secretMediaSave.isEnable();
+                                boolean preventOn = ConfigManager.preventMedia != null && ConfigManager.preventMedia.isEnable();
+                                if ((saveOn || preventOn) && param.args[0] != null) {
                                     ChatMessageCell messageCell = new ChatMessageCell(param.args[0]);
                                     if (messageCell.getChatMessageCell() != null) {
                                         MessageObject messageObject = messageCell.getMessageObject();
                                         if (messageObject.getMessageObject() != null) {
                                             TLRPC.Message message = messageObject.getMessageOwner();
-                                            if (message.getTtl() > 0) message.setTtl(0);
+                                            if (saveOn && message.getTtl() > 0) {
+                                                message.setTtl(0);
+                                            } else if (preventOn && message.getTtl() == 0x7FFFFFFF) {
+                                                message.setTtl(0);
+                                            }
                                         }
-                                        bindPhotoViewerToActivity(messageCell);
+                                        if (saveOn) {
+                                            bindPhotoViewerToActivity(messageCell);
+                                        }
                                     }
                                 }
                             } catch (Throwable e) {

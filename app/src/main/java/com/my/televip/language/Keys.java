@@ -105,4 +105,5 @@ public class Keys {
     public static final String ApproximateCreationDateNotice = "ApproximateCreationDateNotice";
     public static final String TeleVip = "TeleVip";
     public static final String EnableVoiceMessageSaving = "EnableVoiceMessageSaving";
+    public static final String SayWhereCopyCameFrom = "SayWhereCopyCameFrom";
 }

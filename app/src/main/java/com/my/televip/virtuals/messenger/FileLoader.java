@@ -25,4 +25,8 @@ public class FileLoader {
         return new FileLoader(XposedHelpers.callStaticMethod(ClassLoad.getClass(ClassNames.FILE_LOADER), Obfuscate.getMethodName("FileLoader", "getInstance"), num));
     }
 
+    public Object getFileLoaderObject() {
+        return fileLoader;
+    }
+
 }

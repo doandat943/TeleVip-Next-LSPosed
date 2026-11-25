@@ -87,6 +87,7 @@ public class ConfigManager {
     // Other Features
     public static ConfigItem otherFeatures;
     public static ConfigItem removesContentSaving;
+    public static ConfigItem sayWhereCopyCameFrom;
     public static ConfigItem telegramPremium;
     public static ConfigItem disableNumberRounding;
     public static ConfigItem hideUpdateApp;
@@ -226,6 +227,9 @@ public class ConfigManager {
 
         removesContentSaving = new ConfigItem(ConfigItem.SWITCH, Keys.RemovesContentSaving, ConfigPreferences.getBoolean(Keys.RemovesContentSaving), RemovesContentSaving::init);
         items.add(removesContentSaving);
+
+        sayWhereCopyCameFrom = new ConfigItem(ConfigItem.SWITCH, Keys.SayWhereCopyCameFrom, ConfigPreferences.getBoolean(Keys.SayWhereCopyCameFrom), null);
+        items.add(sayWhereCopyCameFrom);
 
         telegramPremium = new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init);
         items.add(telegramPremium);
