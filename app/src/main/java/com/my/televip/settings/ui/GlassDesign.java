@@ -33,7 +33,7 @@ import android.widget.TextView;
  * and iOS-inspired pill switch drawn directly on Canvas so it works cleanly inside any
  * hooked Telegram client Context without relying on module R.drawable resources.
  */
-final class GlassDesign {
+public final class GlassDesign {
 
     static final int ICON_GHOST = 1;
     static final int ICON_MESSAGES = 2;
@@ -47,38 +47,38 @@ final class GlassDesign {
 
     private GlassDesign() {}
 
-    static final class Palette {
-        final boolean light;
-        final int baseBg;
-        final int glowTopLeft;
-        final int glowMidRight;
-        final int glowBottomLeft;
-        final int scrimTop;
-        final int scrimMid;
+    public static final class Palette {
+        public final boolean light;
+        public final int baseBg;
+        public final int glowTopLeft;
+        public final int glowMidRight;
+        public final int glowBottomLeft;
+        public final int scrimTop;
+        public final int scrimMid;
 
-        final int cardFillTop;
-        final int cardFillBottom;
-        final int cardBorderTop;
-        final int cardBorderBottom;
+        public final int cardFillTop;
+        public final int cardFillBottom;
+        public final int cardBorderTop;
+        public final int cardBorderBottom;
 
-        final int pillFillTop;
-        final int pillFillBottom;
-        final int pillBorderTop;
-        final int pillBorderBottom;
-        final int tabThumbFill;
-        final int tabThumbBorder;
+        public final int pillFillTop;
+        public final int pillFillBottom;
+        public final int pillBorderTop;
+        public final int pillBorderBottom;
+        public final int tabThumbFill;
+        public final int tabThumbBorder;
 
-        final int textPrimary;
-        final int textSecondary;
-        final int textMuted;
-        final int accentBlue;
-        final int accentSoft;
-        final int divider;
-        final int ripple;
+        public final int textPrimary;
+        public final int textSecondary;
+        public final int textMuted;
+        public final int accentBlue;
+        public final int accentSoft;
+        public final int divider;
+        public final int ripple;
 
-        final int switchOnStart;
-        final int switchOnEnd;
-        final int switchOff;
+        public final int switchOnStart;
+        public final int switchOnEnd;
+        public final int switchOff;
 
         private Palette(boolean light) {
             this.light = light;
@@ -147,16 +147,16 @@ final class GlassDesign {
             }
         }
 
-        static Palette of(boolean light) {
+        public static Palette of(boolean light) {
             return new Palette(light);
         }
     }
 
-    static Drawable createAuroraBackground(Palette p) {
+    public static Drawable createAuroraBackground(Palette p) {
         return new AuroraDrawable(p);
     }
 
-    static Drawable createTopScrimDrawable(Palette p) {
+    public static Drawable createTopScrimDrawable(Palette p) {
         GradientDrawable scrim = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{p.scrimTop, p.scrimMid, Color.TRANSPARENT}
@@ -164,7 +164,7 @@ final class GlassDesign {
         return scrim;
     }
 
-    static Drawable createGlassCardDrawable(Palette p, float radiusPx) {
+    public static Drawable createGlassCardDrawable(Palette p, float radiusPx) {
         return new SpecularGlassDrawable(
                 p.cardFillTop, p.cardFillBottom,
                 p.cardBorderTop, p.cardBorderBottom,
@@ -172,7 +172,7 @@ final class GlassDesign {
         );
     }
 
-    static Drawable createGlassPillDrawable(Palette p, float radiusPx) {
+    public static Drawable createGlassPillDrawable(Palette p, float radiusPx) {
         return new SpecularGlassDrawable(
                 p.pillFillTop, p.pillFillBottom,
                 p.pillBorderTop, p.pillBorderBottom,
@@ -180,14 +180,14 @@ final class GlassDesign {
         );
     }
 
-    static Drawable createPillRippleOverlay(int rippleColor, float radiusPx) {
+    public static Drawable createPillRippleOverlay(int rippleColor, float radiusPx) {
         GradientDrawable mask = new GradientDrawable();
         mask.setColor(Color.WHITE);
         mask.setCornerRadius(radiusPx);
         return new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask);
     }
 
-    static RippleDrawable createRowRipple(int rippleColor) {
+    public static RippleDrawable createRowRipple(int rippleColor) {
         GradientDrawable mask = new GradientDrawable();
         mask.setColor(Color.WHITE);
         return new RippleDrawable(ColorStateList.valueOf(rippleColor), null, mask);
@@ -317,9 +317,9 @@ final class GlassDesign {
     /**
      * Segmented floating glass tab bar with smoothly animated sliding active thumb.
      */
-    static final class SegmentedTabBar extends FrameLayout {
+    public static final class SegmentedTabBar extends FrameLayout {
 
-        interface OnTabSelectedListener {
+        public interface OnTabSelectedListener {
             void onTabSelected(int index);
         }
 
@@ -331,7 +331,7 @@ final class GlassDesign {
         private ValueAnimator thumbAnim;
         private OnTabSelectedListener listener;
 
-        SegmentedTabBar(Context ctx, String[] titles, Palette palette, int initialIndex) {
+        public SegmentedTabBar(Context ctx, String[] titles, Palette palette, int initialIndex) {
             super(ctx);
             this.palette = palette;
             this.selectedIndex = Math.max(0, Math.min(initialIndex, titles.length - 1));
@@ -375,11 +375,11 @@ final class GlassDesign {
             }
         }
 
-        void setOnTabSelectedListener(OnTabSelectedListener listener) {
+        public void setOnTabSelectedListener(OnTabSelectedListener listener) {
             this.listener = listener;
         }
 
-        void setSelectedTab(int index, boolean animate) {
+        public void setSelectedTab(int index, boolean animate) {
             if (index < 0 || index >= labels.length) return;
             this.selectedIndex = index;
             for (int i = 0; i < labels.length; i++) {
@@ -430,7 +430,7 @@ final class GlassDesign {
     /**
      * iOS-style pill switch with gradient ON track, translucent OFF track, and soft-shadowed thumb.
      */
-    static final class PillSwitchView extends View {
+    public static final class PillSwitchView extends View {
         private boolean checked;
         private float progress;
         private final Palette palette;
@@ -441,7 +441,7 @@ final class GlassDesign {
         private final ArgbEvaluator colorEval = new ArgbEvaluator();
         private ValueAnimator anim;
 
-        PillSwitchView(Context ctx, boolean initial, Palette palette) {
+        public PillSwitchView(Context ctx, boolean initial, Palette palette) {
             super(ctx);
             this.checked = initial;
             this.progress = initial ? 1f : 0f;
@@ -450,11 +450,11 @@ final class GlassDesign {
             this.shadowPaint.setColor(Color.argb(42, 0, 0, 0));
         }
 
-        boolean isChecked() {
+        public boolean isChecked() {
             return checked;
         }
 
-        void setChecked(boolean value, boolean animate) {
+        public void setChecked(boolean value, boolean animate) {
             if (this.checked == value) return;
             this.checked = value;
             float target = value ? 1f : 0f;
@@ -504,9 +504,9 @@ final class GlassDesign {
     /**
      * Programmatic vector icons drawn on a 24x24 grid.
      */
-    static final class GlassIcons {
+    public static final class GlassIcons {
 
-        static Drawable backArrow(int color) {
+        public static Drawable backArrow(int color) {
             return new VectorDrawable24(color, true) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
@@ -521,7 +521,7 @@ final class GlassDesign {
             };
         }
 
-        static Drawable moonIcon(int color) {
+        public static Drawable moonIcon(int color) {
             return new VectorDrawable24(color, false) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
@@ -539,7 +539,7 @@ final class GlassDesign {
             };
         }
 
-        static Drawable sunIcon(int color) {
+        public static Drawable sunIcon(int color) {
             return new VectorDrawable24(color, false) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
@@ -573,7 +573,7 @@ final class GlassDesign {
             };
         }
 
-        static Drawable closeIcon(int color) {
+        public static Drawable closeIcon(int color) {
             return new VectorDrawable24(color, false) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {

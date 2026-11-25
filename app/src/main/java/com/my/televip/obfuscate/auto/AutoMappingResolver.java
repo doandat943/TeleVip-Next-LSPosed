@@ -23,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 21;
+    private static final int SCHEMA_VERSION = 25;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -335,10 +335,11 @@ public class AutoMappingResolver {
             addClass(ClassNames.CHAT_ACTIVITY, chatActDesc);
             addMethod("ChatActivity", "createView",
                     scanner.findSingleMethod(chatActDesc, false, "Landroid/view/View;", "Landroid/content/Context;"));
+            String fillMenuName = null;
             if (msgObjDesc != null) {
-                addMethod("ChatActivity", "fillMessageMenu",
-                        scanner.findSingleMethod(chatActDesc, false, "V", msgObjDesc,
-                                "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"));
+                fillMenuName = scanner.findSingleMethod(chatActDesc, false, "V", msgObjDesc,
+                        "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;");
+                addMethod("ChatActivity", "fillMessageMenu", fillMenuName);
                 for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
                     if (!m.isStatic && !"V".equals(m.returnDesc)) {
                         if (m.paramDescs.length == 2 && msgObjDesc.equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])
@@ -363,6 +364,32 @@ public class AutoMappingResolver {
             }
             if (bestOpt != null && bestOpt.getInsnsSize() > 500) {
                 addMethod("ChatActivity", "processSelectedOption", bestOpt.name);
+            }
+            if (msgObjDesc != null) {
+                String probeMethod = fillMenuName != null ? fillMenuName : (bestOpt != null ? bestOpt.name : null);
+                String[] probeParams = fillMenuName != null
+                        ? new String[]{msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"}
+                        : (bestOpt != null ? new String[]{"I"} : null);
+                if (probeMethod != null && probeParams != null) {
+                    Map<String, Integer> moReads = new HashMap<>();
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(chatActDesc, probeMethod, probeParams, chatActDesc)) {
+                        if (msgObjDesc.equals(rf.typeDesc)) {
+                            Integer c = moReads.get(rf.name);
+                            moReads.put(rf.name, c == null ? 1 : c + 1);
+                        }
+                    }
+                    String bestSelectedObj = null;
+                    int bestReads = 0;
+                    for (Map.Entry<String, Integer> e : moReads.entrySet()) {
+                        if (e.getValue() > bestReads) {
+                            bestReads = e.getValue();
+                            bestSelectedObj = e.getKey();
+                        }
+                    }
+                    if (bestSelectedObj != null) {
+                        addField("ChatActivity", "selectedObject", bestSelectedObj);
+                    }
+                }
             }
         }
 
@@ -439,16 +466,44 @@ public class AutoMappingResolver {
                 addMethod("MessagesStorage", "markMessagesAsDeleted",
                         scanner.findSingleMethod(msgStorageDesc, false, "Ljava/util/ArrayList;",
                                 "J", "Ljava/util/ArrayList;", "Z", "Z", "I", "I"));
+                String tlMsgsDesc = DexScanner.javaToDesc(ClassNames.TL_MESSAGES_MESSAGES);
+                DexScanner.MethodInfo bestPutMsgs = null;
+                for (DexScanner.MethodInfo m : scanner.getMethods(msgStorageDesc)) {
+                    if (!m.isStatic && "V".equals(m.returnDesc)) {
+                        for (String p : m.paramDescs) {
+                            if (tlMsgsDesc.equals(p)) {
+                                if (bestPutMsgs == null || m.getInsnsSize() > bestPutMsgs.getInsnsSize()) {
+                                    bestPutMsgs = m;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (bestPutMsgs != null) {
+                    addMethod("MessagesStorage", "putMessages", bestPutMsgs.name);
+                }
                 for (DexScanner.MethodInfo m : scanner.getMethods(msgStorageDesc)) {
                     if (!m.isStatic && m.paramDescs.length == 0 && m.returnDesc.startsWith("Lorg/telegram/messenger/")) {
-                        String postRun = scanner.findSingleMethod(m.returnDesc, false, "Z", "Ljava/lang/Runnable;");
-                        if (postRun == null) {
-                            postRun = scanner.findSingleMethod(m.returnDesc, false, "V", "Ljava/lang/Runnable;");
+                        boolean hasDelayedPost = false;
+                        DexScanner.MethodInfo bestPostRun = null;
+                        for (DexScanner.MethodInfo dm : scanner.getMethods(m.returnDesc)) {
+                            if (!dm.isStatic && dm.paramDescs.length == 2
+                                    && "Ljava/lang/Runnable;".equals(dm.paramDescs[0]) && "J".equals(dm.paramDescs[1])
+                                    && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
+                                hasDelayedPost = true;
+                            } else if (!dm.isStatic && dm.paramDescs.length == 1
+                                    && "Ljava/lang/Runnable;".equals(dm.paramDescs[0])
+                                    && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
+                                if (bestPostRun == null || dm.getInsnsSize() < bestPostRun.getInsnsSize()) {
+                                    bestPostRun = dm;
+                                }
+                            }
                         }
-                        if (postRun != null) {
+                        if (hasDelayedPost && bestPostRun != null) {
                             addMethod("MessagesStorage", "getStorageQueue", m.name);
                             addClass("org.telegram.messenger.DispatchQueue", m.returnDesc);
-                            addMethod("DispatchQueue", "postRunnable", postRun);
+                            addMethod("DispatchQueue", "postRunnable", bestPostRun.name);
                             break;
                         }
                     }
@@ -944,6 +999,22 @@ public class AutoMappingResolver {
         if (prepDoc != null) addMethod("SendMessagesHelper", "prepareSendingDocument", prepDoc.name);
         if (prepMedia != null) addMethod("SendMessagesHelper", "prepareSendingMedia", prepMedia.name);
 
+        String tlEditDesc = "Lorg/telegram/tgnet/TLRPC$TL_messages_editMessage;";
+        DexScanner.MethodInfo editMsgMethod = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(smhDesc)) {
+            if (!m.isStatic && m.getInsnsSize() > 100) {
+                for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(smhDesc, m.name, m.paramDescs, tlEditDesc)) {
+                    if ("message".equals(wf.name)) {
+                        if (editMsgMethod == null || m.getInsnsSize() > editMsgMethod.getInsnsSize()) {
+                            editMsgMethod = m;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        if (editMsgMethod != null) addMethod("SendMessagesHelper", "editMessage", editMsgMethod.name);
+
         if (accInstDesc != null) {
             addClass(ClassNames.ACCOUNT_INSTANCE, accInstDesc);
             String accGetInst = scanner.findSingleMethod(accInstDesc, true, accInstDesc, "I");
@@ -954,8 +1025,12 @@ public class AutoMappingResolver {
             addMethod("SendMessagesHelper", "sendMessageParams", sendParamsMethod.name);
             String paramsDesc = sendParamsMethod.paramDescs[0];
             addClass(ClassNames.SEND_MESSAGE_PARAMS, paramsDesc);
+            DexScanner.MethodInfo masterFactory = null;
             for (DexScanner.MethodInfo pm : scanner.getMethods(paramsDesc)) {
                 if (pm.isStatic && paramsDesc.equals(pm.returnDesc) && pm.paramDescs.length >= 8) {
+                    if (pm.paramDescs.length >= 20 && (masterFactory == null || pm.paramDescs.length > masterFactory.paramDescs.length)) {
+                        masterFactory = pm;
+                    }
                     if ("Ljava/lang/String;".equals(pm.paramDescs[0]) && "J".equals(pm.paramDescs[1]) && pm.paramDescs.length <= 16) {
                         addMethod("SendMessageParams", "ofText", pm.name);
                     } else if ("Lorg/telegram/tgnet/TLRPC$MessageMedia;".equals(pm.paramDescs[0]) && "J".equals(pm.paramDescs[1])) {
@@ -966,6 +1041,23 @@ public class AutoMappingResolver {
                         addMethod("SendMessageParams", "ofDocument", pm.name);
                     }
                 }
+            }
+            if (masterFactory != null) {
+                String msgObjDesc = classMap.get(ClassNames.MESSAGE_OBJECT) != null
+                        ? DexScanner.javaToDesc(classMap.get(ClassNames.MESSAGE_OBJECT))
+                        : null;
+                List<String> writtenStrs = new ArrayList<>();
+                List<String> writtenMsgObjs = new ArrayList<>();
+                for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(paramsDesc, masterFactory.name, masterFactory.paramDescs, paramsDesc)) {
+                    if ("Ljava/lang/String;".equals(wf.typeDesc) && !writtenStrs.contains(wf.name)) {
+                        writtenStrs.add(wf.name);
+                    } else if (msgObjDesc != null && msgObjDesc.equals(wf.typeDesc) && !writtenMsgObjs.contains(wf.name)) {
+                        writtenMsgObjs.add(wf.name);
+                    }
+                }
+                if (writtenStrs.size() >= 1) addField("SendMessageParams", "message", writtenStrs.get(0));
+                if (writtenStrs.size() >= 2) addField("SendMessageParams", "caption", writtenStrs.get(1));
+                if (writtenMsgObjs.size() >= 3) addField("SendMessageParams", "editingMessageObject", writtenMsgObjs.get(2));
             }
         }
 
