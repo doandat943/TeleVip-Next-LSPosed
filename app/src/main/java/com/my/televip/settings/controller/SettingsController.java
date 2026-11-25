@@ -155,7 +155,7 @@ public class SettingsController {
                     Context ctx = getContext();
                     if (ctx != null) {
                         try {
-                            Browser.openUrl(ctx, "https://t.me/t_l0_e");
+                            Browser.openUrl(ctx, "https://t.me/televipnext");
                         } catch (Throwable t) {
                             Logger.e(t);
                         }

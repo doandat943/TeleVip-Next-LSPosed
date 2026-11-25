@@ -411,7 +411,7 @@ public class SettingsActivity {
         } else if (Keys.DeveloperChannel.equals(item.getKey())) {
             row.setOnClickListener(v -> {
                 try {
-                    Browser.openUrl(context, "https://t.me/t_l0_e");
+                    Browser.openUrl(context, "https://t.me/televipnext");
                 } catch (Throwable t) {
                     Logger.e(t);
                 }

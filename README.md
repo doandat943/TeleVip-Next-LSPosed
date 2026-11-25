@@ -1,4 +1,4 @@
-# TeleVip LSPosed
+# TeleVip Next LSPosed
 
 <p>
   <img src="https://img.shields.io/badge/Platform-Android-green">
@@ -77,9 +77,9 @@ A powerful LSPosed module that adds advanced customization features to Telegram 
 
 # 📢 Updates
 
-All TeleVip updates are published on Telegram:
+All TeleVip Next updates are published on Telegram:
 
-➡️ https://t.me/t_l0_e
+➡️ https://t.me/televipnext
 
 
 # ⚠️ Warning
@@ -100,4 +100,4 @@ Partially based on:
 - [Re-Telegram](https://github.com/Sakion-Team/Re-Telegram).
 
 
-Developed by **@mustafa1dev**
+Originally developed by **@mustafa1dev**, continued & maintained by **@doandat943** (DANG DOAN DAT)
