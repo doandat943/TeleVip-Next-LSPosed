@@ -1,10 +1,12 @@
 package com.my.televip.features.messages;
 
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.style.ForegroundColorSpan;
+import android.view.View;
 
 import com.my.televip.Class.ClassLoad;
 import com.my.televip.Class.ClassNames;
@@ -122,6 +124,9 @@ public class MessageTimeModifier {
 
         cell.setCurrentTimeString(time);
         TextPaint paint = Theme.getTextPaint();
+        if (paint == null) {
+            paint = getFallbackTimePaint(object);
+        }
 
         if (paint != null) {
             int ceil = (int) Math.ceil(paint.measureText(spannableStringBuilder, 0, spannableStringBuilder.length()));
@@ -129,6 +134,20 @@ public class MessageTimeModifier {
             cell.setTimeWidth(ceil + cell.getTimeWidth());
         }
 
+    }
+
+    private static TextPaint fallbackTimePaint;
+
+    private static TextPaint getFallbackTimePaint(Object cellObject) {
+        if (fallbackTimePaint == null) {
+            float density = (cellObject instanceof View)
+                    ? ((View) cellObject).getResources().getDisplayMetrics().density
+                    : Resources.getSystem().getDisplayMetrics().density;
+            TextPaint tp = new TextPaint();
+            tp.setTextSize(12f * density);
+            fallbackTimePaint = tp;
+        }
+        return fallbackTimePaint;
     }
 
 }

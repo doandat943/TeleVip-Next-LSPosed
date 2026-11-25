@@ -12,6 +12,7 @@ import com.my.televip.obfuscate.struct.ClientObfuscationData;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 17;
+    private static final int SCHEMA_VERSION = 18;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -535,21 +536,76 @@ public class AutoMappingResolver {
                     if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1
                             && msgObjDesc.equals(m.paramDescs[0]) && m.readsFieldNamed("date")) {
                         addMethod("ChatMessageCell", "measureTime", m.name);
+
+                        if (themeDesc != null) {
+                            Map<String, Integer> paintReads = new HashMap<>();
+                            for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(chatMsgCellDesc, m.name, new String[]{msgObjDesc}, themeDesc)) {
+                                if ("Landroid/text/TextPaint;".equals(rf.typeDesc)) {
+                                    Integer c = paintReads.get(rf.name);
+                                    paintReads.put(rf.name, c == null ? 1 : c + 1);
+                                }
+                            }
+                            String bestTimePaint = null;
+                            int bestPaintCount = 0;
+                            for (Map.Entry<String, Integer> pe : paintReads.entrySet()) {
+                                if (pe.getValue() > bestPaintCount) {
+                                    bestPaintCount = pe.getValue();
+                                    bestTimePaint = pe.getKey();
+                                }
+                            }
+                            if (bestTimePaint != null) {
+                                addField("Theme", "chat_timePaint", bestTimePaint);
+                            }
+                        }
+
                         String timeStrField = null;
-                        java.util.List<String> intFieldsAfterStr = new java.util.ArrayList<>();
+                        List<String> intWriteSeq = new ArrayList<>();
+                        Map<String, Integer> intWriteCounts = new HashMap<>();
                         for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(chatMsgCellDesc, m.name, new String[]{msgObjDesc}, chatMsgCellDesc)) {
                             if ("Ljava/lang/CharSequence;".equals(wf.typeDesc) && timeStrField == null) {
                                 timeStrField = wf.name;
-                            } else if (timeStrField != null && "I".equals(wf.typeDesc) && !intFieldsAfterStr.contains(wf.name)) {
-                                intFieldsAfterStr.add(wf.name);
+                            } else if ("I".equals(wf.typeDesc)) {
+                                Integer c = intWriteCounts.get(wf.name);
+                                intWriteCounts.put(wf.name, c == null ? 1 : c + 1);
+                                if (timeStrField != null) {
+                                    intWriteSeq.add(wf.name);
+                                }
                             }
                         }
                         if (timeStrField != null) {
                             addField("ChatMessageCell", "currentTimeString", timeStrField);
                         }
-                        if (intFieldsAfterStr.size() >= 2) {
-                            addField("ChatMessageCell", "timeTextWidth", intFieldsAfterStr.get(0));
-                            addField("ChatMessageCell", "timeWidth", intFieldsAfterStr.get(1));
+                        String resolvedTimeWidth = null;
+                        int bestTimeWidthWrites = 0;
+                        for (String name : intWriteSeq) {
+                            int cnt = intWriteCounts.get(name);
+                            if (cnt > bestTimeWidthWrites) {
+                                bestTimeWidthWrites = cnt;
+                                resolvedTimeWidth = name;
+                            }
+                        }
+                        String resolvedTimeTextWidth = null;
+                        if (resolvedTimeWidth != null) {
+                            int firstIdx = intWriteSeq.indexOf(resolvedTimeWidth);
+                            String nextCand = (firstIdx + 1 < intWriteSeq.size() && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx + 1)))
+                                    ? intWriteSeq.get(firstIdx + 1) : null;
+                            String prevCand = (firstIdx - 1 >= 0 && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx - 1)))
+                                    ? intWriteSeq.get(firstIdx - 1) : null;
+                            if (nextCand != null && prevCand != null) {
+                                int nextCnt = intWriteCounts.get(nextCand);
+                                int prevCnt = intWriteCounts.get(prevCand);
+                                resolvedTimeTextWidth = (prevCnt >= 2 && nextCnt < 2) ? prevCand : nextCand;
+                            } else if (nextCand != null) {
+                                resolvedTimeTextWidth = nextCand;
+                            } else if (prevCand != null) {
+                                resolvedTimeTextWidth = prevCand;
+                            }
+                        }
+                        if (resolvedTimeTextWidth != null) {
+                            addField("ChatMessageCell", "timeTextWidth", resolvedTimeTextWidth);
+                        }
+                        if (resolvedTimeWidth != null) {
+                            addField("ChatMessageCell", "timeWidth", resolvedTimeWidth);
                         }
                         break;
                     }
