@@ -45,16 +45,16 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 - **Always Show Proxy** button (`Off` / `In Menu` / `Top Bar`)
 - **Show Time Seconds** in chat & profile timestamps
 - **Show User ID** in profiles
+- **Disable Number Rounding** (`5.3K` → `5300`)
 - **Custom Calendar** (Gregorian / Hijri / Jalali)
+- **In-App Language Picker & RTL Support** (Auto, English, Tiếng Việt, العربية, فارسی, Español, 中文)
 
 ### 🛠️ Other Features
 - **Remove Content Saving Restrictions** (`noforwards`)
 - **Copy Attribution** (toggle where copied messages came from)
 - **Local Telegram Premium** unlock
-- **Disable Number Rounding** (`5.3K` → `5300`)
 - **Hide App Update Prompts**
 - **Fix TL Scheme Parse Errors**
-- **6 Built-in Languages**: English, Tiếng Việt, العربية, فارسی, Español, 中文
 
 ---
 
@@ -74,7 +74,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 | Forkgram Classic (`org.forkgram.classic`) | Turrit (`org.telegram.group`) |
 | X Plus (`com.xplus.messenger`) | |
 
-> Note: Thanks to runtime DEX `AutoMappingResolver`, official Telegram and Telegraph updates adapt automatically without waiting for hardcoded mapping updates.
+> Note: Thanks to runtime DEX `AutoMappingResolver`, official Telegram, Telegraph, and Cherrygram updates adapt automatically without waiting for hardcoded mapping updates.
 
 ---
 
