@@ -1,10 +1,13 @@
 package com.magiii.televipnext.application;
 
+import android.app.Activity;
 import android.content.Context;
 
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
+import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.utils.Utils;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
 
@@ -13,6 +16,12 @@ public class ApplicationLoaderHook {
     private static Context applicationContext;
 
     public static Context getApplicationContext() {
+        if (applicationContext == null && ClientManager.is(ClientManager.Client.Nekogram)) {
+            Activity activity = Utils.getCurrentActivity();
+            if (activity != null) {
+                applicationContext = activity.getApplicationContext();
+            }
+        }
         if (applicationContext == null) {
             applicationContext = (Context) ReflectHelper.getStaticObjectField(
                     ClassLoad.getClass(ClassNames.APPLICATION_LOADER),

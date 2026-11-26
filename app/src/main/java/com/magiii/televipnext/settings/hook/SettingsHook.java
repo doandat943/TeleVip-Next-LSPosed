@@ -1,6 +1,8 @@
 package com.magiii.televipnext.settings.hook;
 
 
+import android.util.Log;
+import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -15,6 +17,7 @@ import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.obfuscate.auto.DexScanner;
 import com.magiii.televipnext.settings.controller.SettingsController;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.Adapters.DrawerLayoutAdapter;
@@ -29,7 +32,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import com.magiii.televipnext.xposed.XposedCompat;
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -38,7 +44,411 @@ public class SettingsHook {
 
     private Constructor<?> itemConstructor;
 
+    private static final int NEKOGRAM_SETTINGS_VIEW_TYPE = 8353847;
+    private static final int NEKO_SETTINGS_ITEM_ID = 50;
+    private static final int TELEVIP_SETTINGS_ITEM_ID = 8353847;
+
+    private static boolean hookNekogramSettings(SettingsController controller) {
+        if (!ClientManager.is(ClientManager.Client.Nekogram)) return false;
+
+        Class<?> settings = nekoClass("org.telegram.ui.SettingsActivity");
+        Class<?> factory = nekoClass("org.telegram.ui.SettingsActivity$SettingCell$Factory");
+        Class<?> cell = nekoClass("org.telegram.ui.SettingsActivity$SettingCell");
+        Class<?> item = nekoClass("org.telegram.ui.Components.UItem");
+        Class<?> adapter = nekoClass("org.telegram.ui.Components.UniversalAdapter");
+        Class<?> list = nekoClass("org.telegram.ui.Components.UniversalRecyclerView");
+        if (settings == null || factory == null || cell == null || item == null || adapter == null || list == null) {
+            return hookCompiledNekogramSettings(settings, controller);
+        }
+
+        Field id = nekoLookup("UItem.id", () -> accessible(item.getDeclaredField("id")));
+        Field icon = nekoLookup("UItem.iconResId", () -> accessible(item.getDeclaredField("iconResId")));
+        Field iconView = nekoLookup("SettingCell.iconView", () -> accessible(cell.getDeclaredField("iconView")));
+        Method createItem = nekoLookup("SettingCell.Factory.of", () -> factory.getDeclaredMethod("of",
+                int.class, int.class, int.class, int.class, CharSequence.class, CharSequence.class));
+        if (id == null || icon == null || createItem == null) return false;
+
+        if (iconView != null) {
+            nekoHook(factory, "bindView", new BaseMethodHook() {
+                @Override
+                protected void afterMethod(MethodHookParam param) throws Throwable {
+                    if (!param.hasThrowable() && id.getInt(param.args[1]) == TELEVIP_SETTINGS_ITEM_ID) {
+                        ImageView image = (ImageView) iconView.get(param.args[0]);
+                        if (image != null) image.setImageDrawable(new GhostDrawable());
+                    }
+                }
+            }, View.class, item, boolean.class, adapter, list);
+        }
+
+        if (!nekoHook(settings, "onClick", new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) throws Throwable {
+                if (param.args[0] != null && id.getInt(param.args[0]) == TELEVIP_SETTINGS_ITEM_ID) {
+                    param.setResult(null);
+                    controller.openView();
+                }
+            }
+        }, item, View.class, int.class, float.class, float.class)) return false;
+
+        return nekoHook(settings, "fillItems", new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) throws Throwable {
+                if (!param.hasThrowable()) addNekogramSettingsItem(param.args[0], item, id, icon, createItem);
+            }
+        }, ArrayList.class, adapter);
+    }
+
+    private static boolean hookCompiledNekogramSettings(Class<?> settings, SettingsController controller) {
+        if (settings == null) return false;
+        DexScanner scanner = nekoLookup("Nekogram Settings APK DEX", () -> new DexScanner(Utils.sourceDir));
+        if (scanner == null) return false;
+
+        String settingsDesc = DexScanner.javaToDesc(settings.getName());
+        String[] createViewArgs = {"Landroid/content/Context;"};
+        String createView = scanner.findSingleMethod(settingsDesc, false, "Landroid/view/View;", createViewArgs);
+        String[] fillArgs = {"Ljava/lang/Object;", "Ljava/lang/Object;"};
+        String[] clickArgs = {"Ljava/lang/Object;", "Ljava/lang/Object;", "Ljava/lang/Number;",
+                "Ljava/io/Serializable;", "Ljava/io/Serializable;"};
+        String[] factoryArgs = {"I", "I", "I", "I", "Ljava/lang/CharSequence;",
+                "Ljava/lang/CharSequence;", "Ljava/lang/CharSequence;"};
+        String nekoSettingsDesc = "Ltw/nekomimi/nekogram/settings/NekoSettingsActivity;";
+        Set<String> callbackTypes = new LinkedHashSet<>();
+        for (DexScanner.MethodRef call : scanner.getCalledMethodsInMethod(settingsDesc, createView, createViewArgs, null)) {
+            if ("<init>".equals(call.name)) callbackTypes.add(call.ownerDesc);
+        }
+
+        DexScanner.MethodRef fill = null;
+        DexScanner.MethodRef click = null;
+        DexScanner.MethodRef factory = null;
+        for (String callbackType : callbackTypes) {
+            for (DexScanner.MethodInfo method : scanner.getMethods(callbackType)) {
+                if (method.isStatic || !"V".equals(method.returnDesc) || !method.containsConstInt(NEKO_SETTINGS_ITEM_ID)) {
+                    continue;
+                }
+                if (Arrays.equals(method.paramDescs, fillArgs)) {
+                    for (DexScanner.MethodRef call : scanner.getCalledMethodsInMethod(callbackType, method.name, fillArgs, null)) {
+                        if (!Arrays.equals(call.paramDescs, factoryArgs) || !call.returnDesc.startsWith("L")) continue;
+                        if (factory != null && !(callbackType.equals(fill.ownerDesc) && method.name.equals(fill.name)
+                                && factory.ownerDesc.equals(call.ownerDesc) && factory.name.equals(call.name))) {
+                            Logger.e("Ambiguous Nekogram Settings row factory");
+                            return false;
+                        }
+                        factory = call;
+                        fill = new DexScanner.MethodRef(callbackType, method.name, fillArgs, "V");
+                    }
+                } else if (Arrays.equals(method.paramDescs, clickArgs)
+                        && !scanner.getCalledMethodsInMethod(callbackType, method.name, clickArgs, nekoSettingsDesc).isEmpty()) {
+                    if (click != null) {
+                        Logger.e("Ambiguous Nekogram Settings click callback");
+                        return false;
+                    }
+                    click = new DexScanner.MethodRef(callbackType, method.name, clickArgs, "V");
+                }
+            }
+        }
+        if (fill == null || click == null || factory == null) {
+            Logger.e("Could not resolve the compiled Nekogram Settings callbacks");
+            return false;
+        }
+
+        String itemDesc = factory.returnDesc;
+        var itemWrites = scanner.getWrittenFieldsInMethod(factory.ownerDesc, factory.name, factoryArgs, itemDesc);
+        var clickReads = scanner.getReadInstanceFieldsInMethod(click.ownerDesc, click.name, clickArgs, itemDesc);
+        Set<String> rowIdFields = new LinkedHashSet<>();
+        for (DexScanner.FieldInfo field : clickReads) {
+            if ("I".equals(field.typeDesc)) rowIdFields.add(field.name);
+        }
+        String idName = null;
+        String iconName = null;
+        for (DexScanner.FieldInfo field : itemWrites) {
+            if (!"I".equals(field.typeDesc)) continue;
+            if (rowIdFields.contains(field.name) && idName == null) {
+                idName = field.name;
+            } else if (!rowIdFields.contains(field.name) && iconName == null) {
+                iconName = field.name;
+            } else {
+                Logger.e("Ambiguous Nekogram Settings item fields");
+                return false;
+            }
+        }
+
+        String captureName = scanner.findSingleField(fill.ownerDesc, false, "Ljava/lang/Object;");
+        Field capture = nekoDexField(fill.ownerDesc, captureName);
+        Field id = nekoDexField(itemDesc, idName);
+        Field icon = nekoDexField(itemDesc, iconName);
+        Method fillMethod = nekoDexMethod(fill, Object.class, Object.class);
+        Method clickMethod = nekoDexMethod(click, Object.class, Object.class, Number.class,
+                java.io.Serializable.class, java.io.Serializable.class);
+        Method factoryMethod = nekoDexMethod(factory, int.class, int.class, int.class, int.class,
+                CharSequence.class, CharSequence.class, CharSequence.class);
+        if (capture == null || id == null || icon == null || fillMethod == null || clickMethod == null
+                || factoryMethod == null || !java.lang.reflect.Modifier.isStatic(factoryMethod.getModifiers())) return false;
+
+        Class<?> item = id.getDeclaringClass();
+        if (!nekoRegister(clickMethod, new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) throws Throwable {
+                if (item.isInstance(param.args[0]) && id.getInt(param.args[0]) == TELEVIP_SETTINGS_ITEM_ID) {
+                    param.setResult(null);
+                    controller.openView();
+                }
+            }
+        })) return false;
+
+        return nekoRegister(fillMethod, new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) throws Throwable {
+                if (!param.hasThrowable() && settings.isInstance(capture.get(param.thisObject))) {
+                    addNekogramSettingsItem(param.args[0], item, id, icon, factoryMethod);
+                }
+            }
+        });
+    }
+
+    private static Field nekoDexField(String owner, String name) {
+        return nekoLookup(owner + "#" + name, () -> {
+            if (name == null) throw new NoSuchFieldException(owner);
+            Class<?> type = Class.forName(DexScanner.descToJava(owner), false, Utils.classLoader);
+            return accessible(type.getDeclaredField(name));
+        });
+    }
+
+    private static Method nekoDexMethod(DexScanner.MethodRef ref, Class<?>... types) {
+        return nekoLookup(ref.ownerDesc + "#" + ref.name, () -> {
+            Class<?> owner = Class.forName(DexScanner.descToJava(ref.ownerDesc), false, Utils.classLoader);
+            Method method = owner.getDeclaredMethod(ref.name, types);
+            method.setAccessible(true);
+            return method;
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void addNekogramSettingsItem(Object list, Class<?> item, Field id, Field icon, Method factory)
+            throws ReflectiveOperationException {
+        if (!(list instanceof ArrayList<?>)) return;
+        ArrayList<Object> items = (ArrayList<Object>) list;
+        int nekoPosition = -1;
+        for (int i = 0; i < items.size(); i++) {
+            Object entry = items.get(i);
+            if (!item.isInstance(entry)) continue;
+            int itemId = id.getInt(entry);
+            if (itemId == TELEVIP_SETTINGS_ITEM_ID) return;
+            if (itemId == NEKO_SETTINGS_ITEM_ID) nekoPosition = i;
+        }
+        if (nekoPosition < 0) return;
+
+        int nativeIcon = icon.getInt(items.get(nekoPosition));
+        Object[] args = {TELEVIP_SETTINGS_ITEM_ID, 0xFFF46F6F, 0xFFDF5555, nativeIcon,
+                formatEntryTitle("TeleVip Next \uD83D\uDC7B", LocaleController.isRTL()), null, null};
+        Object entry = factory.invoke(null, Arrays.copyOf(args, factory.getParameterCount()));
+        if (item.isInstance(entry)) items.add(nekoPosition + 1, entry);
+    }
+
+    private static Class<?> nekoClass(String name) {
+        return nekoLookup(name, () -> Class.forName(name, false, Utils.classLoader));
+    }
+
+    private static void hookNekogramProfile(SettingsController controller) {
+        if (!ClientManager.is(ClientManager.Client.Nekogram)) return;
+
+        Class<?> profile = nekoLookup(ClassNames.PROFILE_ACTIVITY,
+                () -> Class.forName(ClassNames.PROFILE_ACTIVITY, false, Utils.classLoader));
+        if (profile == null) return;
+
+        Class<?> adapter = nekoLookup("ProfileActivity.ListAdapter",
+                () -> Class.forName(profile.getName() + "$ListAdapter", false, Utils.classLoader));
+        Class<?> diff = nekoLookup("ProfileActivity.DiffCallback",
+                () -> Class.forName(profile.getName() + "$DiffCallback", false, Utils.classLoader));
+        Class<?> holder = nekoLookup("RecyclerView.ViewHolder",
+                () -> Class.forName("androidx.recyclerview.widget.RecyclerView$ViewHolder", false, Utils.classLoader));
+        Class<?> textCell = nekoLookup("TextCell",
+                () -> Class.forName("org.telegram.ui.Cells.TextCell", false, Utils.classLoader));
+        if (adapter == null || diff == null || holder == null || textCell == null) return;
+
+        DexScanner scanner = nekoLookup("Nekogram APK DEX", () -> new DexScanner(Utils.sourceDir));
+        if (scanner == null) return;
+
+        Field settingsSection = nekoLookup("ProfileActivity.settingsSectionRow",
+                () -> accessible(profile.getDeclaredField("settingsSectionRow")));
+        Field rowCount = nekoLookup("ProfileActivity.rowCount", () -> accessible(profile.getDeclaredField("rowCount")));
+        Field versionRow = nekoLookup("ProfileActivity.versionRow", () -> accessible(profile.getDeclaredField("versionRow")));
+        Field bottomPadding = nekoLookup("ProfileActivity.bottomPaddingRow", () -> accessible(profile.getDeclaredField("bottomPaddingRow")));
+        Field nativeTextType = nekoLookup("ListAdapter.VIEW_TYPE_TEXT", () -> accessible(adapter.getDeclaredField("VIEW_TYPE_TEXT")));
+        Field adapterProfile = nekoLookup("ListAdapter enclosing ProfileActivity", () -> enclosingProfile(adapter, profile));
+        Field diffProfile = nekoLookup("DiffCallback enclosing ProfileActivity", () -> enclosingProfile(diff, profile));
+        Field itemView = nekoLookup("ViewHolder.itemView", () -> holder.getField("itemView"));
+        Method position = nekoLookup("ViewHolder.getAdapterPosition", () -> holder.getMethod("getAdapterPosition"));
+        Method setText = nekoLookup("TextCell.setText used by ListAdapter", () -> nekoCellSetText(scanner, adapter, holder, textCell));
+        Method click = nekoLookup("ProfileActivity.createView list click callback", () -> nekoProfileClick(scanner, profile));
+        if (settingsSection == null || rowCount == null || versionRow == null || bottomPadding == null || nativeTextType == null
+                || adapterProfile == null || diffProfile == null || itemView == null
+                || position == null || setText == null || click == null) return;
+
+        Integer textType = nekoLookup("ListAdapter.VIEW_TYPE_TEXT value", () -> nativeTextType.getInt(null));
+        if (textType == null) return;
+
+        WeakHashMap<Object, Integer> rows = new WeakHashMap<>();
+        // Activate row injection only after the adapter, diff, and click hooks are installed.
+        if (!nekoHook(adapter, "getItemViewType", new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) throws Throwable {
+                if (param.args[0].equals(rows.get(adapterProfile.get(param.thisObject)))) {
+                    param.setResult(NEKOGRAM_SETTINGS_VIEW_TYPE);
+                }
+            }
+        }, int.class)) return;
+
+        if (!nekoHook(adapter, "onCreateViewHolder", new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) {
+                if (Integer.valueOf(NEKOGRAM_SETTINGS_VIEW_TYPE).equals(param.args[1])) {
+                    param.args[1] = textType;
+                }
+            }
+        }, ViewGroup.class, int.class)) return;
+
+        if (!nekoHook(adapter, "onBindViewHolder", new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) throws Throwable {
+                if (param.args[1].equals(rows.get(adapterProfile.get(param.thisObject)))) {
+                    String title = formatEntryTitle("TeleVip Next 👻", LocaleController.isRTL());
+                    setText.invoke(itemView.get(param.args[0]), title, false);
+                    param.setResult(null);
+                }
+            }
+        }, holder, int.class)) return;
+
+        if (!nekoHook(adapter, "isEnabled", new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) throws Throwable {
+                Integer row = rows.get(adapterProfile.get(param.thisObject));
+                if (row != null && row.equals(position.invoke(param.args[0]))) {
+                    param.setResult(true);
+                }
+            }
+        }, holder)) return;
+
+        if (!nekoHook(diff, "fillPositions", new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) throws Throwable {
+                if (param.hasThrowable()) return;
+                Integer row = rows.get(diffProfile.get(param.thisObject));
+                if (row != null) {
+                    ((SparseIntArray) param.args[0]).put(row, NEKOGRAM_SETTINGS_VIEW_TYPE);
+                }
+            }
+        }, SparseIntArray.class)) return;
+
+        if (!nekoRegister(click, new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) {
+                if (param.args[1].equals(rows.get(param.thisObject))) {
+                    param.setResult(null);
+                    controller.openView();
+                }
+            }
+        })) return;
+
+        nekoHook(profile, "updateRowsIds", new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) throws Throwable {
+                if (param.hasThrowable()) return;
+                Object activity = param.thisObject;
+                rows.remove(activity);
+                int count = rowCount.getInt(activity);
+                int version = versionRow.getInt(activity);
+                int padding = bottomPadding.getInt(activity);
+                // In this settings layout, the version footer is followed only by bottom padding.
+                int section = settingsSection.getInt(activity);
+                if (section < 0 || section >= version || count == Integer.MAX_VALUE
+                        || padding != version + 1 || padding != count - 1) return;
+
+                bottomPadding.setInt(activity, count);
+                try {
+                    rowCount.setInt(activity, count + 1);
+                } catch (Throwable t) {
+                    bottomPadding.setInt(activity, padding);
+                    throw t;
+                }
+                rows.put(activity, padding);
+            }
+        });
+    }
+
+    private static Method nekoCellSetText(DexScanner scanner, Class<?> adapter, Class<?> holder, Class<?> textCell)
+            throws Exception {
+        String[] bindSignature = {DexScanner.javaToDesc(holder.getName()), "I"};
+        for (DexScanner.MethodRef call : scanner.getCalledMethodsInMethod(DexScanner.javaToDesc(adapter.getName()),
+                "onBindViewHolder", bindSignature, DexScanner.javaToDesc(textCell.getName()))) {
+            if (!"setText".equals(call.name) || !"V".equals(call.returnDesc)
+                    || call.paramDescs.length != 2 || !"Z".equals(call.paramDescs[1])) continue;
+            Class<?> labelType = Class.forName(DexScanner.descToJava(call.paramDescs[0]), false, Utils.classLoader);
+            if (labelType.isAssignableFrom(String.class)) {
+                return textCell.getMethod(call.name, labelType, boolean.class);
+            }
+        }
+        throw new NoSuchMethodException("TextCell.setText used by ListAdapter.onBindViewHolder");
+    }
+
+    private static Method nekoProfileClick(DexScanner scanner, Class<?> profile) throws Exception {
+        String[] signature = {"Landroid/view/View;", "I", "F", "F"};
+        String name = null;
+        for (DexScanner.MethodInfo method : scanner.getMethods(DexScanner.javaToDesc(profile.getName()))) {
+            if (!method.isStatic && "V".equals(method.returnDesc) && Arrays.equals(signature, method.paramDescs)
+                    && method.readsFieldNamed("affiliateRow")) {
+                if (name != null) throw new NoSuchMethodException("Ambiguous ProfileActivity list click callback");
+                name = method.name;
+            }
+        }
+        if (name == null) throw new NoSuchMethodException("ProfileActivity list click callback (View, int, float, float)");
+        return profile.getDeclaredMethod(name, View.class, int.class, float.class, float.class);
+    }
+
+    private static Field enclosingProfile(Class<?> nested, Class<?> profile) throws NoSuchFieldException {
+        for (Field field : nested.getDeclaredFields()) {
+            if (field.isSynthetic() && field.getType() == profile) return accessible(field);
+        }
+        throw new NoSuchFieldException(nested.getName() + " enclosing " + profile.getName());
+    }
+
+    private static Field accessible(Field field) {
+        field.setAccessible(true);
+        return field;
+    }
+
+    private static boolean nekoHook(Class<?> owner, String name, BaseMethodHook callback, Class<?>... types) {
+        Method method = nekoLookup(owner.getName() + "#" + name, () -> owner.getDeclaredMethod(name, types));
+        return method != null && nekoRegister(method, callback);
+    }
+
+    private static boolean nekoRegister(Method method, BaseMethodHook callback) {
+        try {
+            XposedCompat.hookMethod(method, callback);
+            return true;
+        } catch (Throwable t) {
+            XposedCompat.log(Log.ERROR, "TeleVip", "Nekogram settings hook: " + method, t);
+            return false;
+        }
+    }
+
+    private interface NekogramLookup<T> {
+        T resolve() throws Throwable;
+    }
+
+    private static <T> T nekoLookup(String member, NekogramLookup<T> lookup) {
+        try {
+            return lookup.resolve();
+        } catch (Throwable t) {
+            XposedCompat.log(Log.ERROR, "TeleVip", "Nekogram settings lookup: " + member, t);
+            return null;
+        }
+    }
+
+
     public void newSettings(Class<?> SettingsActivityClass, Class<?> SettingsActivity$SettingCell$FactoryClass, SettingsController settingsController){
+        boolean nekogramSettingsHooked = hookNekogramSettings(settingsController);
+        hookNekogramProfile(settingsController);
+        if (nekogramSettingsHooked) return;
         try {
 
             GhostDrawable ghostDrawable = new GhostDrawable();
@@ -323,6 +733,9 @@ public class SettingsHook {
     }
 
     public void oldSettings(SettingsController settingsController){
+        boolean nekogramSettingsHooked = hookNekogramSettings(settingsController);
+        hookNekogramProfile(settingsController);
+        if (nekogramSettingsHooked) return;
         final Class<?> itemClass = ReflectHelper.findClassIfExists(Obfuscate.getClassName("org.telegram.ui.Adapters.DrawerLayoutAdapter$Item"), Utils.classLoader);
 
         if (itemClass != null) {
