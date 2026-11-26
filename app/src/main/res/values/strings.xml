@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TeleVip Next</string>
+    <string name="xposed_description">Take full control of Telegram — more privacy, fewer limits. Free and open-source.</string>
 </resources>
