@@ -183,6 +183,42 @@ public class SettingsHook {
                 || factoryMethod == null || !java.lang.reflect.Modifier.isStatic(factoryMethod.getModifiers())) return false;
 
         Class<?> item = id.getDeclaringClass();
+        String factoryDesc = factory.ownerDesc;
+        Method bindView = nekoLookup(factoryDesc + "#bindView", () -> {
+            DexScanner.MethodInfo binding = null;
+            for (DexScanner.MethodInfo method : scanner.getMethods(factoryDesc)) {
+                String[] params = method.paramDescs;
+                if (method.isStatic || !"V".equals(method.returnDesc) || params.length != 5
+                        || !"Landroid/view/View;".equals(params[0]) || !itemDesc.equals(params[1])
+                        || !"Z".equals(params[2]) || !params[3].startsWith("L") || !params[4].startsWith("L")) {
+                    continue;
+                }
+                if (binding != null) throw new NoSuchMethodException("Ambiguous bindView on " + factoryDesc);
+                binding = method;
+            }
+            if (binding == null) throw new NoSuchMethodException("bindView on " + factoryDesc);
+
+            Class<?> adapter = Class.forName(DexScanner.descToJava(binding.paramDescs[3]), false, Utils.classLoader);
+            Class<?> list = Class.forName(DexScanner.descToJava(binding.paramDescs[4]), false, Utils.classLoader);
+            return factoryMethod.getDeclaringClass().getDeclaredMethod(
+                    binding.name, View.class, item, boolean.class, adapter, list);
+        });
+        if (bindView != null) {
+            nekoRegister(bindView, new BaseMethodHook() {
+                @Override
+                protected void afterMethod(MethodHookParam param) throws Throwable {
+                    if (param.hasThrowable() || !item.isInstance(param.args[1])
+                            || id.getInt(param.args[1]) != TELEVIP_SETTINGS_ITEM_ID) return;
+
+                    ImageView image = findSettingCellIconView(param.args[0]);
+                    if (image != null) {
+                        GhostDrawable ghostDrawable = new GhostDrawable();
+                        image.setImageDrawable(ghostDrawable);
+                    }
+                }
+            });
+        }
+
         if (!nekoRegister(clickMethod, new BaseMethodHook() {
             @Override
             protected void beforeMethod(MethodHookParam param) throws Throwable {
