@@ -1,9 +1,15 @@
 package com.magiii.televipnext.settings.ui;
 
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -41,6 +47,7 @@ import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.Obfuscate;
 import com.magiii.televipnext.settings.controller.SettingsController;
+import com.magiii.televipnext.ui.RestartTrampolineActivity;
 import com.magiii.televipnext.utils.DialogUtils;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.ActionBar.Theme;
@@ -1018,11 +1025,43 @@ public class SettingsActivity {
     private void restartHostApp(View anchor) {
         Activity act = Utils.getCurrentActivity();
         if (act == null) return;
-        Intent intent = act.getPackageManager().getLaunchIntentForPackage(act.getPackageName());
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            act.startActivity(intent);
-            anchor.postDelayed(() -> Runtime.getRuntime().exit(0), 150);
+        String hostPkg = act.getPackageName();
+        Intent hostLaunch = act.getPackageManager().getLaunchIntentForPackage(hostPkg);
+        ComponentName hostComp = hostLaunch != null ? hostLaunch.getComponent() : null;
+
+        try {
+            Intent trampoline = new Intent()
+                    .setClassName("com.magiii.televipnext", RestartTrampolineActivity.class.getName())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    .putExtra(RestartTrampolineActivity.EXTRA_TARGET_PACKAGE, hostPkg);
+            if (hostComp != null) {
+                trampoline.putExtra(RestartTrampolineActivity.EXTRA_TARGET_COMPONENT, hostComp);
+            }
+            act.startActivity(trampoline);
+            act.overridePendingTransition(0, 0);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try { act.finishAffinity(); } catch (Throwable ignored) {}
+                android.os.Process.killProcess(android.os.Process.myPid());
+                Runtime.getRuntime().exit(0);
+            }, 200);
+            return;
+        } catch (Throwable ignored) {}
+
+        if (hostLaunch != null) {
+            hostLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            try {
+                AlarmManager am = (AlarmManager) act.getSystemService(Context.ALARM_SERVICE);
+                PendingIntent pi = PendingIntent.getActivity(
+                        act, 0, hostLaunch, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+                if (am != null) {
+                    am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 400, pi);
+                }
+            } catch (Throwable ignored) {}
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try { act.finishAffinity(); } catch (Throwable ignored) {}
+                android.os.Process.killProcess(android.os.Process.myPid());
+                Runtime.getRuntime().exit(0);
+            }, 150);
         }
     }
 
