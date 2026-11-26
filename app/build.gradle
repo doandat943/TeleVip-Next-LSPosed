@@ -8,8 +8,8 @@ android {
         applicationId "com.magiii.televipnext"
         minSdk 27
         targetSdk 36
-        versionCode 335
-        versionName "3.6.3"
+        versionCode 1
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -516,7 +516,7 @@ public final class CreditsSheet {
                 }
             }
         } catch (Throwable ignored) {}
-        return "v3.6.3 (335)";
+        return "v1.0.0 (1)";
     }
 
     private static int resolveIconType(String iconName) {
