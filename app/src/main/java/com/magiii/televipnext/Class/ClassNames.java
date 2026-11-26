@@ -45,6 +45,7 @@ public class ClassNames {
     public static final String TLRPC_CHAT = "org.telegram.tgnet.TLRPC$Chat";
     public static final String CHAT_MESSAGE_CELL_DELEGATE = "org.telegram.ui.ChatActivity$ChatMessageCellDelegate";
     public static final String FILE_LOADER = "org.telegram.messenger.FileLoader";
+    public static final String IMAGE_LOCATION = "org.telegram.messenger.ImageLocation";
     public static final String ANDROID_UTILITIES = "org.telegram.messenger.AndroidUtilities";
     public static final String FAST_DATE_FORMAT = "org.telegram.messenger.time.FastDateFormat";
     public static final String BROWSER = "org.telegram.messenger.browser.Browser";

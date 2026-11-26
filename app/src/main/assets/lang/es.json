@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "Elige dónde mantener visible el acceso directo de Proxy cuando está desactivado",
   "ProxyDisplayOff": "Desactivado",
   "ProxyDisplayMenu": "En el menú (⋮)",
-  "ProxyDisplayTopBar": "Barra superior"
+  "ProxyDisplayTopBar": "Barra superior",
+  "DownloadMediaForForwardFailed": "No se pudo descargar el archivo multimedia para reenviar desde un chat restringido",
+  "DownloadingMediaToForward": "Descargando multimedia para reenviar...",
+  "ForwardRestrictedFailed": "No se pudo reenviar el mensaje desde un chat restringido"
 }

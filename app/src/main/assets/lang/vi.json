@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "Chọn vị trí giữ nút Proxy luôn hiển thị kể cả khi tắt Proxy",
   "ProxyDisplayOff": "Tắt",
   "ProxyDisplayMenu": "Trong menu (⋮)",
-  "ProxyDisplayTopBar": "Thanh trên cùng"
+  "ProxyDisplayTopBar": "Thanh trên cùng",
+  "DownloadMediaForForwardFailed": "Không thể tải media để chuyển tiếp từ cuộc trò chuyện bị hạn chế",
+  "DownloadingMediaToForward": "Đang tải media để chuyển tiếp...",
+  "ForwardRestrictedFailed": "Không thể chuyển tiếp tin nhắn từ cuộc trò chuyện bị hạn chế"
 }

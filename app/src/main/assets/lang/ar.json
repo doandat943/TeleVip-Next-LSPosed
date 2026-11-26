@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "اختر مكان إبقاء اختصار البروكسي ظاهراً حتى عند إيقافه",
   "ProxyDisplayOff": "إيقاف",
   "ProxyDisplayMenu": "في القائمة (⋮)",
-  "ProxyDisplayTopBar": "الشريط العلوي"
+  "ProxyDisplayTopBar": "الشريط العلوي",
+  "DownloadMediaForForwardFailed": "فشل تنزيل الوسائط لإعادة التوجيه من محادثة مقيدة",
+  "DownloadingMediaToForward": "جارٍ تنزيل الوسائط لإعادة التوجيه...",
+  "ForwardRestrictedFailed": "فشل إعادة توجيه الرسالة من محادثة مقيدة"
 }

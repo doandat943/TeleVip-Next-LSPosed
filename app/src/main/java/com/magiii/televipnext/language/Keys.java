@@ -162,4 +162,7 @@ public class Keys {
     public static final String ProxyDisplayOff = "ProxyDisplayOff";
     public static final String ProxyDisplayMenu = "ProxyDisplayMenu";
     public static final String ProxyDisplayTopBar = "ProxyDisplayTopBar";
+    public static final String DownloadMediaForForwardFailed = "DownloadMediaForForwardFailed";
+    public static final String DownloadingMediaToForward = "DownloadingMediaToForward";
+    public static final String ForwardRestrictedFailed = "ForwardRestrictedFailed";
 }

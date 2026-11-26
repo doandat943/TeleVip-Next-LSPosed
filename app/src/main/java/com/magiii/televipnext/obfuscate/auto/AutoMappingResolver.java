@@ -25,7 +25,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 42;
+    private static final int SCHEMA_VERSION = 45;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -187,7 +187,9 @@ public class AutoMappingResolver {
                     && "J".equals(m.paramDescs[2]) && "J".equals(m.paramDescs[3]) && "J".equals(m.paramDescs[4])
                     && m.paramDescs[0].startsWith("Lorg/telegram/messenger/")
                     && m.paramDescs[1].startsWith("Lorg/telegram/ui/")
-                    && m.paramDescs[5].startsWith("Lorg/telegram/ui/PhotoViewer$")) {
+                    && m.paramDescs[5].startsWith("L")
+                    && !m.paramDescs[5].startsWith("Ljava/")
+                    && !m.paramDescs[5].startsWith("Landroid/")) {
                 msgObjDesc = m.paramDescs[0];
                 chatActDesc = m.paramDescs[1];
                 pvProviderDesc = m.paramDescs[5];
@@ -725,6 +727,7 @@ public class AutoMappingResolver {
                 addMethod("FileLoader", "getInstance",
                         scanner.findSingleMethod(fileLoaderDesc, true, fileLoaderDesc, "I"));
                 DexScanner.MethodInfo bestGetDir = null;
+                String imgLocDesc = null;
                 for (DexScanner.MethodInfo m : scanner.getMethods(fileLoaderDesc)) {
                     if ("Ljava/io/File;".equals(m.returnDesc) && m.paramDescs.length == 1
                             && DexScanner.javaToDesc(ClassNames.MESSAGE).equals(m.paramDescs[0])) {
@@ -737,10 +740,30 @@ public class AutoMappingResolver {
                         if (bestGetDir == null || m.getInsnsSize() > bestGetDir.getInsnsSize()) {
                             bestGetDir = m;
                         }
+                    } else if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 4
+                            && "Lorg/telegram/tgnet/TLRPC$Document;".equals(m.paramDescs[0])
+                            && "Ljava/lang/Object;".equals(m.paramDescs[1])
+                            && "I".equals(m.paramDescs[2]) && "I".equals(m.paramDescs[3])) {
+                        addMethod("FileLoader", "loadFileDocument", m.name);
+                    } else if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 5
+                            && m.paramDescs[0].startsWith("Lorg/telegram/messenger/")
+                            && "Ljava/lang/Object;".equals(m.paramDescs[1])
+                            && "Ljava/lang/String;".equals(m.paramDescs[2])
+                            && "I".equals(m.paramDescs[3]) && "I".equals(m.paramDescs[4])) {
+                        addMethod("FileLoader", "loadFileImage", m.name);
+                        imgLocDesc = m.paramDescs[0];
                     }
                 }
                 if (bestGetDir != null) {
                     addMethod("FileLoader", "getDirectory", bestGetDir.name);
+                }
+                if (imgLocDesc != null) {
+                    addClass(ClassNames.IMAGE_LOCATION, imgLocDesc);
+                    String getForPhoto = scanner.findSingleMethod(imgLocDesc, true, imgLocDesc,
+                            "Lorg/telegram/tgnet/TLRPC$PhotoSize;", "Lorg/telegram/tgnet/TLRPC$Photo;");
+                    if (getForPhoto != null) {
+                        addMethod("ImageLocation", "getForPhoto", getForPhoto);
+                    }
                 }
             }
 
@@ -1815,11 +1838,40 @@ public class AutoMappingResolver {
                 if (writtenStrs.size() >= 3) addField("SendingMediaInfo", "caption", writtenStrs.get(2));
                 if (firstList != null) addField("SendingMediaInfo", "entities", firstList);
             }
+            String isVideoField = null;
             for (DexScanner.FieldInfo f : scanner.getFields(smiDesc)) {
-                if (!f.isStatic && "Z".equals(f.typeDesc)) {
-                    addField("SendingMediaInfo", "isVideo", f.name);
+                if (!f.isStatic && "Z".equals(f.typeDesc) && "isVideo".equals(f.name)) {
+                    isVideoField = f.name;
                     break;
                 }
+            }
+            if (isVideoField == null) {
+                int bestZCount = 0;
+                boolean bestIsStatic = false;
+                for (DexScanner.MethodInfo m : scanner.getMethods(smhDesc)) {
+                    List<String> writtenZs = new ArrayList<>();
+                    for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(smhDesc, m.name, m.paramDescs, smiDesc)) {
+                        if (!wf.isStatic && "Z".equals(wf.typeDesc) && !writtenZs.contains(wf.name)) {
+                            writtenZs.add(wf.name);
+                        }
+                    }
+                    if (writtenZs.size() >= 2 && (writtenZs.size() > bestZCount || (writtenZs.size() == bestZCount && m.isStatic && !bestIsStatic))) {
+                        bestZCount = writtenZs.size();
+                        bestIsStatic = m.isStatic;
+                        isVideoField = writtenZs.get(0);
+                    }
+                }
+            }
+            if (isVideoField == null) {
+                for (DexScanner.FieldInfo f : scanner.getFields(smiDesc)) {
+                    if (!f.isStatic && "Z".equals(f.typeDesc)) {
+                        isVideoField = f.name;
+                        break;
+                    }
+                }
+            }
+            if (isVideoField != null) {
+                addField("SendingMediaInfo", "isVideo", isVideoField);
             }
         }
     }

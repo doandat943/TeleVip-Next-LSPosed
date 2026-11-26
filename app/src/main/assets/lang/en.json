@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "Choose where to keep the proxy shortcut visible when proxy is off",
   "ProxyDisplayOff": "Off",
   "ProxyDisplayMenu": "In Menu (⋮)",
-  "ProxyDisplayTopBar": "Top Bar"
+  "ProxyDisplayTopBar": "Top Bar",
+  "DownloadMediaForForwardFailed": "Failed to download media to forward from restricted chat",
+  "DownloadingMediaToForward": "Downloading media to forward...",
+  "ForwardRestrictedFailed": "Failed to forward message from restricted chat"
 }

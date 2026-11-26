@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "محل نمایش همیشگی میانبر پروکسی را هنگام خاموش بودن آن انتخاب کنید",
   "ProxyDisplayOff": "خاموش",
   "ProxyDisplayMenu": "در منو (⋮)",
-  "ProxyDisplayTopBar": "نوار بالا"
+  "ProxyDisplayTopBar": "نوار بالا",
+  "DownloadMediaForForwardFailed": "دانلود رسانه برای فوروارد از گفتگوی محدودشده ناموفق بود",
+  "DownloadingMediaToForward": "در حال دانلود رسانه برای ارسال...",
+  "ForwardRestrictedFailed": "فوروارد پیام از گفتگوی محدودشده ناموفق بود"
 }

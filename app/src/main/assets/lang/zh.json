@@ -201,5 +201,8 @@
   "AlwaysShowProxyDesc": "选择关闭代理时保留代理快捷入口的显示位置",
   "ProxyDisplayOff": "关闭",
   "ProxyDisplayMenu": "菜单内 (⋮)",
-  "ProxyDisplayTopBar": "顶部栏"
+  "ProxyDisplayTopBar": "顶部栏",
+  "DownloadMediaForForwardFailed": "无法下载媒体以从受限聊天转发",
+  "DownloadingMediaToForward": "正在下载媒体以转发...",
+  "ForwardRestrictedFailed": "无法从受限聊天转发消息"
 }
