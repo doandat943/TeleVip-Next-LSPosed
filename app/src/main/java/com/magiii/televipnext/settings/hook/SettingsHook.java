@@ -12,8 +12,6 @@ import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.Drawable.GhostDrawable;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
-import com.magiii.televipnext.language.Keys;
-import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
@@ -21,13 +19,17 @@ import com.magiii.televipnext.settings.controller.SettingsController;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.Adapters.DrawerLayoutAdapter;
 import com.magiii.televipnext.virtuals.SettingsIconResolver;
+import com.magiii.televipnext.virtuals.messenger.LocaleController;
 import com.magiii.televipnext.virtuals.ui.Components.UItem;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.magiii.televipnext.xposed.XposedCompat;
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -95,11 +97,12 @@ public class SettingsHook {
 
                                 Object uItem = null;
                                 try {
+                                    String entryTitle = formatEntryTitle("TeleVip Next \uD83D\uDC7B", LocaleController.isRTL());
                                     Method m6 = ReflectHelper.findMethodExactIfExists(SettingsActivity$SettingCell$FactoryClass, ofName,
                                             int.class, int.class, int.class, int.class, CharSequence.class, CharSequence.class);
                                     if (m6 != null) {
                                         uItem = m6.invoke(null, 8353847, color1, color2, 8353847,
-                                                "TeleVip Next \uD83D\uDC7B", Translator.get(Keys.ByMustafa));
+                                                entryTitle, null);
                                     } else {
                                         for (Method fm : SettingsActivity$SettingCell$FactoryClass.getDeclaredMethods()) {
                                             Class<?>[] pt = fm.getParameterTypes();
@@ -111,7 +114,7 @@ public class SettingsHook {
                                                 Object arg6 = pt[6] == boolean.class ? Boolean.FALSE
                                                         : (pt[6] == int.class ? Integer.valueOf(0) : null);
                                                 uItem = fm.invoke(null, 8353847, color1, color2, 8353847,
-                                                        "TeleVip Next \uD83D\uDC7B", Translator.get(Keys.ByMustafa), arg6);
+                                                        entryTitle, null, arg6);
                                                 break;
                                             }
                                         }
@@ -126,6 +129,10 @@ public class SettingsHook {
 
                                     if (item.getText() != null && item.getSubtext() != null) {
                                         arrayList.add(i, uItem);
+                                        Object shadowItem = createShadowItem(arrayList, UItemClass);
+                                        if (shadowItem != null) {
+                                            arrayList.add(i + 1, shadowItem);
+                                        }
                                         break;
                                     }
                                 }
@@ -158,6 +165,121 @@ public class SettingsHook {
         } catch (Throwable t){
             Logger.e(t);
         }
+    }
+
+    private static String formatEntryTitle(String title, boolean telegramRtl) {
+        if (!telegramRtl || title == null || title.isEmpty()) return title;
+        return "\u200F\u2066" + title + "\u2069";
+    }
+
+    private static Object createShadowItem(ArrayList<Object> arrayList, Class<?> uItemClass) {
+        if (uItemClass == null) return null;
+        String idFieldName = Obfuscate.getFieldName("UItem", "id");
+        try {
+            Method asShadow = ReflectHelper.findMethodExactIfExists(uItemClass, "asShadow", CharSequence.class);
+            if (asShadow != null && Modifier.isStatic(asShadow.getModifiers())) {
+                asShadow.setAccessible(true);
+                Object shadow = asShadow.invoke(null, (CharSequence) null);
+                if (shadow != null) {
+                    setShadowId(uItemClass, shadow, idFieldName);
+                    return shadow;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Field viewTypeField = findViewTypeField(uItemClass, idFieldName);
+            if (viewTypeField == null) return null;
+
+            Integer shadowViewType = findShadowViewType(arrayList, uItemClass, viewTypeField);
+            if (shadowViewType == null) return null;
+
+            Object shadow;
+            try {
+                Constructor<?> ctor2 = uItemClass.getDeclaredConstructor(int.class, boolean.class);
+                ctor2.setAccessible(true);
+                shadow = ctor2.newInstance(shadowViewType, false);
+            } catch (NoSuchMethodException e) {
+                Constructor<?> ctor1 = uItemClass.getDeclaredConstructor(int.class);
+                ctor1.setAccessible(true);
+                shadow = ctor1.newInstance(shadowViewType);
+            }
+            if (shadow != null) {
+                setShadowId(uItemClass, shadow, idFieldName);
+            }
+            return shadow;
+        } catch (Throwable t) {
+            Logger.e(t);
+            return null;
+        }
+    }
+
+    private static Field findViewTypeField(Class<?> uItemClass, String idFieldName) {
+        Field firstNonStaticInt = null;
+        for (Class<?> c = uItemClass.getSuperclass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers()) || f.getType() != int.class) continue;
+                f.setAccessible(true);
+                if (Modifier.isFinal(f.getModifiers())) {
+                    return f;
+                }
+                if (firstNonStaticInt == null) {
+                    firstNonStaticInt = f;
+                }
+            }
+        }
+        if (firstNonStaticInt != null) return firstNonStaticInt;
+
+        for (Field f : uItemClass.getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers()) || f.getType() != int.class) continue;
+            if (idFieldName != null && idFieldName.equals(f.getName())) continue;
+            f.setAccessible(true);
+            if (Modifier.isFinal(f.getModifiers())) {
+                return f;
+            }
+            if (firstNonStaticInt == null) {
+                firstNonStaticInt = f;
+            }
+        }
+        return firstNonStaticInt;
+    }
+
+    private static Integer findShadowViewType(ArrayList<Object> arrayList, Class<?> uItemClass, Field viewTypeField) {
+        if (arrayList == null) return null;
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (Object raw : arrayList) {
+            if (raw == null || !uItemClass.isInstance(raw)) continue;
+            UItem item = new UItem(raw);
+            if (item.getText() == null && item.getSubtext() == null) {
+                try {
+                    int vt = viewTypeField.getInt(raw);
+                    Integer prev = counts.get(vt);
+                    counts.put(vt, prev == null ? 1 : prev + 1);
+                } catch (Throwable ignored) {}
+            }
+        }
+        Integer bestVt = null;
+        int bestCount = 0;
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            int vt = entry.getKey();
+            int count = entry.getValue();
+            if (count > bestCount || (count == bestCount && vt > 0 && (bestVt == null || bestVt <= 0))) {
+                bestVt = vt;
+                bestCount = count;
+            }
+        }
+        return bestVt;
+    }
+
+    private static void setShadowId(Class<?> uItemClass, Object shadow, String idFieldName) {
+        if (shadow == null || idFieldName == null) return;
+        try {
+            Field idField = ReflectHelper.findFieldIfExists(uItemClass, idFieldName);
+            if (idField != null) {
+                idField.setAccessible(true);
+                idField.setInt(shadow, 8353848);
+            }
+        } catch (Throwable ignored) {}
     }
 
     private static ImageView findSettingCellIconView(Object cell) {
@@ -220,7 +342,10 @@ public class SettingsHook {
                                 itemConstructor.setAccessible(true);
                             }
 
-                            Object newItem = itemConstructor.newInstance(8353847, "TeleVip Next \uD83D\uDC7B", SettingsIconResolver.getIconSettings());
+                            Object newItem = itemConstructor.newInstance(
+                                    8353847,
+                                    formatEntryTitle("TeleVip Next \uD83D\uDC7B", LocaleController.isRTL()),
+                                    SettingsIconResolver.getIconSettings());
 
                             if (items instanceof ArrayList<?>) {
                                 ArrayList<Object> typedItems = (ArrayList<Object>) items;

@@ -9,7 +9,6 @@
   "ChangeTo": "تم التغيير الى",
   "NameDeleted": "تم حذف الاسم",
   "GhostMode": "وضع الشبح 👻",
-  "ByMustafa": "تم تطوير من قبل @m_1_iq و @doandat943",
   "HideSeen": "اخفاء علامة الاستلام",
   "HideStoryView": "اخفاء مشاهدة قصة",
   "HideTyping": "اخفاء مؤشر الكتابة",
@@ -113,8 +112,6 @@
   "TabChats": "المحادثات",
   "TabAppearance": "المظهر",
   "TabTools": "الأدوات",
-  "SearchSettings": "البحث في الإعدادات",
-  "NoMatchingSettings": "لم يتم العثور على إعدادات مطابقة",
   "HistoryTab": "السجل",
   "ChangesTab": "التغييرات",
   "ShowUnchangedLines": "إظهار الأسطر غير المعدّلة",
@@ -204,5 +201,8 @@
   "ProxyDisplayTopBar": "الشريط العلوي",
   "DownloadMediaForForwardFailed": "فشل تنزيل الوسائط لإعادة التوجيه من محادثة مقيدة",
   "DownloadingMediaToForward": "جارٍ تنزيل الوسائط لإعادة التوجيه...",
-  "ForwardRestrictedFailed": "فشل إعادة توجيه الرسالة من محادثة مقيدة"
+  "ForwardRestrictedFailed": "فشل إعادة توجيه الرسالة من محادثة مقيدة",
+  "Language": "اللغة",
+  "LanguageDesc": "اختر لغة العرض لـ TeleVip Next",
+  "LanguageAuto": "تلقائي (افتراضي)"
 }

@@ -9,7 +9,6 @@
   "ChangeTo": "Cambiar a",
   "NameDeleted": "Nombre eliminado",
   "GhostMode": "Modo Fantasma 👻",
-  "ByMustafa": "por @m_1_iq y @doandat943",
   "HideSeen": "Ocultar estado 'Visto'",
   "HideStoryView": "Ocultar estado 'Historia vista'",
   "HideTyping": "Ocultar 'Escribiendo...'",
@@ -113,8 +112,6 @@
   "TabChats": "Chats",
   "TabAppearance": "Apariencia",
   "TabTools": "Herramientas",
-  "SearchSettings": "Buscar ajustes",
-  "NoMatchingSettings": "No se encontraron ajustes",
   "HistoryTab": "Historial",
   "ChangesTab": "Cambios",
   "ShowUnchangedLines": "Mostrar líneas sin cambios",
@@ -204,5 +201,8 @@
   "ProxyDisplayTopBar": "Barra superior",
   "DownloadMediaForForwardFailed": "No se pudo descargar el archivo multimedia para reenviar desde un chat restringido",
   "DownloadingMediaToForward": "Descargando multimedia para reenviar...",
-  "ForwardRestrictedFailed": "No se pudo reenviar el mensaje desde un chat restringido"
+  "ForwardRestrictedFailed": "No se pudo reenviar el mensaje desde un chat restringido",
+  "Language": "Idioma",
+  "LanguageDesc": "Elige el idioma de TeleVip Next",
+  "LanguageAuto": "Automático"
 }

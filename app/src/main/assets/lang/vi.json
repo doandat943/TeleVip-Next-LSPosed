@@ -9,7 +9,6 @@
   "ChangeTo": "Đã đổi thành",
   "NameDeleted": "Đã xóa tên",
   "GhostMode": "Chế độ Ẩn danh 👻",
-  "ByMustafa": "bởi @m_1_iq & @doandat943",
   "HideSeen": "Ẩn trạng thái 'Đã xem'",
   "HideStoryView": "Ẩn trạng thái 'Đã xem Tin'",
   "HideTyping": "Ẩn 'Đang nhập...'",
@@ -113,8 +112,6 @@
   "TabChats": "Trò chuyện",
   "TabAppearance": "Giao diện",
   "TabTools": "Công cụ",
-  "SearchSettings": "Tìm kiếm cài đặt",
-  "NoMatchingSettings": "Không tìm thấy cài đặt phù hợp",
   "HistoryTab": "Lịch sử",
   "ChangesTab": "Thay đổi",
   "ShowUnchangedLines": "Hiện dòng không đổi",
@@ -204,5 +201,8 @@
   "ProxyDisplayTopBar": "Thanh trên cùng",
   "DownloadMediaForForwardFailed": "Không thể tải media để chuyển tiếp từ cuộc trò chuyện bị hạn chế",
   "DownloadingMediaToForward": "Đang tải media để chuyển tiếp...",
-  "ForwardRestrictedFailed": "Không thể chuyển tiếp tin nhắn từ cuộc trò chuyện bị hạn chế"
+  "ForwardRestrictedFailed": "Không thể chuyển tiếp tin nhắn từ cuộc trò chuyện bị hạn chế",
+  "Language": "Ngôn ngữ",
+  "LanguageDesc": "Chọn ngôn ngữ hiển thị cho TeleVip Next",
+  "LanguageAuto": "Tự động (Mặc định)"
 }

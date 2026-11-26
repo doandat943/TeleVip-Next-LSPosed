@@ -9,10 +9,10 @@ import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.settings.ui.GlassDialog;
 import com.magiii.televipnext.utils.IdDateEstimator;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.ActionBar.ActionBarMenuItem;
-import com.magiii.televipnext.virtuals.ActionBar.AlertDialog;
 import com.magiii.televipnext.virtuals.ui.ProfileActivity;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -61,17 +61,17 @@ public class ProfileHook {
                     final Object thisClass = ReflectHelper.getObjectField(param.thisObject, Obfuscate.getFieldName("ProfileActivity", "this$0"));
                     ProfileActivity profile = new ProfileActivity(thisClass);
 
-                    AlertDialog alertDialog = new AlertDialog(Utils.getCurrentActivity());
-                    alertDialog.setTitle(Translator.get(Keys.TeleVip));
-                    alertDialog.setMessage("\n" +
-                            Translator.get(Keys.ApproximateCreationDate) + " : " +
-                                    IdDateEstimator.getYearAndMethod(getUserID(profile)) + "\n\n" +
-                                    Translator.get(Keys.Age) + " : " +
-                                    IdDateEstimator.getAge(getUserID(profile)) + "\n\n" +
-                                    Translator.get(Keys.ApproximateCreationDateNotice)
-                    );
-                    alertDialog.setPositiveButton(Translator.get(Keys.Done), null);
-                    alertDialog.show();
+                    new GlassDialog.Builder(Utils.getCurrentActivity())
+                            .setTitle(Translator.get(Keys.TeleVip))
+                            .setMessage(
+                                    Translator.get(Keys.ApproximateCreationDate) + " : " +
+                                            IdDateEstimator.getYearAndMethod(getUserID(profile)) + "\n\n" +
+                                            Translator.get(Keys.Age) + " : " +
+                                            IdDateEstimator.getAge(getUserID(profile)) + "\n\n" +
+                                            Translator.get(Keys.ApproximateCreationDateNotice)
+                            )
+                            .setPositiveButton(Translator.get(Keys.Done), null)
+                            .show();
                 }
             }
         });

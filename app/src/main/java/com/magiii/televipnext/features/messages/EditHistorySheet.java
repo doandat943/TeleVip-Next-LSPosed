@@ -131,6 +131,7 @@ final class EditHistorySheet {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         final FrameLayout scrim = new FrameLayout(activity);
+        scrim.setLayoutDirection(Translator.isRtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         scrim.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scrim.setOnClickListener(v -> dialog.dismiss());
@@ -248,8 +249,8 @@ final class EditHistorySheet {
         titleCol.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams titleColLp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        titleColLp.setMarginStart(dp(activity, 8));
-        titleColLp.setMarginEnd(dp(activity, 8));
+        titleColLp.leftMargin = dp(activity, 8);
+        titleColLp.rightMargin = dp(activity, 8);
         topBar.addView(titleCol, titleColLp);
 
         TextView titleTv = new TextView(activity);

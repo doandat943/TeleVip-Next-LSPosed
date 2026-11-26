@@ -5,7 +5,7 @@ import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.settings.controller.SettingsController;
-import com.magiii.televipnext.virtuals.ActionBar.AlertDialog;
+import com.magiii.televipnext.settings.ui.GlassDialog;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,12 +41,12 @@ public class Turrit {
     }
 
     public static void showGhostModeDialog(SettingsController settingsController){
-        AlertDialog ghostMode = new AlertDialog(settingsController.getContext());
-        ghostMode.setTitle(Translator.get(Keys.GhostMode));
-        ghostMode.setMessage(Translator.get(Keys.OpenGhostMode));
-        ghostMode.setPositiveButton(Translator.get(Keys.Open), AlertDialog.click(settingsController::openView));
-        ghostMode.setNegativeButton(Translator.get(Keys.Cancel), null);
-        ghostMode.show();
+        new GlassDialog.Builder(settingsController.getContext())
+                .setTitle(Translator.get(Keys.GhostMode))
+                .setMessage(Translator.get(Keys.OpenGhostMode))
+                .setPositiveButton(Translator.get(Keys.Open), settingsController::openView)
+                .setNegativeButton(Translator.get(Keys.Cancel), null)
+                .show();
     }
 
 }

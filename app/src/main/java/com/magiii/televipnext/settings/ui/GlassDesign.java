@@ -182,6 +182,16 @@ public final class GlassDesign {
         );
     }
 
+    public static Drawable createGlassDialogDrawable(Palette p, float radiusPx) {
+        int fillTop = p.light ? Color.argb(252, 252, 253, 255) : Color.argb(252, 26, 35, 48);
+        int fillBottom = p.light ? Color.argb(250, 241, 246, 252) : Color.argb(250, 20, 28, 39);
+        return new SpecularGlassDrawable(
+                fillTop, fillBottom,
+                p.cardBorderTop, p.cardBorderBottom,
+                radiusPx, Math.max(1.5f, radiusPx * 0.048f)
+        );
+    }
+
     public static Drawable createGlassPillDrawable(Palette p, float radiusPx) {
         return new SpecularGlassDrawable(
                 p.pillFillTop, p.pillFillBottom,
@@ -441,7 +451,7 @@ public final class GlassDesign {
             thumbBg.setCornerRadius(18f * density);
             thumbBg.setStroke(Math.max(1, Math.round(1f * density)), palette.tabThumbBorder);
             thumbView.setBackground(thumbBg);
-            addView(thumbView, new LayoutParams(0, LayoutParams.MATCH_PARENT));
+            addView(thumbView, new LayoutParams(0, LayoutParams.MATCH_PARENT, Gravity.TOP | Gravity.LEFT));
 
             LinearLayout row = new LinearLayout(ctx);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -527,9 +537,7 @@ public final class GlassDesign {
                 lp.height = innerH;
                 thumbView.setLayoutParams(lp);
             }
-            boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
-            float offset = rtl ? (labels.length - 1 - currentPos) * tabW : currentPos * tabW;
-            thumbView.setTranslationX(offset);
+            thumbView.setTranslationX(currentPos * tabW);
         }
     }
 
@@ -597,9 +605,7 @@ public final class GlassDesign {
             float thumbR = (h - pad * 2f) / 2f;
             float startX = pad + thumbR;
             float endX = w - pad - thumbR;
-            boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
-            float visualProgress = rtl ? (1f - progress) : progress;
-            float cx = startX + (endX - startX) * visualProgress;
+            float cx = startX + (endX - startX) * progress;
             float cy = h / 2f;
 
             canvas.drawCircle(cx, cy + h * 0.03f, thumbR, shadowPaint);
@@ -613,7 +619,7 @@ public final class GlassDesign {
     public static final class GlassIcons {
 
         public static Drawable backArrow(int color) {
-            return new VectorDrawable24(color, true) {
+            return new VectorDrawable24(color, true, false) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
                     stroke.setStrokeWidth(2.1f);
@@ -668,13 +674,19 @@ public final class GlassDesign {
             };
         }
 
-        static Drawable searchIcon(int color) {
+        static Drawable restartIcon(int color) {
             return new VectorDrawable24(color, false) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
                     stroke.setStrokeWidth(2.1f);
-                    c.drawCircle(10.5f, 10.5f, 6.0f, stroke);
-                    c.drawLine(15.0f, 15.0f, 20.0f, 20.0f, stroke);
+                    RectF arc = new RectF(4.8f, 4.8f, 19.2f, 19.2f);
+                    c.drawArc(arc, -45f, 290f, false, stroke);
+                    Path arrow = new Path();
+                    arrow.moveTo(15.2f, 3.6f);
+                    arrow.lineTo(19.8f, 4.6f);
+                    arrow.lineTo(17.8f, 9.0f);
+                    arrow.close();
+                    c.drawPath(arrow, fill);
                 }
             };
         }
@@ -690,8 +702,26 @@ public final class GlassDesign {
             };
         }
 
+        public static Drawable checkIcon(int color) {
+            return new VectorDrawable24(color, false) {
+                @Override
+                protected void draw24(Canvas c, Paint fill, Paint stroke) {
+                    stroke.setStrokeWidth(2.3f);
+                    Path p = new Path();
+                    p.moveTo(5.2f, 12.6f);
+                    p.lineTo(9.8f, 17.2f);
+                    p.lineTo(18.8f, 7.6f);
+                    c.drawPath(p, stroke);
+                }
+            };
+        }
+
         public static Drawable chevronRight(int color) {
-            return new VectorDrawable24(color, true) {
+            return chevronRight(color, false);
+        }
+
+        public static Drawable chevronRight(int color, boolean rtl) {
+            return new VectorDrawable24(color, true, rtl) {
                 @Override
                 protected void draw24(Canvas c, Paint fill, Paint stroke) {
                     stroke.setStrokeWidth(2.2f);
@@ -917,9 +947,15 @@ public final class GlassDesign {
         private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final boolean autoMirror;
+        private final boolean forceMirror;
 
         VectorDrawable24(int color, boolean autoMirror) {
+            this(color, autoMirror, false);
+        }
+
+        VectorDrawable24(int color, boolean autoMirror, boolean forceMirror) {
             this.autoMirror = autoMirror;
+            this.forceMirror = forceMirror;
             fill.setStyle(Paint.Style.FILL);
             fill.setColor(color);
             stroke.setStyle(Paint.Style.STROKE);
@@ -938,7 +974,7 @@ public final class GlassDesign {
             float sy = b.height() / 24f;
             canvas.save();
             canvas.translate(b.left, b.top);
-            if (autoMirror && getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            if (forceMirror || (autoMirror && getLayoutDirection() == View.LAYOUT_DIRECTION_RTL)) {
                 canvas.translate(b.width(), 0);
                 canvas.scale(-sx, sy);
             } else {

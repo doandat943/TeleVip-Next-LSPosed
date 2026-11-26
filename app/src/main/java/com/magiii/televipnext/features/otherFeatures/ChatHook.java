@@ -1,9 +1,9 @@
 package com.magiii.televipnext.features.otherFeatures;
 
+import android.app.Activity;
 import android.content.Context;
 import android.text.InputType;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
@@ -15,10 +15,9 @@ import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.settings.ui.GlassDialog;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.ActionBar.ActionBarMenuItem;
-import com.magiii.televipnext.virtuals.ActionBar.AlertDialog;
-import com.magiii.televipnext.virtuals.ActionBar.Theme;
 import com.magiii.televipnext.virtuals.ui.ChatActivity;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -73,44 +72,28 @@ public class ChatHook {
                         if (id == 8353847) {
                             chat.scrollToMessageId(1, 0, true, 0, true, 0);
                         } else if (id == 8353848) {
+                            Activity activity = Utils.getCurrentActivity();
+                            if (activity == null) return;
 
-                            AlertDialog dialog = new AlertDialog(Utils.getCurrentActivity());
-                            dialog.setTitle(Translator.get(Keys.InputMessageId));
+                            EditText input = GlassDialog.createGlassEditText(
+                                    activity,
+                                    Translator.get(Keys.InputMessageId),
+                                    InputType.TYPE_CLASS_NUMBER);
 
-                            EditText input = new EditText(Utils.getCurrentActivity());
-                            input.setInputType(InputType.TYPE_CLASS_NUMBER);
-                            if (Theme.isLight()) {
-                                input.setTextColor(0xFF000000);
-                                input.setHintTextColor(0xFF424242);
-                            } else {
-                                input.setTextColor(0xFFFFFFFF);
-                                input.setHintTextColor(0xFFBDBDBD);
-                            }
-                            input.setTextSize(18);
-                            input.setPadding(20, 20, 20, 20);
-
-                            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                                    LinearLayout.LayoutParams.MATCH_PARENT,
-                                    LinearLayout.LayoutParams.WRAP_CONTENT
-                            );
-                            params.setMargins(20, 20, 20, 20);
-                            input.setLayoutParams(params);
-
-                            LinearLayout layout = new LinearLayout(Utils.getCurrentActivity());
-                            layout.setOrientation(LinearLayout.VERTICAL);
-                            layout.addView(input);
-
-                            dialog.setView(layout);
-
-                            dialog.setPositiveButton(Translator.get(Keys.Done), AlertDialog.click(() -> {
-                                String text = input.getText().toString().trim();
-                                if (!text.isEmpty()) {
-                                    int msgId = Integer.parseInt(text);
-                                    chat.scrollToMessageId(msgId, 0, true, 0, true, 0);
-                                }
-                            }));
-
-                            dialog.show();
+                            new GlassDialog.Builder(activity)
+                                    .setTitle(Translator.get(Keys.InputMessageId))
+                                    .setView(input)
+                                    .setPositiveButton(Translator.get(Keys.Done), () -> {
+                                        String text = input.getText().toString().trim();
+                                        if (!text.isEmpty()) {
+                                            try {
+                                                int msgId = Integer.parseInt(text);
+                                                chat.scrollToMessageId(msgId, 0, true, 0, true, 0);
+                                            } catch (NumberFormatException ignored) {}
+                                        }
+                                    })
+                                    .setNegativeButton(Translator.get(Keys.Cancel), null)
+                                    .show();
                         }
                     } catch (Throwable t) {
                         Logger.e(t);

@@ -109,4 +109,4 @@ Licensed under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](./
 ## 🙏 Credits
 
 - Partially based on [Re-Telegram](https://github.com/Sakion-Team/Re-Telegram).
-- Originally developed by **@mustafa1dev**, continued & maintained by **@doandat943** (DANG DOAN DAT).
+- Originally developed by [**@mustafa1dev**](https://github.com/mustafa1dev), continued & maintained by [**@doandat943**](https://github.com/doandat943) (DANG DOAN DAT).

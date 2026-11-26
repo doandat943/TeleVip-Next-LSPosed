@@ -8,7 +8,6 @@ public class Keys {
     public static final String Done = "Done";
     public static final String Cancel = "Cancel";
     public static final String GhostMode = "GhostMode";
-    public static final String ByMustafa = "ByMustafa";
     public static final String HideSeen = "HideSeen";
     public static final String HideStoryView = "HideStoryView";
     public static final String HideTyping = "HideTyping";
@@ -124,8 +123,6 @@ public class Keys {
     public static final String TabChats = "TabChats";
     public static final String TabAppearance = "TabAppearance";
     public static final String TabTools = "TabTools";
-    public static final String SearchSettings = "SearchSettings";
-    public static final String NoMatchingSettings = "NoMatchingSettings";
     public static final String HistoryTab = "HistoryTab";
     public static final String ChangesTab = "ChangesTab";
     public static final String ShowUnchangedLines = "ShowUnchangedLines";
@@ -165,4 +162,6 @@ public class Keys {
     public static final String DownloadMediaForForwardFailed = "DownloadMediaForForwardFailed";
     public static final String DownloadingMediaToForward = "DownloadingMediaToForward";
     public static final String ForwardRestrictedFailed = "ForwardRestrictedFailed";
+    public static final String Language = "Language";
+    public static final String LanguageAuto = "LanguageAuto";
 }

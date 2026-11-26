@@ -4,15 +4,16 @@ import android.content.Context;
 
 import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
-import com.magiii.televipnext.virtuals.ActionBar.AlertDialog;
+import com.magiii.televipnext.settings.ui.GlassDialog;
 
 public class DialogUtils {
 
     public static void showQuranAlert(Context context){
-        AlertDialog alertDialog = new AlertDialog(context);
-        alertDialog.setTitle("TeleVip Next");
-        alertDialog.setMessage(Translator.get(Keys.QuranNotification));
-        alertDialog.setPositiveButton(Translator.get(Keys.Done), null);
-        alertDialog.show();
+        new GlassDialog.Builder(context)
+                .setShowBrandEmblem(true)
+                .setTitle("TeleVip Next")
+                .setMessage(Translator.get(Keys.QuranNotification))
+                .setPositiveButton(Translator.get(Keys.Done), null)
+                .show();
     }
 }

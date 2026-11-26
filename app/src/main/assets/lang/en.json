@@ -9,7 +9,6 @@
   "ChangeTo": "Change to",
   "NameDeleted": "Name deleted",
   "GhostMode": "Ghost Mode 👻",
-  "ByMustafa": "by @m_1_iq & @doandat943",
   "HideSeen": "Hide 'Seen' status",
   "HideStoryView": "Hide 'Story View' status",
   "HideTyping": "Hide Typing...",
@@ -113,8 +112,6 @@
   "TabChats": "Chats",
   "TabAppearance": "Appearance",
   "TabTools": "Tools",
-  "SearchSettings": "Search settings",
-  "NoMatchingSettings": "No matching settings found",
   "HistoryTab": "History",
   "ChangesTab": "Changes",
   "ShowUnchangedLines": "Show unchanged lines",
@@ -204,5 +201,8 @@
   "ProxyDisplayTopBar": "Top Bar",
   "DownloadMediaForForwardFailed": "Failed to download media to forward from restricted chat",
   "DownloadingMediaToForward": "Downloading media to forward...",
-  "ForwardRestrictedFailed": "Failed to forward message from restricted chat"
+  "ForwardRestrictedFailed": "Failed to forward message from restricted chat",
+  "Language": "Language",
+  "LanguageDesc": "Choose display language for TeleVip Next",
+  "LanguageAuto": "Auto (Default)"
 }

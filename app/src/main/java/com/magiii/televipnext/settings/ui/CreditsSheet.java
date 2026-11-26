@@ -67,6 +67,7 @@ public final class CreditsSheet {
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
             FrameLayout scrim = new FrameLayout(activity);
+            scrim.setLayoutDirection(Translator.isRtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
             scrim.setLayoutParams(new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             scrim.setOnClickListener(v -> dialog.dismiss());
@@ -311,24 +312,33 @@ public final class CreditsSheet {
         int badgeColor = parseColorSafe(sec.optString("badgeColor"), p.accentBlue);
         int iconType = resolveIconType(sec.optString("icon"));
 
+        final boolean rtl = Translator.isRtl();
         // Header row
         LinearLayout headerRow = new LinearLayout(activity);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setGravity((rtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         headerRow.setPadding(dp(activity, 16), dp(activity, 14), dp(activity, 16), dp(activity, 12));
 
         ImageView badge = new ImageView(activity);
         badge.setImageDrawable(GlassDesign.GlassIcons.badgeDrawable(badgeColor, dp(activity, 8), iconType, Color.WHITE));
         LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(dp(activity, 28), dp(activity, 28));
-        badgeLp.setMarginEnd(dp(activity, 12));
-        headerRow.addView(badge, badgeLp);
 
         TextView headerTv = new TextView(activity);
         headerTv.setText(title);
         headerTv.setTextColor(p.accentBlue);
         headerTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
         headerTv.setTypeface(mediumTf);
-        headerRow.addView(headerTv);
+        headerTv.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
+        headerTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        if (rtl) {
+            badgeLp.leftMargin = dp(activity, 12);
+            headerRow.addView(headerTv);
+            headerRow.addView(badge, badgeLp);
+        } else {
+            badgeLp.rightMargin = dp(activity, 12);
+            headerRow.addView(badge, badgeLp);
+            headerRow.addView(headerTv);
+        }
         card.addView(headerRow);
 
         JSONArray items = sec.optJSONArray("items");
@@ -359,13 +369,14 @@ public final class CreditsSheet {
         String iconName = item.optString("icon", "");
         int avatarBg = parseColorSafe(item.optString("avatarBg"), p.accentBlue);
 
+        final boolean rtl = Translator.isRtl();
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(activity, 16), dp(activity, 13), dp(activity, 14), dp(activity, 13));
+        row.setPadding(dp(activity, rtl ? 14 : 16), dp(activity, 13), dp(activity, rtl ? 16 : 14), dp(activity, 13));
         row.setBackground(GlassDesign.createRowRipple(p.ripple));
 
-        // Left avatar / icon badge
+        // Left avatar / icon badge (Right in RTL)
         View avatarView;
         if (!iconName.isEmpty()) {
             ImageView iv = new ImageView(activity);
@@ -388,27 +399,29 @@ public final class CreditsSheet {
             avatarView = mono;
         }
         LinearLayout.LayoutParams avLp = new LinearLayout.LayoutParams(dp(activity, 38), dp(activity, 38));
-        avLp.setMarginEnd(dp(activity, 13));
-        row.addView(avatarView, avLp);
 
         // Middle column: [Name + @handle] / role
         LinearLayout textCol = new LinearLayout(activity);
         textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
 
         LinearLayout nameLine = new LinearLayout(activity);
         nameLine.setOrientation(LinearLayout.HORIZONTAL);
-        nameLine.setGravity(Gravity.CENTER_VERTICAL);
+        nameLine.setGravity((rtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
 
         TextView nameTv = new TextView(activity);
         nameTv.setText(name);
         nameTv.setTextColor(p.textPrimary);
         nameTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
         nameTv.setTypeface(mediumTf);
+        nameTv.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
+        nameTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         nameTv.setSingleLine(true);
-        nameLine.addView(nameTv);
 
+        TextView handleTv = null;
+        LinearLayout.LayoutParams hLp = null;
         if (!handle.isEmpty()) {
-            TextView handleTv = new TextView(activity);
+            handleTv = new TextView(activity);
             handleTv.setText(handle);
             handleTv.setTextColor(p.accentBlue);
             handleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
@@ -419,10 +432,21 @@ public final class CreditsSheet {
             hBg.setCornerRadius(dp(activity, 8));
             hBg.setColor(p.accentSoft);
             handleTv.setBackground(hBg);
-            LinearLayout.LayoutParams hLp = new LinearLayout.LayoutParams(
+            hLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            hLp.setMarginStart(dp(activity, 8));
-            nameLine.addView(handleTv, hLp);
+        }
+        if (rtl) {
+            if (handleTv != null) {
+                hLp.rightMargin = dp(activity, 8);
+                nameLine.addView(handleTv, hLp);
+            }
+            nameLine.addView(nameTv);
+        } else {
+            nameLine.addView(nameTv);
+            if (handleTv != null) {
+                hLp.leftMargin = dp(activity, 8);
+                nameLine.addView(handleTv, hLp);
+            }
         }
         textCol.addView(nameLine);
 
@@ -432,6 +456,8 @@ public final class CreditsSheet {
             roleTv.setTextColor(p.textSecondary);
             roleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             roleTv.setLineSpacing(dp(activity, 2), 1.0f);
+            roleTv.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
+            roleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
             LinearLayout.LayoutParams rLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             rLp.topMargin = dp(activity, 2);
@@ -439,14 +465,30 @@ public final class CreditsSheet {
         }
 
         LinearLayout.LayoutParams colLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        colLp.setMarginEnd(dp(activity, 8));
-        row.addView(textCol, colLp);
-
+        ImageView chev = null;
         if (!url.isEmpty()) {
-            ImageView chev = new ImageView(activity);
-            chev.setImageDrawable(GlassDesign.GlassIcons.chevronRight(p.textMuted));
-            row.addView(chev, new LinearLayout.LayoutParams(dp(activity, 18), dp(activity, 18)));
+            chev = new ImageView(activity);
+            chev.setImageDrawable(GlassDesign.GlassIcons.chevronRight(p.textMuted, rtl));
             row.setOnClickListener(v -> openUrl(activity, url, dialog, controller));
+        }
+
+        if (rtl) {
+            if (chev != null) {
+                LinearLayout.LayoutParams chevLp = new LinearLayout.LayoutParams(dp(activity, 18), dp(activity, 18));
+                chevLp.rightMargin = dp(activity, 8);
+                row.addView(chev, chevLp);
+            }
+            row.addView(textCol, colLp);
+            avLp.leftMargin = dp(activity, 13);
+            row.addView(avatarView, avLp);
+        } else {
+            avLp.rightMargin = dp(activity, 13);
+            row.addView(avatarView, avLp);
+            colLp.rightMargin = dp(activity, 8);
+            row.addView(textCol, colLp);
+            if (chev != null) {
+                row.addView(chev, new LinearLayout.LayoutParams(dp(activity, 18), dp(activity, 18)));
+            }
         }
 
         return row;
@@ -488,7 +530,7 @@ public final class CreditsSheet {
         if (obj != null) return obj;
         try {
             return new JSONObject(
-                    "{\"name\":\"TeleVip Next\",\"taglineKey\":\"CreditsTagline\",\"sections\":[{\"titleKey\":\"CreditsAuthors\",\"icon\":\"sparkles\",\"badgeColor\":\"#8B6BFF\",\"items\":[{\"name\":\"doandat943\",\"handle\":\"@doandat943\",\"roleKey\":\"CreditsMaintainerRole\",\"avatarBg\":\"#2A85FF\",\"url\":\"https://t.me/doandat943\"},{\"name\":\"Mustafa\",\"handle\":\"@m_1_iq\",\"roleKey\":\"CreditsOriginalAuthorRole\",\"avatarBg\":\"#FF7A45\",\"url\":\"https://t.me/m_1_iq\"}]},{\"titleKey\":\"CreditsLinks\",\"icon\":\"telegram\",\"badgeColor\":\"#28A8EA\",\"items\":[{\"nameKey\":\"DeveloperChannel\",\"handle\":\"@televipnext\",\"roleKey\":\"CreditsChannelRole\",\"icon\":\"telegram\",\"avatarBg\":\"#28A8EA\",\"url\":\"https://t.me/televipnext\"},{\"nameKey\":\"CreditsSourceCode\",\"handle\":\"GitHub\",\"roleKey\":\"CreditsSourceCodeRole\",\"icon\":\"code\",\"avatarBg\":\"#34C759\",\"url\":\"https://github.com/doandat943/TeleVip-Next-LSPosed\"}]}]}");
+                    "{\"name\":\"TeleVip Next\",\"taglineKey\":\"CreditsTagline\",\"sections\":[{\"titleKey\":\"CreditsAuthors\",\"icon\":\"sparkles\",\"badgeColor\":\"#8B6BFF\",\"items\":[{\"name\":\"doandat943\",\"handle\":\"@doandat943\",\"roleKey\":\"CreditsMaintainerRole\",\"avatarBg\":\"#2A85FF\",\"url\":\"https://github.com/doandat943\"},{\"name\":\"Mustafa\",\"handle\":\"@mustafa1dev\",\"roleKey\":\"CreditsOriginalAuthorRole\",\"avatarBg\":\"#FF7A45\",\"url\":\"https://github.com/mustafa1dev\"}]},{\"titleKey\":\"CreditsLinks\",\"icon\":\"telegram\",\"badgeColor\":\"#28A8EA\",\"items\":[{\"nameKey\":\"DeveloperChannel\",\"handle\":\"@televipnext\",\"roleKey\":\"CreditsChannelRole\",\"icon\":\"telegram\",\"avatarBg\":\"#28A8EA\",\"url\":\"https://t.me/televipnext\"},{\"nameKey\":\"CreditsSourceCode\",\"handle\":\"GitHub\",\"roleKey\":\"CreditsSourceCodeRole\",\"icon\":\"code\",\"avatarBg\":\"#34C759\",\"url\":\"https://github.com/doandat943/TeleVip-Next-LSPosed\"}]}]}");
         } catch (Throwable ignored) {
             return new JSONObject();
         }

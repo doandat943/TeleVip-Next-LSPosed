@@ -84,6 +84,7 @@ public class ConfigManager {
 
     //UI
     public static ConfigItem ui;
+    public static ConfigItem language;
     public static ConfigItem hidePinnedMessages;
     public static ConfigItem disableChannelSwipeBack;
     public static ConfigItem disableProfileSwipeBack;
@@ -259,12 +260,16 @@ public class ConfigManager {
         if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
             showUserID = new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), EditOnlineTextView::init);
             items.add(showUserID);
-            customCalendar = new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init);
-            items.add(customCalendar);
         }
         if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
             showTimeSeconds = new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init);
             items.add(showTimeSeconds);
+        }
+        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
+            disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
+            items.add(disableNumberRounding);
+        }
+        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
             if (!ConfigPreferences.contains(Keys.AlwaysShowProxy + "Int")
                     && ConfigPreferences.getBoolean(Keys.AlwaysShowProxy)) {
                 ConfigPreferences.putInt(Keys.AlwaysShowProxy + "Int", AlwaysShowProxy.MODE_TOP_BAR);
@@ -272,6 +277,13 @@ public class ConfigManager {
             alwaysShowProxy = new ConfigItem(ConfigItem.TEXT, Keys.AlwaysShowProxy, false, AlwaysShowProxy::init);
             items.add(alwaysShowProxy);
         }
+        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
+            customCalendar = new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init);
+            items.add(customCalendar);
+        }
+
+        language = new ConfigItem(ConfigItem.TEXT, Keys.Language);
+        items.add(language);
 
         items.add(shadows);
 
@@ -288,10 +300,6 @@ public class ConfigManager {
         telegramPremium = new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init);
         items.add(telegramPremium);
 
-        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
-            disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
-            items.add(disableNumberRounding);
-        }
         hideUpdateApp = new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init);
         fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
         items.add(hideUpdateApp);

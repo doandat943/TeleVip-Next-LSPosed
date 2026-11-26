@@ -2,7 +2,6 @@ package com.magiii.televipnext.settings.ui;
 
 import android.app.Activity;
 import android.app.AlarmManager;
-import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
@@ -14,9 +13,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Choreographer;
 import android.view.Gravity;
@@ -25,9 +22,6 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -55,7 +49,6 @@ import com.magiii.televipnext.virtuals.messenger.browser.Browser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class SettingsActivity {
 
@@ -73,29 +66,14 @@ public class SettingsActivity {
     private FrameLayout rootView;
     private SettingsController controller;
     private int currentTab = TAB_PRIVACY;
-    private boolean searchMode = false;
-    private String searchQuery = "";
 
-    private LinearLayout normalHeaderGroup;
-    private LinearLayout searchHeaderGroup;
-    private EditText searchInput;
     private GlassDesign.SegmentedTabBar tabBar;
     private TabPagerView tabPager;
     private final ScrollView[] tabScrollViews = new ScrollView[TAB_COUNT];
     private final LinearLayout[] tabContainers = new LinearLayout[TAB_COUNT];
-    private ScrollView searchScrollView;
-    private LinearLayout searchContainer;
-    private boolean showingSearchList = false;
+    private boolean isRtl = false;
     private int lastHeaderPadTop = 0;
     private int lastNavPadBottom = 0;
-
-    private final List<TabSection> allTabSections = new ArrayList<>();
-    private final List<SearchableRow> searchableRows = new ArrayList<>();
-    private final List<LinearLayout> sectionCards = new ArrayList<>();
-    private final List<View> footnoteViews = new ArrayList<>();
-    private LinearLayout actionsCardView;
-    private LinearLayout footerCreditView;
-    private LinearLayout emptySearchCard;
 
     public SettingsActivity(Context context) {
         this.context = context;
@@ -108,18 +86,8 @@ public class SettingsActivity {
         return rootView;
     }
 
-    /**
-     * Closes search mode if currently active; returns true if consumed.
-     */
-    public boolean closeSearchIfOpen() {
-        if (!searchMode) return false;
-        exitSearchMode();
-        return true;
-    }
-
     private void toggleTheme(View anchorView) {
         boolean wasLight = Theme.isLight();
-        hideKeyboard();
         boolean switched = Theme.toggleDayNight(anchorView);
         if (!switched) {
             return;
@@ -141,19 +109,11 @@ public class SettingsActivity {
 
     private void rebuildUi(boolean light) {
         if (rootView == null) return;
+        isRtl = Translator.isRtl();
+        rootView.setLayoutDirection(isRtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         rootView.removeAllViews();
-        allTabSections.clear();
-        searchableRows.clear();
-        sectionCards.clear();
-        footnoteViews.clear();
-        actionsCardView = null;
-        footerCreditView = null;
-        emptySearchCard = null;
         tabBar = null;
         tabPager = null;
-        searchScrollView = null;
-        searchContainer = null;
-        showingSearchList = false;
         for (int i = 0; i < TAB_COUNT; i++) {
             tabScrollViews[i] = null;
             tabContainers[i] = null;
@@ -190,21 +150,6 @@ public class SettingsActivity {
             rootView.addView(tabPager, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-            // Dedicated search scroll container (shown only while searching)
-            searchScrollView = new ScrollView(context);
-            searchScrollView.setVerticalScrollBarEnabled(false);
-            searchScrollView.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
-            searchScrollView.setClipToPadding(false);
-            searchScrollView.setPadding(0, lastHeaderPadTop, 0, lastNavPadBottom);
-            searchScrollView.setVisibility(View.GONE);
-
-            searchContainer = new LinearLayout(context);
-            searchContainer.setOrientation(LinearLayout.VERTICAL);
-            searchScrollView.addView(searchContainer, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            rootView.addView(searchScrollView, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
             populateContent(p);
 
             // 2. Floating Glass Top Header + Segmented Tab Bar overlay
@@ -222,14 +167,10 @@ public class SettingsActivity {
                             tabScrollViews[i].setPadding(0, targetTop, 0, lastNavPadBottom);
                         }
                     }
-                    if (searchScrollView != null) {
-                        searchScrollView.setPadding(0, targetTop, 0, lastNavPadBottom);
-                    }
                 }
             });
 
             tabPager.jumpToTab(currentTab);
-            applyVisibilityFilter();
         } catch (Throwable e) {
             Logger.e(e);
         }
@@ -241,28 +182,22 @@ public class SettingsActivity {
         headerBox.setBackground(GlassDesign.createTopScrimDrawable(p));
         headerBox.setPadding(0, statusH + dp(8), 0, dp(12));
 
-        // Top Bar Frame (switches between normalHeaderGroup and searchHeaderGroup)
-        FrameLayout topBarSlot = new FrameLayout(context);
-        LinearLayout.LayoutParams topSlotLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
-        topSlotLp.setMargins(dp(14), 0, dp(14), dp(12));
-
-        // Normal Top Bar: [Back Circle]   [Title]   [Theme | Search Pill]
-        normalHeaderGroup = new LinearLayout(context);
-        normalHeaderGroup.setOrientation(LinearLayout.HORIZONTAL);
-        normalHeaderGroup.setGravity(Gravity.CENTER_VERTICAL);
+        // Top Bar: [Back Circle]   [Title]   [Theme | Restart Pill]
+        LinearLayout topBar = new LinearLayout(context);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
 
         ImageView backBtn = createCircleIconButton(p, GlassDesign.GlassIcons.backArrow(p.textPrimary));
         backBtn.setOnClickListener(v -> {
             if (controller != null) controller.hide();
         });
-        normalHeaderGroup.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        topBar.addView(backBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
         FrameLayout brandSlot = new FrameLayout(context);
         LinearLayout.LayoutParams brandSlotLp = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        brandSlotLp.setMarginStart(dp(8));
-        brandSlotLp.setMarginEnd(dp(8));
+        brandSlotLp.leftMargin = dp(8);
+        brandSlotLp.rightMargin = dp(8);
 
         LinearLayout brandPill = new LinearLayout(context);
         brandPill.setOrientation(LinearLayout.HORIZONTAL);
@@ -277,7 +212,7 @@ public class SettingsActivity {
         ImageView emblemIv = new ImageView(context);
         emblemIv.setImageDrawable(GlassDesign.GlassIcons.brandEmblemDrawable(dp(8)));
         LinearLayout.LayoutParams emblemLp = new LinearLayout.LayoutParams(dp(24), dp(24));
-        emblemLp.setMarginEnd(dp(8));
+        emblemLp.rightMargin = dp(8);
         brandPill.addView(emblemIv, emblemLp);
 
         TextView titleTv = new TextView(context);
@@ -294,15 +229,15 @@ public class SettingsActivity {
         ImageView chevronIv = new ImageView(context);
         chevronIv.setImageDrawable(GlassDesign.GlassIcons.chevronRight(p.textMuted));
         LinearLayout.LayoutParams chevLp = new LinearLayout.LayoutParams(dp(14), dp(14));
-        chevLp.setMarginStart(dp(4));
+        chevLp.leftMargin = dp(4);
         brandPill.addView(chevronIv, chevLp);
 
         FrameLayout.LayoutParams pillCenterLp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(40), Gravity.CENTER);
         brandSlot.addView(brandPill, pillCenterLp);
-        normalHeaderGroup.addView(brandSlot, brandSlotLp);
+        topBar.addView(brandSlot, brandSlotLp);
 
-        // Merged dual-icon glass pill (Theme toggle + Search)
+        // Merged dual-icon glass pill (Theme toggle + Restart)
         LinearLayout actionPill = new LinearLayout(context);
         actionPill.setOrientation(LinearLayout.HORIZONTAL);
         actionPill.setGravity(Gravity.CENTER_VERTICAL);
@@ -319,75 +254,21 @@ public class SettingsActivity {
         themeBtn.setOnClickListener(v -> toggleTheme(v));
         actionPill.addView(themeBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-        ImageView searchBtn = new ImageView(context);
-        searchBtn.setImageDrawable(GlassDesign.GlassIcons.searchIcon(p.textPrimary));
-        searchBtn.setScaleType(ImageView.ScaleType.CENTER);
-        searchBtn.setPadding(dp(10), dp(10), dp(10), dp(10));
-        searchBtn.setBackground(GlassDesign.createPillRippleOverlay(p.ripple, dp(21)));
-        searchBtn.setOnClickListener(v -> enterSearchMode());
-        actionPill.addView(searchBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        ImageView restartBtn = new ImageView(context);
+        restartBtn.setImageDrawable(GlassDesign.GlassIcons.restartIcon(p.textPrimary));
+        restartBtn.setScaleType(ImageView.ScaleType.CENTER);
+        restartBtn.setPadding(dp(10), dp(10), dp(10), dp(10));
+        restartBtn.setContentDescription(Translator.get(Keys.RestartApp));
+        restartBtn.setBackground(GlassDesign.createPillRippleOverlay(p.ripple, dp(21)));
+        restartBtn.setOnClickListener(v -> restartHostApp(v));
+        actionPill.addView(restartBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-        normalHeaderGroup.addView(actionPill, new LinearLayout.LayoutParams(dp(84), dp(42)));
-        topBarSlot.addView(normalHeaderGroup, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        topBar.addView(actionPill, new LinearLayout.LayoutParams(dp(84), dp(42)));
 
-        // Search Mode Top Bar: [Back Circle]  [Search Glass Pill]  [Close Circle]
-        searchHeaderGroup = new LinearLayout(context);
-        searchHeaderGroup.setOrientation(LinearLayout.HORIZONTAL);
-        searchHeaderGroup.setGravity(Gravity.CENTER_VERTICAL);
-        searchHeaderGroup.setVisibility(searchMode ? View.VISIBLE : View.GONE);
-
-        ImageView searchBackBtn = createCircleIconButton(p, GlassDesign.GlassIcons.backArrow(p.textPrimary));
-        searchBackBtn.setOnClickListener(v -> exitSearchMode());
-        searchHeaderGroup.addView(searchBackBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
-
-        LinearLayout searchPill = new LinearLayout(context);
-        searchPill.setOrientation(LinearLayout.HORIZONTAL);
-        searchPill.setGravity(Gravity.CENTER_VERTICAL);
-        searchPill.setBackground(GlassDesign.createGlassPillDrawable(p, dp(21)));
-        searchPill.setPadding(dp(16), 0, dp(16), 0);
-
-        searchInput = new EditText(context);
-        searchInput.setHint(Translator.get(Keys.SearchSettings));
-        searchInput.setHintTextColor(p.textSecondary);
-        searchInput.setTextColor(p.textPrimary);
-        searchInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
-        searchInput.setBackground(null);
-        searchInput.setSingleLine(true);
-        searchInput.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        if (!searchQuery.isEmpty()) {
-            searchInput.setText(searchQuery);
-            searchInput.setSelection(searchQuery.length());
-        }
-        searchInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                searchQuery = s.toString().trim().toLowerCase(Locale.ROOT);
-                applyVisibilityFilter();
-            }
-        });
-        searchPill.addView(searchInput, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
-
-        LinearLayout.LayoutParams pillLp = new LinearLayout.LayoutParams(0, dp(42), 1f);
-        pillLp.setMarginStart(dp(10));
-        pillLp.setMarginEnd(dp(10));
-        searchHeaderGroup.addView(searchPill, pillLp);
-
-        ImageView closeBtn = createCircleIconButton(p, GlassDesign.GlassIcons.closeIcon(p.textPrimary));
-        closeBtn.setOnClickListener(v -> exitSearchMode());
-        searchHeaderGroup.addView(closeBtn, new LinearLayout.LayoutParams(dp(42), dp(42)));
-
-        topBarSlot.addView(searchHeaderGroup, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        if (searchMode) {
-            normalHeaderGroup.setVisibility(View.GONE);
-        }
-
-        headerBox.addView(topBarSlot, topSlotLp);
+        LinearLayout.LayoutParams topBarLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
+        topBarLp.setMargins(dp(14), 0, dp(14), dp(12));
+        headerBox.addView(topBar, topBarLp);
 
         // Segmented Tab Bar
         String[] tabTitles = new String[]{
@@ -398,11 +279,7 @@ public class SettingsActivity {
         };
         tabBar = new GlassDesign.SegmentedTabBar(context, tabTitles, p, currentTab);
         tabBar.setOnTabSelectedListener(index -> {
-            if (searchMode) {
-                currentTab = index;
-                exitSearchMode();
-                if (tabPager != null) tabPager.jumpToTab(index);
-            } else if (tabPager != null) {
+            if (tabPager != null) {
                 tabPager.springToTab(index, 0f);
             }
         });
@@ -422,37 +299,6 @@ public class SettingsActivity {
         btn.setBackground(GlassDesign.createGlassPillDrawable(p, dp(21)));
         btn.setForeground(GlassDesign.createPillRippleOverlay(p.ripple, dp(21)));
         return btn;
-    }
-
-    private void enterSearchMode() {
-        searchMode = true;
-        if (normalHeaderGroup != null) normalHeaderGroup.setVisibility(View.GONE);
-        if (searchHeaderGroup != null) searchHeaderGroup.setVisibility(View.VISIBLE);
-        if (searchInput != null) {
-            searchInput.requestFocus();
-            searchInput.post(() -> {
-                InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
-            });
-        }
-        applyVisibilityFilter();
-    }
-
-    private void exitSearchMode() {
-        searchMode = false;
-        searchQuery = "";
-        hideKeyboard();
-        if (searchInput != null) searchInput.setText("");
-        if (searchHeaderGroup != null) searchHeaderGroup.setVisibility(View.GONE);
-        if (normalHeaderGroup != null) normalHeaderGroup.setVisibility(View.VISIBLE);
-        applyVisibilityFilter();
-    }
-
-    private void hideKeyboard() {
-        if (searchInput != null) {
-            InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.hideSoftInputFromWindow(searchInput.getWindowToken(), 0);
-        }
     }
 
     private void populateContent(GlassDesign.Palette p) {
@@ -488,61 +334,23 @@ public class SettingsActivity {
         for (SectionData sec : featureSections) {
             int tab = resolveTabForSection(sec.headerKey);
             LinearLayout pageCol = tabContainers[tab];
-            LinearLayout card = buildSectionCard(sec.headerKey, sec.items, p, tab);
+            LinearLayout card = buildSectionCard(sec.headerKey, sec.items, p);
             LinearLayout.LayoutParams cardLp = marginLp(dp(12), 0, dp(12), dp(12));
             if (pageCol != null) pageCol.addView(card, cardLp);
-            sectionCards.add(card);
-            allTabSections.add(new TabSection(tab, card, cardLp));
 
             for (ConfigItem note : sec.footnotes) {
                 TextView noteTv = buildFootnoteView(note, p);
                 LinearLayout.LayoutParams noteLp = marginLp(dp(20), 0, dp(20), dp(14));
                 if (pageCol != null) pageCol.addView(noteTv, noteLp);
-                footnoteViews.add(noteTv);
-                allTabSections.add(new TabSection(tab, noteTv, noteLp));
             }
         }
 
         // Render standalone action items (Developer Channel, Restart App) in Tools tab
         LinearLayout toolsCol = tabContainers[TAB_TOOLS];
         if (!standaloneActions.isEmpty()) {
-            actionsCardView = buildActionsCard(standaloneActions, p, TAB_TOOLS);
+            LinearLayout actionsCard = buildActionsCard(standaloneActions, p);
             LinearLayout.LayoutParams actionsLp = marginLp(dp(12), 0, dp(12), dp(14));
-            if (toolsCol != null) toolsCol.addView(actionsCardView, actionsLp);
-            sectionCards.add(actionsCardView);
-            allTabSections.add(new TabSection(TAB_TOOLS, actionsCardView, actionsLp));
-        }
-
-        // Empty search state card (only inside searchContainer)
-        emptySearchCard = createGlassCard(p);
-        emptySearchCard.setPadding(dp(20), dp(24), dp(20), dp(24));
-        emptySearchCard.setGravity(Gravity.CENTER);
-        TextView emptyTv = new TextView(context);
-        emptyTv.setText(Translator.get(Keys.NoMatchingSettings));
-        emptyTv.setTextColor(p.textSecondary);
-        emptyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-        emptyTv.setGravity(Gravity.CENTER);
-        emptySearchCard.addView(emptyTv);
-        emptySearchCard.setVisibility(View.GONE);
-        if (searchContainer != null) {
-            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
-        }
-
-        // Footer credit (on Tools tab)
-        footerCreditView = new LinearLayout(context);
-        footerCreditView.setOrientation(LinearLayout.VERTICAL);
-        footerCreditView.setGravity(Gravity.CENTER_HORIZONTAL);
-        footerCreditView.setPadding(dp(16), dp(6), dp(16), dp(12));
-
-        TextView creditTv = new TextView(context);
-        creditTv.setText("TeleVip Next  •  " + Translator.get(Keys.ByMustafa));
-        creditTv.setTextColor(p.textMuted);
-        creditTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        creditTv.setGravity(Gravity.CENTER);
-        footerCreditView.addView(creditTv);
-        footerCreditView.setOnClickListener(v -> CreditsSheet.show(context, controller));
-        if (toolsCol != null) {
-            toolsCol.addView(footerCreditView);
+            if (toolsCol != null) toolsCol.addView(actionsCard, actionsLp);
         }
     }
 
@@ -553,65 +361,63 @@ public class SettingsActivity {
         return TAB_TOOLS;
     }
 
-    private LinearLayout buildSectionCard(String headerKey, List<ConfigItem> items,
-                                          GlassDesign.Palette p, int tabIndex) {
+    private LinearLayout buildSectionCard(String headerKey, List<ConfigItem> items, GlassDesign.Palette p) {
         LinearLayout card = createGlassCard(p);
 
         // Card header row with colored badge icon + blue title
         LinearLayout headerRow = new LinearLayout(context);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setGravity((isRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         headerRow.setPadding(dp(16), dp(14), dp(16), dp(12));
 
         ImageView badge = new ImageView(context);
         badge.setImageDrawable(createSectionBadge(headerKey));
         LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(dp(28), dp(28));
-        badgeLp.setMarginEnd(dp(12));
-        headerRow.addView(badge, badgeLp);
 
         TextView headerTv = new TextView(context);
         headerTv.setText(Translator.get(headerKey));
         headerTv.setTextColor(p.accentBlue);
         headerTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
         headerTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        headerRow.addView(headerTv);
+        headerTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        headerTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+
+        if (isRtl) {
+            badgeLp.leftMargin = dp(12);
+            headerRow.addView(headerTv);
+            headerRow.addView(badge, badgeLp);
+        } else {
+            badgeLp.rightMargin = dp(12);
+            headerRow.addView(badge, badgeLp);
+            headerRow.addView(headerTv);
+        }
 
         card.addView(headerRow);
 
         for (ConfigItem item : items) {
             int type = item.getType();
             if (type == ConfigItem.SWITCH) {
-                View row = buildSwitchItemContainer(item, p);
-                card.addView(row);
-                registerSearchable(item, row, card, tabIndex);
+                card.addView(buildSwitchItemContainer(item, p));
             } else if (type == ConfigItem.EXPANDABLE_SWITCH) {
-                View group = buildExpandableItemContainer(item, p);
-                card.addView(group);
-                registerSearchable(item, group, card, tabIndex);
+                card.addView(buildExpandableItemContainer(item, p));
             } else if (type == ConfigItem.TEXT) {
-                View row = buildTextItemContainer(item, p, false);
-                card.addView(row);
-                registerSearchable(item, row, card, tabIndex);
+                card.addView(buildTextItemContainer(item, p, false));
             }
         }
 
         return card;
     }
 
-    private LinearLayout buildActionsCard(List<ConfigItem> actions, GlassDesign.Palette p, int tabIndex) {
+    private LinearLayout buildActionsCard(List<ConfigItem> actions, GlassDesign.Palette p) {
         LinearLayout card = createGlassCard(p);
         for (int i = 0; i < actions.size(); i++) {
-            ConfigItem item = actions.get(i);
-            View row = buildTextItemContainer(item, p, i == 0);
-            card.addView(row);
-            registerSearchable(item, row, card, tabIndex);
+            card.addView(buildTextItemContainer(actions.get(i), p, i == 0));
         }
         return card;
     }
 
     private View buildSwitchItemContainer(ConfigItem item, GlassDesign.Palette p) {
         LinearLayout wrapper = new LinearLayout(context);
-        wrapper.setTag("item");
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
         wrapper.addView(createHairlineDivider(p));
@@ -625,11 +431,14 @@ public class SettingsActivity {
 
         LinearLayout textCol = new LinearLayout(context);
         textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
 
         TextView titleTv = new TextView(context);
         titleTv.setText(Translator.get(item.getKey()));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        titleTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         textCol.addView(titleTv);
 
         String subtitle = buildSubtitleText(item);
@@ -639,18 +448,26 @@ public class SettingsActivity {
             subTv.setTextColor(p.textSecondary);
             subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             subTv.setLineSpacing(dp(2f), 1.0f);
+            subTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
             LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             subLp.topMargin = dp(2.5f);
             textCol.addView(subTv, subLp);
         }
 
-        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        textLp.setMarginEnd(dp(14));
-        row.addView(textCol, textLp);
-
         GlassDesign.PillSwitchView sw = new GlassDesign.PillSwitchView(context, item.isEnable(), p);
-        row.addView(sw, new LinearLayout.LayoutParams(dp(48), dp(28)));
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams swLp = new LinearLayout.LayoutParams(dp(48), dp(28));
+        if (isRtl) {
+            swLp.rightMargin = dp(14);
+            row.addView(sw, swLp);
+            row.addView(textCol, textLp);
+        } else {
+            textLp.rightMargin = dp(14);
+            row.addView(textCol, textLp);
+            row.addView(sw, swLp);
+        }
 
         row.setOnClickListener(v -> {
             boolean next = !sw.isChecked();
@@ -683,7 +500,6 @@ public class SettingsActivity {
         parentItem.setEnable(initialEnabled > 0);
 
         LinearLayout wrapper = new LinearLayout(context);
-        wrapper.setTag("item");
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
         wrapper.addView(createHairlineDivider(p));
@@ -701,11 +517,14 @@ public class SettingsActivity {
 
         LinearLayout textCol = new LinearLayout(context);
         textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
 
         TextView titleTv = new TextView(context);
         titleTv.setText(formatExpandableTitle(parentItem, initialEnabled, totalSwitchChildren));
         titleTv.setTextColor(p.textPrimary);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        titleTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         textCol.addView(titleTv);
 
         String subtitle = buildSubtitleText(parentItem);
@@ -715,18 +534,26 @@ public class SettingsActivity {
             subTv.setTextColor(p.textSecondary);
             subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             subTv.setLineSpacing(dp(2f), 1.0f);
+            subTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
             LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             subLp.topMargin = dp(2.5f);
             textCol.addView(subTv, subLp);
         }
 
-        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        textLp.setMarginEnd(dp(14));
-        parentRow.addView(textCol, textLp);
-
         GlassDesign.PillSwitchView parentSw = new GlassDesign.PillSwitchView(context, initialEnabled > 0, p);
-        parentRow.addView(parentSw, new LinearLayout.LayoutParams(dp(48), dp(28)));
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams pSwLp = new LinearLayout.LayoutParams(dp(48), dp(28));
+        if (isRtl) {
+            pSwLp.rightMargin = dp(14);
+            parentRow.addView(parentSw, pSwLp);
+            parentRow.addView(textCol, textLp);
+        } else {
+            textLp.rightMargin = dp(14);
+            parentRow.addView(textCol, textLp);
+            parentRow.addView(parentSw, pSwLp);
+        }
 
         wrapper.addView(parentRow);
         wrapper.addView(childrenContainer);
@@ -743,19 +570,22 @@ public class SettingsActivity {
                 LinearLayout childRow = new LinearLayout(context);
                 childRow.setOrientation(LinearLayout.HORIZONTAL);
                 childRow.setGravity(Gravity.CENTER_VERTICAL);
-                childRow.setPaddingRelative(dp(32), dp(13), dp(16), dp(13));
+                childRow.setPadding(isRtl ? dp(16) : dp(32), dp(13), isRtl ? dp(32) : dp(16), dp(13));
                 childRow.setMinimumHeight(dp(50));
                 childRow.setBackground(GlassDesign.createRowRipple(p.ripple));
 
                 if (child.getType() == ConfigItem.TEXT) {
                     LinearLayout cTextCol = new LinearLayout(context);
                     cTextCol.setOrientation(LinearLayout.VERTICAL);
+                    cTextCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
 
                     TextView childTitle = new TextView(context);
                     childTitle.setText(Translator.get(child.getKey()));
                     childTitle.setTextColor(Color.rgb(255, 69, 58));
                     childTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
                     childTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                    childTitle.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+                    childTitle.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
                     cTextCol.addView(childTitle);
 
                     String childSub = buildSubtitleText(child);
@@ -764,6 +594,8 @@ public class SettingsActivity {
                         cSubTv.setText(childSub);
                         cSubTv.setTextColor(p.textSecondary);
                         cSubTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+                        cSubTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+                        cSubTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
                         LinearLayout.LayoutParams cSubLp = new LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                         cSubLp.topMargin = dp(2f);
@@ -781,13 +613,22 @@ public class SettingsActivity {
                 childTitle.setText(Translator.get(child.getKey()));
                 childTitle.setTextColor(p.textPrimary);
                 childTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
-                LinearLayout.LayoutParams cTextLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-                cTextLp.setMarginEnd(dp(14));
-                childRow.addView(childTitle, cTextLp);
+                childTitle.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+                childTitle.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
 
                 GlassDesign.PillSwitchView childSw = new GlassDesign.PillSwitchView(context, child.isEnable(), p);
                 childSwitches[i] = childSw;
-                childRow.addView(childSw, new LinearLayout.LayoutParams(dp(48), dp(28)));
+                LinearLayout.LayoutParams cTextLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                LinearLayout.LayoutParams cSwLp = new LinearLayout.LayoutParams(dp(48), dp(28));
+                if (isRtl) {
+                    cSwLp.rightMargin = dp(14);
+                    childRow.addView(childSw, cSwLp);
+                    childRow.addView(childTitle, cTextLp);
+                } else {
+                    cTextLp.rightMargin = dp(14);
+                    childRow.addView(childTitle, cTextLp);
+                    childRow.addView(childSw, cSwLp);
+                }
 
                 childRow.setOnClickListener(v -> {
                     boolean next = !childSw.isChecked();
@@ -834,20 +675,13 @@ public class SettingsActivity {
     }
 
     private void showClearDeletedConfirm() {
-        try {
-            int themeRes = Theme.isLight()
-                    ? android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
-                    : android.R.style.Theme_DeviceDefault_Dialog_Alert;
-            new AlertDialog.Builder(context, themeRes)
-                    .setTitle(Translator.get(Keys.ClearDeletedMessages))
-                    .setMessage(Translator.get(Keys.ClearDeletedConfirm))
-                    .setPositiveButton(Translator.get(Keys.ClearAction), (dialog, which) ->
-                            ShowDeletedMessages.clearAllDeletedMessages(context))
-                    .setNegativeButton(Translator.get(Keys.Cancel), null)
-                    .show();
-        } catch (Throwable t) {
-            Logger.e(t);
-        }
+        new GlassDialog.Builder(context)
+                .setTitle(Translator.get(Keys.ClearDeletedMessages))
+                .setMessage(Translator.get(Keys.ClearDeletedConfirm))
+                .setPositiveButton(Translator.get(Keys.ClearAction), () ->
+                        ShowDeletedMessages.clearAllDeletedMessages(context))
+                .setNegativeButton(Translator.get(Keys.Cancel), null)
+                .show();
     }
 
     private String formatExpandableTitle(ConfigItem parentItem, int enabled, int total) {
@@ -857,13 +691,10 @@ public class SettingsActivity {
 
     private View buildTextItemContainer(ConfigItem item, GlassDesign.Palette p, boolean hideTopDivider) {
         LinearLayout wrapper = new LinearLayout(context);
-        wrapper.setTag("item");
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
         if (!hideTopDivider) {
-            View div = createHairlineDivider(p);
-            div.setTag("row_divider");
-            wrapper.addView(div);
+            wrapper.addView(createHairlineDivider(p));
         }
 
         LinearLayout row = new LinearLayout(context);
@@ -879,9 +710,12 @@ public class SettingsActivity {
         boolean isCalendar = Keys.Calendar.equals(key);
         boolean isDownloadSpeed = Keys.DownloadSpeed.equals(key);
         boolean isAlwaysShowProxy = Keys.AlwaysShowProxy.equals(key);
+        boolean isLanguage = Keys.Language.equals(key);
 
+        ImageView iconBadge = null;
+        LinearLayout.LayoutParams iconLp = null;
         if (isChannel || isRestart) {
-            ImageView iconBadge = new ImageView(context);
+            iconBadge = new ImageView(context);
             if (isChannel) {
                 iconBadge.setImageDrawable(GlassDesign.GlassIcons.badgeDrawable(
                         Color.rgb(255, 212, 38), dp(9), GlassDesign.ICON_TELEGRAM, Color.rgb(30, 32, 38)));
@@ -889,18 +723,19 @@ public class SettingsActivity {
                 iconBadge.setImageDrawable(GlassDesign.GlassIcons.badgeDrawable(
                         Color.rgb(255, 69, 58), dp(9), GlassDesign.ICON_RESTART, Color.WHITE));
             }
-            LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(32), dp(32));
-            iconLp.setMarginEnd(dp(14));
-            row.addView(iconBadge, iconLp);
+            iconLp = new LinearLayout.LayoutParams(dp(32), dp(32));
         }
 
         LinearLayout textCol = new LinearLayout(context);
         textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
 
         TextView titleTv = new TextView(context);
         titleTv.setText(Translator.get(key));
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
         titleTv.setTextColor(isChannel ? p.accentBlue : p.textPrimary);
+        titleTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         if (isChannel || isRestart) {
             titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         }
@@ -913,15 +748,18 @@ public class SettingsActivity {
             subTv.setTextColor(p.textSecondary);
             subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
             subTv.setLineSpacing(dp(2f), 1.0f);
+            subTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
             LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             subLp.topMargin = dp(2f);
             textCol.addView(subTv, subLp);
         }
 
-        row.addView(textCol, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        boolean isPicker = isCalendar || isDownloadSpeed || isAlwaysShowProxy || isLanguage;
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
 
-        if (isCalendar || isDownloadSpeed || isAlwaysShowProxy) {
+        if (isPicker) {
             TextView valTv = new TextView(context);
             valTv.setTextColor(p.accentBlue);
             valTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
@@ -930,6 +768,8 @@ public class SettingsActivity {
                 valTv.setText(getCalendarLabel(item.getIntValue()));
             } else if (isDownloadSpeed) {
                 valTv.setText(getDownloadSpeedLabel(item.getIntValue()));
+            } else if (isLanguage) {
+                valTv.setText(Translator.getLanguageDisplayName(Translator.getSelectedLanguage()));
             } else {
                 valTv.setText(getProxyDisplayLabel(item.getIntValue()));
             }
@@ -938,7 +778,18 @@ public class SettingsActivity {
             pill.setColor(p.accentSoft);
             pill.setCornerRadius(dp(10));
             valTv.setBackground(pill);
-            row.addView(valTv);
+
+            if (isRtl) {
+                LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                valLp.rightMargin = dp(12);
+                row.addView(valTv, valLp);
+                row.addView(textCol, textLp);
+            } else {
+                textLp.rightMargin = dp(12);
+                row.addView(textCol, textLp);
+                row.addView(valTv);
+            }
 
             row.setOnClickListener(v -> {
                 if (isCalendar) {
@@ -953,6 +804,8 @@ public class SettingsActivity {
                             Translator.get(Keys.SpeedFast),
                             Translator.get(Keys.SpeedUltra)
                     }, item, valTv);
+                } else if (isLanguage) {
+                    showLanguagePicker();
                 } else {
                     showOptionPicker(Translator.get(Keys.AlwaysShowProxy), new String[]{
                             Translator.get(Keys.ProxyDisplayOff),
@@ -961,17 +814,32 @@ public class SettingsActivity {
                     }, item, valTv);
                 }
             });
-        } else if (isChannel) {
-            row.setOnClickListener(v -> {
-                try {
-                    if (controller != null) controller.hide();
-                    Browser.openUrl(context, "https://t.me/televipnext");
-                } catch (Throwable t) {
-                    Logger.e(t);
+        } else {
+            if (iconBadge != null && iconLp != null) {
+                if (isRtl) {
+                    iconLp.leftMargin = dp(14);
+                    row.addView(textCol, textLp);
+                    row.addView(iconBadge, iconLp);
+                } else {
+                    iconLp.rightMargin = dp(14);
+                    row.addView(iconBadge, iconLp);
+                    row.addView(textCol, textLp);
                 }
-            });
-        } else if (isRestart) {
-            row.setOnClickListener(v -> restartHostApp(row));
+            } else {
+                row.addView(textCol, textLp);
+            }
+            if (isChannel) {
+                row.setOnClickListener(v -> {
+                    try {
+                        if (controller != null) controller.hide();
+                        Browser.openUrl(context, "https://t.me/televipnext");
+                    } catch (Throwable t) {
+                        Logger.e(t);
+                    }
+                });
+            } else if (isRestart) {
+                row.setOnClickListener(v -> restartHostApp(row));
+            }
         }
 
         wrapper.addView(row);
@@ -984,6 +852,8 @@ public class SettingsActivity {
         tv.setTextColor(p.textSecondary);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         tv.setLineSpacing(dp(2f), 1.0f);
+        tv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        tv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         tv.setMaxLines(2);
         tv.setEllipsize(TextUtils.TruncateAt.END);
         final boolean[] expanded = {false};
@@ -1003,23 +873,28 @@ public class SettingsActivity {
     private void showOptionPicker(String title, String[] options, ConfigItem item, TextView valTv) {
         int current = item.getIntValue();
         if (current < 0 || current >= options.length) current = 0;
-        try {
-            int themeRes = Theme.isLight()
-                    ? android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
-                    : android.R.style.Theme_DeviceDefault_Dialog_Alert;
-            new AlertDialog.Builder(context, themeRes)
-                    .setTitle(title)
-                    .setSingleChoiceItems(options, current, (dialog, which) -> {
-                        item.setIntValue(which);
-                        item.run();
-                        valTv.setText(options[which]);
-                        dialog.dismiss();
-                    })
-                    .setNegativeButton(Translator.get(Keys.Cancel), null)
-                    .show();
-        } catch (Throwable t) {
-            Logger.e(t);
+        GlassDialog.showSingleChoice(context, title, options, current, which -> {
+            item.setIntValue(which);
+            item.run();
+            valTv.setText(options[which]);
+        });
+    }
+
+    private void showLanguagePicker() {
+        final String[] codes = Translator.SUPPORTED_LANGS;
+        final String[] labels = new String[codes.length];
+        String selected = Translator.getSelectedLanguage();
+        int currentIdx = 0;
+        for (int i = 0; i < codes.length; i++) {
+            labels[i] = Translator.getLanguagePickerLabel(codes[i]);
+            if (codes[i].equals(selected)) {
+                currentIdx = i;
+            }
         }
+        GlassDialog.showSingleChoice(context, Translator.get(Keys.Language), labels, currentIdx, which -> {
+            Translator.setSelectedLanguage(codes[which]);
+            rebuildUi();
+        });
     }
 
     private void restartHostApp(View anchor) {
@@ -1062,131 +937,6 @@ public class SettingsActivity {
                 android.os.Process.killProcess(android.os.Process.myPid());
                 Runtime.getRuntime().exit(0);
             }, 150);
-        }
-    }
-
-    private void registerSearchable(ConfigItem item, View rowView, LinearLayout card, int tabIndex) {
-        String title = Translator.get(item.getKey());
-        String sub = buildSubtitleText(item);
-        String combined = (title + " " + (sub != null ? sub : "")).toLowerCase(Locale.ROOT);
-        searchableRows.add(new SearchableRow(combined, rowView, card, tabIndex));
-    }
-
-    private void enterSearchListMode() {
-        if (showingSearchList || searchContainer == null || searchScrollView == null) return;
-        showingSearchList = true;
-        if (tabPager != null) tabPager.setVisibility(View.GONE);
-        searchContainer.removeAllViews();
-        for (LinearLayout card : sectionCards) {
-            if (card.getParent() instanceof ViewGroup) {
-                ((ViewGroup) card.getParent()).removeView(card);
-            }
-            LinearLayout.LayoutParams lp = card == actionsCardView
-                    ? marginLp(dp(12), 0, dp(12), dp(14))
-                    : marginLp(dp(12), 0, dp(12), dp(12));
-            searchContainer.addView(card, lp);
-        }
-        if (emptySearchCard != null) {
-            if (emptySearchCard.getParent() instanceof ViewGroup) {
-                ((ViewGroup) emptySearchCard.getParent()).removeView(emptySearchCard);
-            }
-            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
-        }
-        searchScrollView.scrollTo(0, 0);
-        searchScrollView.setVisibility(View.VISIBLE);
-    }
-
-    private void exitSearchListMode() {
-        if (!showingSearchList) return;
-        showingSearchList = false;
-        if (searchScrollView != null) searchScrollView.setVisibility(View.GONE);
-        if (searchContainer != null) searchContainer.removeAllViews();
-        for (int i = 0; i < TAB_COUNT; i++) {
-            if (tabContainers[i] != null) tabContainers[i].removeAllViews();
-        }
-        for (TabSection ts : allTabSections) {
-            if (ts.view.getParent() instanceof ViewGroup) {
-                ((ViewGroup) ts.view.getParent()).removeView(ts.view);
-            }
-            LinearLayout target = tabContainers[ts.tabIndex];
-            if (target != null) {
-                target.addView(ts.view, ts.layoutParams);
-            }
-        }
-        if (footerCreditView != null) {
-            if (footerCreditView.getParent() instanceof ViewGroup) {
-                ((ViewGroup) footerCreditView.getParent()).removeView(footerCreditView);
-            }
-            if (tabContainers[TAB_TOOLS] != null) {
-                tabContainers[TAB_TOOLS].addView(footerCreditView);
-            }
-        }
-        if (emptySearchCard != null && searchContainer != null) {
-            searchContainer.addView(emptySearchCard, marginLp(dp(12), dp(4), dp(12), dp(12)));
-        }
-        if (tabPager != null) {
-            tabPager.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void applyVisibilityFilter() {
-        if (searchMode && !searchQuery.isEmpty()) {
-            enterSearchListMode();
-            for (View note : footnoteViews) {
-                note.setVisibility(View.GONE);
-            }
-            if (footerCreditView != null) footerCreditView.setVisibility(View.GONE);
-
-            for (SearchableRow sr : searchableRows) {
-                boolean match = sr.textLower.contains(searchQuery);
-                sr.rowView.setVisibility(match ? View.VISIBLE : View.GONE);
-            }
-
-            int visibleCards = 0;
-            for (LinearLayout card : sectionCards) {
-                boolean anyVisible = false;
-                for (int i = 0; i < card.getChildCount(); i++) {
-                    View c = card.getChildAt(i);
-                    if ("item".equals(c.getTag()) && c.getVisibility() == View.VISIBLE) {
-                        anyVisible = true;
-                        break;
-                    }
-                }
-                card.setVisibility(anyVisible ? View.VISIBLE : View.GONE);
-                if (anyVisible) visibleCards++;
-            }
-            if (emptySearchCard != null) {
-                emptySearchCard.setVisibility(visibleCards == 0 ? View.VISIBLE : View.GONE);
-            }
-            updateActionsCardDividers();
-            return;
-        }
-
-        exitSearchListMode();
-        if (emptySearchCard != null) emptySearchCard.setVisibility(View.GONE);
-        for (SearchableRow sr : searchableRows) {
-            sr.rowView.setVisibility(View.VISIBLE);
-        }
-        for (TabSection ts : allTabSections) {
-            ts.view.setVisibility(View.VISIBLE);
-        }
-        updateActionsCardDividers();
-        if (footerCreditView != null) {
-            footerCreditView.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void updateActionsCardDividers() {
-        if (actionsCardView == null) return;
-        boolean seenFirstVisible = false;
-        for (int i = 0; i < actionsCardView.getChildCount(); i++) {
-            View child = actionsCardView.getChildAt(i);
-            if (child.getVisibility() != View.VISIBLE) continue;
-            View div = child.findViewWithTag("row_divider");
-            if (div != null) {
-                div.setVisibility(seenFirstVisible ? View.VISIBLE : View.GONE);
-            }
-            seenFirstVisible = true;
         }
     }
 
@@ -1249,8 +999,8 @@ public class SettingsActivity {
         div.setBackgroundColor(p.divider);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, dp(0.7f)));
-        lp.setMarginStart(startMarginPx);
-        lp.setMarginEnd(dp(16));
+        lp.leftMargin = isRtl ? dp(16) : startMarginPx;
+        lp.rightMargin = isRtl ? startMarginPx : dp(16);
         div.setLayoutParams(lp);
         return div;
     }
@@ -1299,28 +1049,6 @@ public class SettingsActivity {
         }
     }
 
-    private static final class TabSection {
-        final int tabIndex;
-        final View view;
-        final LinearLayout.LayoutParams layoutParams;
-
-        TabSection(int tabIndex, View view, LinearLayout.LayoutParams layoutParams) {
-            this.tabIndex = tabIndex;
-            this.view = view;
-            this.layoutParams = layoutParams;
-        }
-    }
-
-    private static final class SearchableRow {
-        final String textLower;
-        final View rowView;
-
-        SearchableRow(String textLower, View rowView, LinearLayout card, int tabIndex) {
-            this.textLower = textLower != null ? textLower : "";
-            this.rowView = rowView;
-        }
-    }
-
     private final class TabPagerView extends FrameLayout implements Choreographer.FrameCallback {
         private static final float SPRING_OMEGA = 14.5f;
 
@@ -1353,7 +1081,7 @@ public class SettingsActivity {
             cancelSpring();
             currentTab = clamped;
             applyOffset(clamped);
-            if (tabBar != null && !searchMode) {
+            if (tabBar != null) {
                 tabBar.setSelectedTab(clamped, false);
             }
         }
@@ -1367,7 +1095,7 @@ public class SettingsActivity {
             springStartVel = Math.max(-6.5f, Math.min(6.5f, initialVelPagesPerSec));
             if (Math.abs(springStartOffset) < 0.001f && Math.abs(springStartVel) < 0.01f) {
                 applyOffset(clamped);
-                if (tabBar != null && !searchMode) {
+                if (tabBar != null) {
                     tabBar.setSelectedTab(clamped, false);
                 }
                 return;
@@ -1396,7 +1124,7 @@ public class SettingsActivity {
             if ((Math.abs(x) < 0.0008f && Math.abs(v) < 0.01f) || t >= 0.8f) {
                 springRunning = false;
                 applyOffset(springTarget);
-                if (tabBar != null && !searchMode) {
+                if (tabBar != null) {
                     tabBar.setSelectedTab(springTarget, false);
                 }
                 return;
@@ -1421,9 +1149,13 @@ public class SettingsActivity {
                     }
                 }
             }
-            if (tabBar != null && !searchMode) {
+            if (tabBar != null) {
                 tabBar.setDragPosition(pos);
             }
+        }
+
+        private boolean isBackEdgeGesture(float dx) {
+            return downX <= edgeBackWidth && dx > 0;
         }
 
         private void recycleTracker() {
@@ -1448,12 +1180,6 @@ public class SettingsActivity {
 
         @Override
         public boolean onInterceptTouchEvent(MotionEvent ev) {
-            if (searchMode) {
-                isHorizontalDrag = false;
-                lockedVertical = false;
-                recycleTracker();
-                return false;
-            }
             int action = ev.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN) {
                 downX = ev.getX();
@@ -1468,7 +1194,7 @@ public class SettingsActivity {
                 if (!lockedVertical && !isHorizontalDrag) {
                     float dx = ev.getX() - downX;
                     float dy = ev.getY() - downY;
-                    if (downX <= edgeBackWidth && dx > 0) {
+                    if (isBackEdgeGesture(dx)) {
                         lockedVertical = true;
                         return false;
                     }
@@ -1496,12 +1222,6 @@ public class SettingsActivity {
 
         @Override
         public boolean onTouchEvent(MotionEvent ev) {
-            if (searchMode) {
-                isHorizontalDrag = false;
-                lockedVertical = false;
-                recycleTracker();
-                return false;
-            }
             if (velocityTracker == null) {
                 velocityTracker = VelocityTracker.obtain();
             }
@@ -1514,7 +1234,7 @@ public class SettingsActivity {
                 float dx = ev.getX() - downX;
                 float dy = ev.getY() - downY;
                 if (!isHorizontalDrag && !lockedVertical) {
-                    if (downX <= edgeBackWidth && dx > 0) {
+                    if (isBackEdgeGesture(dx)) {
                         lockedVertical = true;
                     } else if (Math.abs(dy) > touchSlop && Math.abs(dy) >= Math.abs(dx)) {
                         lockedVertical = true;

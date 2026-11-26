@@ -11,10 +11,10 @@ import android.window.OnBackInvokedDispatcher;
 import com.magiii.televipnext.Configs.ConfigPreferences;
 import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
+import com.magiii.televipnext.settings.ui.GlassDialog;
 import com.magiii.televipnext.settings.ui.SettingsActivity;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.utils.Utils;
-import com.magiii.televipnext.virtuals.ActionBar.AlertDialog;
 import com.magiii.televipnext.virtuals.messenger.browser.Browser;
 import com.magiii.televipnext.virtuals.ui.LaunchActivity;
 
@@ -146,26 +146,24 @@ public class SettingsController {
     private void showJoinTeleVip() {
         try {
             if (!ConfigPreferences.getBoolean("JTV")) {
-                AlertDialog alertDialog = new AlertDialog(getContext());
-
-                alertDialog.setTitle("TeleVip Next \uD83D\uDC7B");
-                alertDialog.setMessage(Translator.get(Keys.JoinTeleVip));
-
-                alertDialog.setPositiveButton(Translator.get(Keys.Join), AlertDialog.click(() -> {
-                    Context ctx = getContext();
-                    if (ctx != null) {
-                        try {
-                            Browser.openUrl(ctx, "https://t.me/televipnext");
-                        } catch (Throwable t) {
-                            Logger.e(t);
-                        }
-                    }
-                    hide();
-                }));
-
-                alertDialog.setNegativeButton(Translator.get(Keys.Cancel), null);
-                alertDialog.setNeutralButton(Translator.get(Keys.DontShowAgain), AlertDialog.click(() -> ConfigPreferences.putBoolean("JTV", true)));
-                alertDialog.show();
+                new GlassDialog.Builder(getContext())
+                        .setShowBrandEmblem(true)
+                        .setTitle("TeleVip Next")
+                        .setMessage(Translator.get(Keys.JoinTeleVip))
+                        .setPositiveButton(Translator.get(Keys.Join), () -> {
+                            Context ctx = getContext();
+                            if (ctx != null) {
+                                try {
+                                    Browser.openUrl(ctx, "https://t.me/televipnext");
+                                } catch (Throwable t) {
+                                    Logger.e(t);
+                                }
+                            }
+                            hide();
+                        })
+                        .setNegativeButton(Translator.get(Keys.Cancel), null)
+                        .setNeutralButton(Translator.get(Keys.DontShowAgain), () -> ConfigPreferences.putBoolean("JTV", true))
+                        .show();
             }
         } catch (Throwable e) {
             Logger.e(e);
@@ -221,9 +219,6 @@ public class SettingsController {
     }
 
     public void hide() {
-        if (settingsActivity != null && settingsActivity.closeSearchIfOpen()) {
-            return;
-        }
         if (Build.VERSION.SDK_INT >= 33 && backCallback != null) {
             try {
                 Activity prevAct = backCallbackActivity != null ? backCallbackActivity.get() : Utils.getCurrentActivity();

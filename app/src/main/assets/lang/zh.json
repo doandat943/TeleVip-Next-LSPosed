@@ -9,7 +9,6 @@
   "ChangeTo": "更改为",
   "NameDeleted": "名称已删除",
   "GhostMode": "幽灵模式 👻",
-  "ByMustafa": "by @m_1_iq & @doandat943",
   "HideSeen": "隐藏“已查看”状态",
   "HideStoryView": "隐藏 '故事观看' 状态",
   "HideTyping": "隐藏正在输入...",
@@ -113,8 +112,6 @@
   "TabChats": "聊天",
   "TabAppearance": "外观",
   "TabTools": "工具",
-  "SearchSettings": "搜索设置",
-  "NoMatchingSettings": "未找到匹配的设置",
   "HistoryTab": "历史",
   "ChangesTab": "变更",
   "ShowUnchangedLines": "显示未更改的行",
@@ -204,5 +201,8 @@
   "ProxyDisplayTopBar": "顶部栏",
   "DownloadMediaForForwardFailed": "无法下载媒体以从受限聊天转发",
   "DownloadingMediaToForward": "正在下载媒体以转发...",
-  "ForwardRestrictedFailed": "无法从受限聊天转发消息"
+  "ForwardRestrictedFailed": "无法从受限聊天转发消息",
+  "Language": "语言",
+  "LanguageDesc": "选择 TeleVip Next 的显示语言",
+  "LanguageAuto": "自动（默认）"
 }

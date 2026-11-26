@@ -1,5 +1,6 @@
 package com.magiii.televipnext.language;
 
+import com.magiii.televipnext.Configs.ConfigPreferences;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.utils.JsonAssetReader;
 import com.magiii.televipnext.virtuals.messenger.LocaleController;
@@ -14,9 +15,14 @@ import java.util.Map;
 
 public class Translator {
 
+    public static final String LANG_AUTO = "auto";
+    public static final String[] SUPPORTED_LANGS = {LANG_AUTO, "en", "fa", "vi", "ar", "es", "zh"};
+
     private static final Map<String, JSONObject> langMap = new HashMap<>();
 
     private static LocaleController localeController;
+    private static volatile String cachedOverrideLang = null;
+    private static volatile boolean overrideLoaded = false;
 
     public static void init() {
         try {
@@ -40,7 +46,73 @@ public class Translator {
         }
     }
 
+    private static String normalizeLangCode(String langCode) {
+        if (langCode != null) {
+            String lower = langCode.toLowerCase(Locale.ROOT);
+            for (String supported : SUPPORTED_LANGS) {
+                if (supported.equals(lower)) {
+                    return supported;
+                }
+            }
+        }
+        return LANG_AUTO;
+    }
+
+    public static String getSelectedLanguage() {
+        if (!overrideLoaded && ConfigPreferences.isInitialized()) {
+            cachedOverrideLang = normalizeLangCode(ConfigPreferences.getString(Keys.Language));
+            overrideLoaded = true;
+        }
+        return cachedOverrideLang != null ? cachedOverrideLang : LANG_AUTO;
+    }
+
+    public static void setSelectedLanguage(String langCode) {
+        String normalized = normalizeLangCode(langCode);
+        cachedOverrideLang = normalized;
+        overrideLoaded = true;
+        ConfigPreferences.putString(Keys.Language, normalized);
+    }
+
+    public static String getLanguageDisplayName(String langCode) {
+        String normalized = normalizeLangCode(langCode);
+        switch (normalized) {
+            case "en":
+                return "English";
+            case "fa":
+                return "\u0641\u0627\u0631\u0633\u06cc";
+            case "vi":
+                return "Ti\u1ebfng Vi\u1ec7t";
+            case "ar":
+                return "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
+            case "es":
+                return "Espa\u00f1ol";
+            case "zh":
+                return "\u4e2d\u6587";
+            default:
+                return get(Keys.LanguageAuto);
+        }
+    }
+
+    public static String getLanguagePickerLabel(String langCode) {
+        String normalized = normalizeLangCode(langCode);
+        if ("fa".equals(normalized)) {
+            return isRtl()
+                    ? "\u200F\u0641\u0627\u0631\u0633\u06cc \u2066(Persian)\u2069"
+                    : "\u200E\u2067\u0641\u0627\u0631\u0633\u06cc\u2069 (Persian)";
+        }
+        return getLanguageDisplayName(normalized);
+    }
+
+    public static boolean isRtl() {
+        String lang = getCurrentLangCode();
+        return "fa".equals(lang) || "ar".equals(lang);
+    }
+
     private static String getCurrentLangCode() {
+        String selected = getSelectedLanguage();
+        if (!LANG_AUTO.equals(selected)) {
+            return selected;
+        }
         try {
             Locale locale = localeController != null ? localeController.getCurrentLocale() : null;
             if (locale == null) {
