@@ -3,6 +3,7 @@ package com.magiii.televipnext.Clients;
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.utils.Utils;
+import com.magiii.televipnext.xposed.ReflectHelper;
 
 public class ClientManager {
 
@@ -93,8 +94,9 @@ public class ClientManager {
 
         Client client = getCurrent();
 
-        return client != null &&
-                client.isTgnetObfuscated();
+        return client != null
+                && client.isTgnetObfuscated()
+                && ReflectHelper.findClassIfExists(ClassNames.MESSAGE, Utils.classLoader) == null;
 
     }
 

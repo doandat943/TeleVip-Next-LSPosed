@@ -138,8 +138,11 @@ public class ConfigManager {
         hideStoryView = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoryView, ConfigPreferences.getBoolean(Keys.HideStoryView), GhostMode::init);
         items.add(hideStoryView);
 
-        hidePhone = new ConfigItem(ConfigItem.SWITCH, Keys.HidePhone, true, ConfigPreferences.getBoolean(Keys.HidePhone), HidePhone::init);
-        items.add(hidePhone);
+        // Cherrygram already ships native phone number spoiler hiding
+        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
+            hidePhone = new ConfigItem(ConfigItem.SWITCH, Keys.HidePhone, true, ConfigPreferences.getBoolean(Keys.HidePhone), HidePhone::init);
+            items.add(hidePhone);
+        }
 
         hideOnline = new ConfigItem(ConfigItem.SWITCH, Keys.HideOnline, true, ConfigPreferences.getBoolean(Keys.HideOnline), GhostMode::init);
         items.add(hideOnline);
@@ -150,14 +153,16 @@ public class ConfigManager {
         shadows = new ConfigItem(ConfigItem.DIVIDER);
         items.add(shadows);
 
-        // Stories
-        stories = new ConfigItem(ConfigItem.HEADER, Keys.StoriesSettings);
-        items.add(stories);
+        // Stories (Cherrygram already ships native Hide Stories)
+        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
+            stories = new ConfigItem(ConfigItem.HEADER, Keys.StoriesSettings);
+            items.add(stories);
 
-        disableStories = new ConfigItem(ConfigItem.SWITCH, Keys.DisableStories, true, ConfigPreferences.getBoolean(Keys.DisableStories), DisableStories::init);
-        items.add(disableStories);
+            disableStories = new ConfigItem(ConfigItem.SWITCH, Keys.DisableStories, true, ConfigPreferences.getBoolean(Keys.DisableStories), DisableStories::init);
+            items.add(disableStories);
 
-        items.add(shadows);
+            items.add(shadows);
+        }
 
         // Messages
         messages = new ConfigItem(ConfigItem.HEADER, Keys.MessagesSettings);
@@ -196,8 +201,8 @@ public class ConfigManager {
 
         items.add(shadows);
 
-        // Connections (Telegraph already ships native Download & Upload speed boosters)
-        if (!ClientManager.is(ClientManager.Client.Telegraph)) {
+        // Connections (Telegraph and Cherrygram already ship native Download & Upload speed boosters)
+        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
             if (!ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
                     && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
                 ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
@@ -219,7 +224,7 @@ public class ConfigManager {
         media = new ConfigItem(ConfigItem.HEADER, Keys.MediaSettings);
         items.add(media);
 
-        if (!ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
+        if (!ClientManager.is(ClientManager.Client.Nekogram)) {
             secretMediaSave = new ConfigItem(ConfigItem.SWITCH, Keys.SecretMediaSave, ConfigPreferences.getBoolean(Keys.SecretMediaSave), SecretMediaSave::init);
             items.add(secretMediaSave);
         }
@@ -256,6 +261,8 @@ public class ConfigManager {
             items.add(showUserID);
             customCalendar = new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init);
             items.add(customCalendar);
+        }
+        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
             showTimeSeconds = new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init);
             items.add(showTimeSeconds);
             if (!ConfigPreferences.contains(Keys.AlwaysShowProxy + "Int")
@@ -281,10 +288,12 @@ public class ConfigManager {
         telegramPremium = new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init);
         items.add(telegramPremium);
 
-        disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
+        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
+            disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
+            items.add(disableNumberRounding);
+        }
         hideUpdateApp = new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init);
         fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
-        items.add(disableNumberRounding);
         items.add(hideUpdateApp);
         items.add(fixTLError);
 
@@ -332,6 +341,8 @@ public class ConfigManager {
                 FeatureInitializer.init();
                 CopyNameHook.init();
                 EditOnlineTextView.init();
+            }
+            if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
                 AlwaysShowProxy.init();
             }
             AlwaysSaveMedia.init();

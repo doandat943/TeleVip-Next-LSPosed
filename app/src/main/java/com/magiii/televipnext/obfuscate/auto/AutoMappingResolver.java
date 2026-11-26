@@ -14,8 +14,10 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AutoMappingResolver {
 
@@ -23,7 +25,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 39;
+    private static final int SCHEMA_VERSION = 42;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -140,8 +142,16 @@ public class AutoMappingResolver {
         }
 
         String launchActDesc = DexScanner.javaToDesc(ClassNames.LAUNCH_ACTIVITY);
-        addField("LaunchActivity", "frameLayout",
-                scanner.findSingleField(launchActDesc, false, "Landroid/widget/FrameLayout;"));
+        String launchFrameField = scanner.findSingleField(launchActDesc, false, "Landroid/widget/FrameLayout;");
+        if (launchFrameField == null) {
+            for (DexScanner.FieldInfo f : scanner.getFields(launchActDesc)) {
+                if (!f.isStatic && "frameLayout".equals(f.name) && "Landroid/widget/FrameLayout;".equals(f.typeDesc)) {
+                    launchFrameField = f.name;
+                    break;
+                }
+            }
+        }
+        addField("LaunchActivity", "frameLayout", launchFrameField);
 
         String actionBarDesc = null;
         if (baseFragmentDesc != null) {
@@ -174,7 +184,10 @@ public class AutoMappingResolver {
         String chatOpenPhoto = null;
         for (DexScanner.MethodInfo m : scanner.getMethods(photoViewerDesc)) {
             if (!m.isStatic && "Z".equals(m.returnDesc) && m.paramDescs.length == 6
-                    && "J".equals(m.paramDescs[2]) && "J".equals(m.paramDescs[3]) && "J".equals(m.paramDescs[4])) {
+                    && "J".equals(m.paramDescs[2]) && "J".equals(m.paramDescs[3]) && "J".equals(m.paramDescs[4])
+                    && m.paramDescs[0].startsWith("Lorg/telegram/messenger/")
+                    && m.paramDescs[1].startsWith("Lorg/telegram/ui/")
+                    && m.paramDescs[5].startsWith("Lorg/telegram/ui/PhotoViewer$")) {
                 msgObjDesc = m.paramDescs[0];
                 chatActDesc = m.paramDescs[1];
                 pvProviderDesc = m.paramDescs[5];
@@ -567,7 +580,10 @@ public class AutoMappingResolver {
                     addMethod("MessagesStorage", "putMessages", bestPutMsgs.name);
                 }
                 for (DexScanner.MethodInfo m : scanner.getMethods(msgStorageDesc)) {
-                    if (!m.isStatic && m.paramDescs.length == 0 && m.returnDesc.startsWith("Lorg/telegram/messenger/")) {
+                    if (!m.isStatic && m.paramDescs.length == 0
+                            && (m.returnDesc.startsWith("Lorg/telegram/messenger/")
+                            || (m.returnDesc.startsWith("L") && !m.returnDesc.startsWith("Ljava/") && !m.returnDesc.startsWith("Landroid/")
+                            && scanner.isSubclassOf(m.returnDesc, "Ljava/lang/Thread;")))) {
                         boolean hasDelayedPost = false;
                         DexScanner.MethodInfo bestPostRun = null;
                         for (DexScanner.MethodInfo dm : scanner.getMethods(m.returnDesc)) {
@@ -805,12 +821,32 @@ public class AutoMappingResolver {
 
             String fastDateFmtDesc = "Lorg/telegram/messenger/time/FastDateFormat;";
             String fmtDay = scanner.findMethodByString(localeCtrlDesc, "formatterDay24H", false, fastDateFmtDesc);
+            String fmtDaySec = scanner.findMethodByString(localeCtrlDesc, "formatterDayWithSeconds24H", false, fastDateFmtDesc);
+            if (fmtDay == null || fmtDaySec == null) {
+                for (DexScanner.MethodInfo m : scanner.getMethods(localeCtrlDesc)) {
+                    if (!m.isStatic && m.paramDescs.length == 0 && m.returnDesc.startsWith("L") && !m.returnDesc.startsWith("Ljava/")) {
+                        if (fmtDay == null && m.usesString("formatterDay24H")) {
+                            fmtDay = m.name;
+                            fastDateFmtDesc = m.returnDesc;
+                        } else if (fmtDaySec == null && m.usesString("formatterDayWithSeconds24H")) {
+                            fmtDaySec = m.name;
+                            fastDateFmtDesc = m.returnDesc;
+                        }
+                    }
+                }
+            }
             if (fmtDay != null) {
                 addMethod("LocaleController", "getFormatterDay", fmtDay);
             }
-            String fmtDaySec = scanner.findMethodByString(localeCtrlDesc, "formatterDayWithSeconds24H", false, fastDateFmtDesc);
             if (fmtDaySec != null) {
                 addMethod("LocaleController", "getFormatterDayWithSeconds", fmtDaySec);
+            }
+            if ((fmtDay != null || fmtDaySec != null) && !scanner.getMethods(fastDateFmtDesc).isEmpty()) {
+                addClass(ClassNames.FAST_DATE_FORMAT, fastDateFmtDesc);
+                String fmtMeth = scanner.findSingleMethod(fastDateFmtDesc, false, "Ljava/lang/String;", "J");
+                if (fmtMeth != null) {
+                    addMethod("FastDateFormat", "format", fmtMeth);
+                }
             }
         }
 
@@ -830,6 +866,14 @@ public class AutoMappingResolver {
         if (browserDesc == null) {
             browserDesc = scanner.findClassByStrings("Lorg/telegram/messenger/", null,
                     "com.android.browser.application_id");
+        }
+        if (browserDesc == null) {
+            browserDesc = scanner.findClassByStrings(null, null,
+                    "com.android.browser.application_id", "android.support.customtabs.extra.SESSION");
+        }
+        if (browserDesc == null) {
+            browserDesc = scanner.findClassByStrings(null, null,
+                    "android.intent.action.VIEW", "https://t.me/");
         }
         if (browserDesc != null) {
             addClass(ClassNames.BROWSER, browserDesc);
@@ -853,12 +897,27 @@ public class AutoMappingResolver {
             if (openUrlMeth == null && csVoidNames.size() == 1) {
                 openUrlMeth = csVoidNames.get(0);
             } else if (openUrlMeth == null && !csVoidNames.isEmpty()) {
-                int bestOverloads = 0;
                 for (String cand : csVoidNames) {
-                    int cnt = csVoidCounts.getOrDefault(cand, 0);
-                    if (cnt > bestOverloads) {
-                        bestOverloads = cnt;
-                        openUrlMeth = cand;
+                    for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                            browserDesc, cand, new String[]{"Landroid/content/Context;", "Ljava/lang/String;"}, browserDesc)) {
+                        if (ref.paramDescs.length == 3
+                                && "Landroid/content/Context;".equals(ref.paramDescs[0])
+                                && "Ljava/lang/String;".equals(ref.paramDescs[1])
+                                && "Z".equals(ref.paramDescs[2])) {
+                            openUrlMeth = cand;
+                            break;
+                        }
+                    }
+                    if (openUrlMeth != null) break;
+                }
+                if (openUrlMeth == null) {
+                    int bestOverloads = 0;
+                    for (String cand : csVoidNames) {
+                        int cnt = csVoidCounts.getOrDefault(cand, 0);
+                        if (cnt > bestOverloads) {
+                            bestOverloads = cnt;
+                            openUrlMeth = cand;
+                        }
                     }
                 }
             }
@@ -1008,86 +1067,102 @@ public class AutoMappingResolver {
 
         resolveFileUploadOperation(scanner);
 
-        String chatMsgCellDesc = findChatMessageCell(scanner);
+        String chatMsgCellDesc = findChatMessageCell(scanner, msgObjDesc);
         if (chatMsgCellDesc != null) {
             addClass(ClassNames.CHAT_MESSAGE_CELL, chatMsgCellDesc);
             if (msgObjDesc != null) {
+                DexScanner.MethodInfo measureTimeMeth = null;
                 for (DexScanner.MethodInfo m : scanner.getMethods(chatMsgCellDesc)) {
                     if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1
                             && msgObjDesc.equals(m.paramDescs[0]) && m.readsFieldNamed("date")) {
-                        addMethod("ChatMessageCell", "measureTime", m.name);
+                        if ("measureTime".equals(m.name)) {
+                            measureTimeMeth = m;
+                            break;
+                        }
+                        if (m.getInsnsSize() > 200
+                                && (measureTimeMeth == null || m.getInsnsSize() < measureTimeMeth.getInsnsSize())) {
+                            measureTimeMeth = m;
+                        }
+                    }
+                }
+                if (measureTimeMeth != null) {
+                    addMethod("ChatMessageCell", "measureTime", measureTimeMeth.name);
 
-                        if (themeDesc != null) {
-                            Map<String, Integer> paintReads = new HashMap<>();
-                            for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(chatMsgCellDesc, m.name, new String[]{msgObjDesc}, themeDesc)) {
-                                if ("Landroid/text/TextPaint;".equals(rf.typeDesc)) {
-                                    Integer c = paintReads.get(rf.name);
-                                    paintReads.put(rf.name, c == null ? 1 : c + 1);
-                                }
-                            }
-                            String bestTimePaint = null;
-                            int bestPaintCount = 0;
-                            for (Map.Entry<String, Integer> pe : paintReads.entrySet()) {
-                                if (pe.getValue() > bestPaintCount) {
-                                    bestPaintCount = pe.getValue();
-                                    bestTimePaint = pe.getKey();
-                                }
-                            }
-                            if (bestTimePaint != null) {
-                                addField("Theme", "chat_timePaint", bestTimePaint);
+                    if (themeDesc != null) {
+                        Map<String, Integer> paintReads = new HashMap<>();
+                        for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(chatMsgCellDesc, measureTimeMeth.name, new String[]{msgObjDesc}, themeDesc)) {
+                            if ("Landroid/text/TextPaint;".equals(rf.typeDesc)) {
+                                Integer c = paintReads.get(rf.name);
+                                paintReads.put(rf.name, c == null ? 1 : c + 1);
                             }
                         }
+                        String bestTimePaint = null;
+                        int bestPaintCount = 0;
+                        for (Map.Entry<String, Integer> pe : paintReads.entrySet()) {
+                            if (pe.getValue() > bestPaintCount) {
+                                bestPaintCount = pe.getValue();
+                                bestTimePaint = pe.getKey();
+                            }
+                        }
+                        if (bestTimePaint != null) {
+                            addField("Theme", "chat_timePaint", bestTimePaint);
+                        }
+                    }
 
-                        String timeStrField = null;
-                        List<String> intWriteSeq = new ArrayList<>();
-                        Map<String, Integer> intWriteCounts = new HashMap<>();
-                        for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(chatMsgCellDesc, m.name, new String[]{msgObjDesc}, chatMsgCellDesc)) {
-                            if ("Ljava/lang/CharSequence;".equals(wf.typeDesc) && timeStrField == null) {
-                                timeStrField = wf.name;
-                            } else if ("I".equals(wf.typeDesc)) {
-                                Integer c = intWriteCounts.get(wf.name);
-                                intWriteCounts.put(wf.name, c == null ? 1 : c + 1);
-                                if (timeStrField != null) {
-                                    intWriteSeq.add(wf.name);
-                                }
+                    String timeStrField = null;
+                    List<String> intWriteSeq = new ArrayList<>();
+                    Map<String, Integer> intWriteCounts = new HashMap<>();
+                    for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(chatMsgCellDesc, measureTimeMeth.name, new String[]{msgObjDesc}, chatMsgCellDesc)) {
+                        if ("Ljava/lang/CharSequence;".equals(wf.typeDesc) && timeStrField == null) {
+                            timeStrField = wf.name;
+                        } else if ("I".equals(wf.typeDesc)) {
+                            Integer c = intWriteCounts.get(wf.name);
+                            intWriteCounts.put(wf.name, c == null ? 1 : c + 1);
+                            intWriteSeq.add(wf.name);
+                        }
+                    }
+                    if (timeStrField == null) {
+                        for (DexScanner.FieldInfo f : scanner.getFields(chatMsgCellDesc)) {
+                            if (!f.isStatic && "currentTimeString".equals(f.name)) {
+                                timeStrField = f.name;
+                                break;
                             }
                         }
-                        if (timeStrField != null) {
-                            addField("ChatMessageCell", "currentTimeString", timeStrField);
+                    }
+                    if (timeStrField != null) {
+                        addField("ChatMessageCell", "currentTimeString", timeStrField);
+                    }
+                    String resolvedTimeWidth = null;
+                    int bestTimeWidthWrites = 0;
+                    for (String name : intWriteSeq) {
+                        int cnt = intWriteCounts.get(name);
+                        if (cnt > bestTimeWidthWrites) {
+                            bestTimeWidthWrites = cnt;
+                            resolvedTimeWidth = name;
                         }
-                        String resolvedTimeWidth = null;
-                        int bestTimeWidthWrites = 0;
-                        for (String name : intWriteSeq) {
-                            int cnt = intWriteCounts.get(name);
-                            if (cnt > bestTimeWidthWrites) {
-                                bestTimeWidthWrites = cnt;
-                                resolvedTimeWidth = name;
-                            }
+                    }
+                    String resolvedTimeTextWidth = null;
+                    if (resolvedTimeWidth != null) {
+                        int firstIdx = intWriteSeq.indexOf(resolvedTimeWidth);
+                        String nextCand = (firstIdx + 1 < intWriteSeq.size() && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx + 1)))
+                                ? intWriteSeq.get(firstIdx + 1) : null;
+                        String prevCand = (firstIdx - 1 >= 0 && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx - 1)))
+                                ? intWriteSeq.get(firstIdx - 1) : null;
+                        if (nextCand != null && prevCand != null) {
+                            int nextCnt = intWriteCounts.get(nextCand);
+                            int prevCnt = intWriteCounts.get(prevCand);
+                            resolvedTimeTextWidth = (prevCnt >= 2 && nextCnt < 2) ? prevCand : nextCand;
+                        } else if (nextCand != null) {
+                            resolvedTimeTextWidth = nextCand;
+                        } else if (prevCand != null) {
+                            resolvedTimeTextWidth = prevCand;
                         }
-                        String resolvedTimeTextWidth = null;
-                        if (resolvedTimeWidth != null) {
-                            int firstIdx = intWriteSeq.indexOf(resolvedTimeWidth);
-                            String nextCand = (firstIdx + 1 < intWriteSeq.size() && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx + 1)))
-                                    ? intWriteSeq.get(firstIdx + 1) : null;
-                            String prevCand = (firstIdx - 1 >= 0 && !resolvedTimeWidth.equals(intWriteSeq.get(firstIdx - 1)))
-                                    ? intWriteSeq.get(firstIdx - 1) : null;
-                            if (nextCand != null && prevCand != null) {
-                                int nextCnt = intWriteCounts.get(nextCand);
-                                int prevCnt = intWriteCounts.get(prevCand);
-                                resolvedTimeTextWidth = (prevCnt >= 2 && nextCnt < 2) ? prevCand : nextCand;
-                            } else if (nextCand != null) {
-                                resolvedTimeTextWidth = nextCand;
-                            } else if (prevCand != null) {
-                                resolvedTimeTextWidth = prevCand;
-                            }
-                        }
-                        if (resolvedTimeTextWidth != null) {
-                            addField("ChatMessageCell", "timeTextWidth", resolvedTimeTextWidth);
-                        }
-                        if (resolvedTimeWidth != null) {
-                            addField("ChatMessageCell", "timeWidth", resolvedTimeWidth);
-                        }
-                        break;
+                    }
+                    if (resolvedTimeTextWidth != null) {
+                        addField("ChatMessageCell", "timeTextWidth", resolvedTimeTextWidth);
+                    }
+                    if (resolvedTimeWidth != null) {
+                        addField("ChatMessageCell", "timeWidth", resolvedTimeWidth);
                     }
                 }
             }
@@ -1148,6 +1223,9 @@ public class AutoMappingResolver {
 
         // 7. AlertDialog$Builder & OnButtonClickListener
         resolveAlertDialog(scanner);
+
+        // 8. SQLite classes
+        resolveSQLite(scanner);
 
         // Serialize to JSON
         JSONObject root = new JSONObject();
@@ -1764,6 +1842,23 @@ public class AutoMappingResolver {
     }
 
     private static String findAndroidUtilities(DexScanner scanner) {
+        String best = scanner.findClassByPredicate("Lorg/telegram/messenger/", (desc, fields, methods) -> {
+            if (methods.size() < 150) return false;
+            boolean hasDp = false;
+            boolean hasRun = false;
+            int staticCnt = 0;
+            for (DexScanner.MethodInfo m : methods) {
+                if (m.isStatic) staticCnt++;
+                if (m.isStatic && "I".equals(m.returnDesc) && m.paramDescs.length == 1 && "F".equals(m.paramDescs[0])) {
+                    hasDp = true;
+                }
+                if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1 && "Ljava/lang/Runnable;".equals(m.paramDescs[0])) {
+                    hasRun = true;
+                }
+            }
+            return hasDp && hasRun && staticCnt * 10 >= methods.size() * 9;
+        });
+        if (best != null) return best;
         return scanner.findClassByPredicate("Lorg/telegram/messenger/", (desc, fields, methods) -> {
             if (methods.size() < 150) return false;
             boolean hasDp = false;
@@ -1903,9 +1998,23 @@ public class AutoMappingResolver {
         });
     }
 
-    private static String findChatMessageCell(DexScanner scanner) {
-        return scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) ->
+    private static String findChatMessageCell(DexScanner scanner, String msgObjDesc) {
+        String found = scanner.findClassByPredicate("Lorg/telegram/ui/Cells/", (desc, fields, methods) ->
                 fields.size() > 300 && methods.size() > 200);
+        if (found != null) return found;
+        return scanner.findClassByPredicate(null, (desc, fields, methods) -> {
+            if (fields.size() <= 250 || methods.size() <= 150) return false;
+            if (desc.contains("$") || desc.startsWith("Landroidx/") || desc.startsWith("Landroid/")) return false;
+            if (msgObjDesc == null) return scanner.isSubclassOf(desc, "Landroid/view/ViewGroup;")
+                    || scanner.isSubclassOf(desc, "Landroid/view/View;");
+            for (DexScanner.MethodInfo m : methods) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 1
+                        && msgObjDesc.equals(m.paramDescs[0]) && m.readsFieldNamed("date")) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     private void resolveSettingsClasses(DexScanner scanner) {
@@ -1953,10 +2062,68 @@ public class AutoMappingResolver {
             addMethod("SettingsActivity$SettingCell$Factory", "bindView", factoryBindName[0]);
         }
 
-        // Resolve UItem fields from Factory.of() bytecode writes (largest overload first)
+        // Resolve SettingCell (outer class of Factory)
+        int dollarIdx = factoryDesc.lastIndexOf('$');
+        if (dollarIdx > 0) {
+            String settingCellDesc = factoryDesc.substring(0, dollarIdx) + ";";
+            List<DexScanner.FieldInfo> cellFields = scanner.getFields(settingCellDesc);
+            if (!cellFields.isEmpty()) {
+                addClass(ClassNames.SETTINGS_ACTIVITY_SETTING_CELL, settingCellDesc);
+
+                DexScanner.MethodInfo bestSet = null;
+                int bestSetSize = -1;
+                for (DexScanner.MethodInfo m : scanner.getMethods(settingCellDesc)) {
+                    if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length >= 6
+                            && "I".equals(m.paramDescs[0]) && "I".equals(m.paramDescs[1]) && "I".equals(m.paramDescs[2])
+                            && "Ljava/lang/CharSequence;".equals(m.paramDescs[3])
+                            && "Ljava/lang/CharSequence;".equals(m.paramDescs[4])) {
+                        int sz = m.getInsnsSize();
+                        if (sz > bestSetSize) {
+                            bestSetSize = sz;
+                            bestSet = m;
+                        }
+                    }
+                }
+
+                String iconField = null;
+                if (bestSet != null) {
+                    addMethod("SettingsActivity$SettingCell", "set", bestSet.name);
+                    for (DexScanner.FieldInfo f : scanner.getReadInstanceFieldsInMethod(
+                            settingCellDesc, bestSet.name, bestSet.paramDescs, settingCellDesc)) {
+                        if (!f.isStatic && ("Landroid/widget/ImageView;".equals(f.typeDesc)
+                                || scanner.isSubclassOf(f.typeDesc, "Landroid/widget/ImageView;"))) {
+                            iconField = f.name;
+                            break;
+                        }
+                    }
+                }
+
+                if (iconField == null) {
+                    String uniqueImgField = null;
+                    int imgCount = 0;
+                    for (DexScanner.FieldInfo f : cellFields) {
+                        if (!f.isStatic && "Landroid/widget/ImageView;".equals(f.typeDesc)) {
+                            if ("iconView".equals(f.name)) {
+                                iconField = f.name;
+                            }
+                            uniqueImgField = f.name;
+                            imgCount++;
+                        }
+                    }
+                    if (iconField == null && imgCount == 1) {
+                        iconField = uniqueImgField;
+                    }
+                }
+                if (iconField != null) {
+                    addField("SettingsActivity$SettingCell", "iconView", iconField);
+                }
+            }
+        }
+
+        // Resolve UItem fields from Factory static->UItem overloads (largest overload first)
         List<DexScanner.MethodInfo> ofOverloads = new ArrayList<>();
         for (DexScanner.MethodInfo m : scanner.getMethods(factoryDesc)) {
-            if (m.isStatic && factoryOfName[0].equals(m.name) && uItemDesc.equals(m.returnDesc)) {
+            if (m.isStatic && uItemDesc.equals(m.returnDesc)) {
                 ofOverloads.add(m);
             }
         }
@@ -1998,7 +2165,35 @@ public class AutoMappingResolver {
             return false;
         });
 
-        if (settingsDesc != null) {
+        if (settingsDesc == null) {
+            String directSettingsDesc = "Lorg/telegram/ui/SettingsActivity;";
+            String fill = null, click = null, universalAdapterDesc = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(directSettingsDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 2
+                        && "Ljava/util/ArrayList;".equals(m.paramDescs[0])
+                        && m.paramDescs[1].startsWith("Lorg/telegram/ui/Components/")) {
+                    fill = m.name;
+                    universalAdapterDesc = m.paramDescs[1];
+                } else if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 5
+                        && uItemDesc.equals(m.paramDescs[0])
+                        && "Landroid/view/View;".equals(m.paramDescs[1])
+                        && "I".equals(m.paramDescs[2])
+                        && "F".equals(m.paramDescs[3])
+                        && "F".equals(m.paramDescs[4])) {
+                    if (click == null || "onClick".equals(m.name)) {
+                        click = m.name;
+                    }
+                }
+            }
+            if (fill != null || click != null) {
+                addClass("org.telegram.ui.SettingsActivity", directSettingsDesc);
+                if (universalAdapterDesc != null) {
+                    addClass(ClassNames.UNIVERSAL_ADAPTER, universalAdapterDesc);
+                }
+                if (fill != null) addMethod("SettingsActivity", "fillItems", fill);
+                if (click != null) addMethod("SettingsActivity", "onClick", click);
+            }
+        } else {
             addClass("org.telegram.ui.SettingsActivity", settingsDesc);
             addMethod("SettingsActivity", "fillItems", fillItemsName[0]);
             addMethod("SettingsActivity", "onClick", onClickName[0]);
@@ -2115,9 +2310,13 @@ public class AutoMappingResolver {
             }
         }
 
+        if (dialogDesc == null) dialogDesc = "Lorg/telegram/ui/ActionBar/AlertDialog;";
+        List<DexScanner.MethodInfo> dialogMethods = scanner.getMethods(dialogDesc);
+
         // OnButtonClickListener from (String/CharSequence, ?) -> V or Self
         String listenerDesc = null;
         String negBtn = null, neuBtn = null, posBtn = null;
+        List<DexScanner.MethodInfo> unresolvedBtns = new ArrayList<>();
         for (DexScanner.MethodInfo m : methods) {
             if (!m.isStatic && m.paramDescs.length == 2
                     && m.paramDescs[1].startsWith("Lorg/telegram/ui/ActionBar/")
@@ -2126,7 +2325,38 @@ public class AutoMappingResolver {
                 if (m.containsConstInt(-1)) posBtn = m.name;
                 else if (m.containsConstInt(-2)) negBtn = m.name;
                 else if (m.containsConstInt(-3)) neuBtn = m.name;
-                else if ("Ljava/lang/CharSequence;".equals(m.paramDescs[0]) && posBtn == null) posBtn = m.name;
+                else unresolvedBtns.add(m);
+            }
+        }
+        if (!unresolvedBtns.isEmpty() && listenerDesc != null) {
+            // In stripped builds (e.g. Cherrygram), button constants live in AlertDialog's click handlers
+            Map<String, Integer> listenerFieldBtnCode = new HashMap<>();
+            for (DexScanner.MethodInfo dm : dialogMethods) {
+                if (dm.isStatic || dm.codeOff <= 0) continue;
+                int code = dm.containsConstInt(-1) && !dm.containsConstInt(-2) ? -1
+                        : (dm.containsConstInt(-2) && !dm.containsConstInt(-1) ? -2
+                        : (dm.containsConstInt(-3) ? -3 : 0));
+                if (code == 0) continue;
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(dialogDesc, dm.name, dm.paramDescs, dialogDesc)) {
+                    if (listenerDesc.equals(rf.typeDesc)) {
+                        listenerFieldBtnCode.putIfAbsent(rf.name, code);
+                    }
+                }
+            }
+            List<DexScanner.MethodInfo> remaining = new ArrayList<>();
+            for (DexScanner.MethodInfo m : unresolvedBtns) {
+                boolean matched = false;
+                for (String wf : collectWrittenDialogFields(scanner, builderDesc, dialogDesc, m)) {
+                    Integer code = listenerFieldBtnCode.get(wf);
+                    if (code == null) continue;
+                    if (code == -1 && posBtn == null) { posBtn = m.name; matched = true; break; }
+                    if (code == -2 && negBtn == null) { negBtn = m.name; matched = true; break; }
+                    if (code == -3 && neuBtn == null) { neuBtn = m.name; matched = true; break; }
+                }
+                if (!matched) remaining.add(m);
+            }
+            for (DexScanner.MethodInfo m : remaining) {
+                if ("Ljava/lang/CharSequence;".equals(m.paramDescs[0]) && posBtn == null) posBtn = m.name;
                 else if (negBtn == null) negBtn = m.name;
                 else if (neuBtn == null) neuBtn = m.name;
             }
@@ -2145,17 +2375,66 @@ public class AutoMappingResolver {
             }
         }
 
-        // setMessage / setTitle: (CharSequence) -> V or Self
+        // setTitle / setMessage: match AlertDialog$Builder (CharSequence) against AlertDialog's title and message fields
+        String titleField = null;
+        String messageField = null;
+        for (DexScanner.MethodInfo dm : dialogMethods) {
+            if (!dm.isStatic && dm.paramDescs.length == 1
+                    && "Ljava/lang/CharSequence;".equals(dm.paramDescs[0])
+                    && "setTitle".equals(dm.name)) {
+                for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(dialogDesc, dm.name, dm.paramDescs, dialogDesc)) {
+                    if (!f.isStatic && "Ljava/lang/CharSequence;".equals(f.typeDesc)) {
+                        titleField = f.name;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        for (DexScanner.MethodInfo dm : dialogMethods) {
+            if (!dm.isStatic && "V".equals(dm.returnDesc) && dm.paramDescs.length == 1
+                    && "Ljava/lang/CharSequence;".equals(dm.paramDescs[0])
+                    && !"setTitle".equals(dm.name)) {
+                for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(dialogDesc, dm.name, dm.paramDescs, dialogDesc)) {
+                    if (!f.isStatic && "Ljava/lang/CharSequence;".equals(f.typeDesc) && !f.name.equals(titleField)) {
+                        if ("setMessage".equals(dm.name) || messageField == null) {
+                            messageField = f.name;
+                        }
+                        if ("setMessage".equals(dm.name)) break;
+                    }
+                }
+            }
+        }
+
+        String titleMethod = null, msgMethod = null;
         String cs1 = null, cs2 = null;
         for (DexScanner.MethodInfo m : methods) {
             if (!m.isStatic && ("V".equals(m.returnDesc) || builderDesc.equals(m.returnDesc))
                     && m.paramDescs.length == 1 && "Ljava/lang/CharSequence;".equals(m.paramDescs[0])) {
-                if (cs1 == null) cs1 = m.name;
-                else if (cs2 == null) cs2 = m.name;
+                if ("setTitle".equals(m.name)) titleMethod = m.name;
+                else if ("setMessage".equals(m.name)) msgMethod = m.name;
+                else {
+                    Set<String> written = collectWrittenDialogFields(scanner, builderDesc, dialogDesc, m);
+                    if (titleField != null && written.contains(titleField) && titleMethod == null) {
+                        titleMethod = m.name;
+                    } else if (messageField != null && written.contains(messageField) && msgMethod == null) {
+                        msgMethod = m.name;
+                    } else if (cs1 == null) {
+                        cs1 = m.name;
+                    } else if (cs2 == null) {
+                        cs2 = m.name;
+                    }
+                }
             }
         }
-        if (cs1 != null) addMethod("AlertDialog$Builder", "setMessage", cs1);
-        if (cs2 != null) addMethod("AlertDialog$Builder", "setTitle", cs2);
+        if (msgMethod == null) {
+            msgMethod = (cs1 != null && !cs1.equals(titleMethod)) ? cs1 : cs2;
+        }
+        if (titleMethod == null) {
+            titleMethod = (cs2 != null && !cs2.equals(msgMethod)) ? cs2 : (cs1 != null && !cs1.equals(msgMethod) ? cs1 : null);
+        }
+        if (msgMethod != null) addMethod("AlertDialog$Builder", "setMessage", msgMethod);
+        if (titleMethod != null) addMethod("AlertDialog$Builder", "setTitle", titleMethod);
 
         // create() and show(): () -> Dialog (create is smaller than show)
         if (dialogDesc != null) {
@@ -2184,7 +2463,7 @@ public class AutoMappingResolver {
         String proxyDrawableDesc = null;
         String setConnectedName = null;
         for (DexScanner.FieldInfo f : scanner.getFields(dialogsActDesc)) {
-            if (f.isStatic || !f.typeDesc.startsWith("Lorg/telegram/ui/Components/")) continue;
+            if (f.isStatic || f.typeDesc.startsWith("Landroid/")) continue;
             if (!scanner.isSubclassOf(f.typeDesc, "Landroid/graphics/drawable/Drawable;")) continue;
             String setConn = scanner.findSingleMethod(f.typeDesc, false, "V", "Z", "Z", "Z");
             if (setConn != null) {
@@ -2333,6 +2612,65 @@ public class AutoMappingResolver {
                 }
             }
         }
+    }
+
+    private void resolveSQLite(DexScanner scanner) {
+        String dbDesc = "Lorg/telegram/SQLite/SQLiteDatabase;";
+        String cursorDesc = "Lorg/telegram/SQLite/SQLiteCursor;";
+        String stmtDesc = "Lorg/telegram/SQLite/SQLitePreparedStatement;";
+        if (scanner.getMethods(dbDesc).isEmpty()) return;
+
+        addMethod("SQLiteDatabase", "queryFinalized",
+                scanner.findSingleMethod(dbDesc, false, cursorDesc, "Ljava/lang/String;", "[Ljava/lang/Object;"));
+        addMethod("SQLiteDatabase", "executeFast",
+                scanner.findSingleMethod(dbDesc, false, stmtDesc, "Ljava/lang/String;"));
+
+        if (!scanner.getMethods(cursorDesc).isEmpty()) {
+            addMethod("SQLiteCursor", "next", scanner.findSingleMethod(cursorDesc, false, "Z"));
+            addMethod("SQLiteCursor", "byteBufferValue",
+                    scanner.findSingleMethod(cursorDesc, false, "Lorg/telegram/tgnet/NativeByteBuffer;", "I"));
+            addMethod("SQLiteCursor", "intValue", scanner.findSingleMethod(cursorDesc, false, "I", "I"));
+            addMethod("SQLiteCursor", "longValue", scanner.findSingleMethod(cursorDesc, false, "J", "I"));
+
+            for (DexScanner.MethodInfo m : scanner.getMethods(cursorDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                    for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(cursorDesc, m.name, new String[0], stmtDesc)) {
+                        if ("V".equals(ref.returnDesc) && ref.paramDescs.length == 0) {
+                            addMethod("SQLiteCursor", "dispose", m.name);
+                            addMethod("SQLitePreparedStatement", "dispose", ref.name);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!scanner.getMethods(stmtDesc).isEmpty()) {
+            addMethod("SQLitePreparedStatement", "bindByteBuffer",
+                    scanner.findSingleMethod(stmtDesc, false, "V", "I", "Lorg/telegram/tgnet/NativeByteBuffer;"));
+            addMethod("SQLitePreparedStatement", "bindInteger",
+                    scanner.findSingleMethod(stmtDesc, false, "V", "I", "I"));
+            addMethod("SQLitePreparedStatement", "bindLong",
+                    scanner.findSingleMethod(stmtDesc, false, "V", "I", "J"));
+            addMethod("SQLitePreparedStatement", "requery",
+                    scanner.findSingleMethod(stmtDesc, false, stmtDesc));
+            addMethod("SQLitePreparedStatement", "step",
+                    scanner.findSingleMethod(stmtDesc, false, "I"));
+        }
+    }
+
+    private static Set<String> collectWrittenDialogFields(
+            DexScanner scanner, String builderDesc, String dialogDesc, DexScanner.MethodInfo m) {
+        Set<String> out = new HashSet<>();
+        for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(builderDesc, m.name, m.paramDescs, dialogDesc)) {
+            if (!f.isStatic) out.add(f.name);
+        }
+        for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(builderDesc, m.name, m.paramDescs, dialogDesc)) {
+            for (DexScanner.FieldInfo f : scanner.getWrittenFieldsInMethod(dialogDesc, ref.name, ref.paramDescs, dialogDesc)) {
+                if (!f.isStatic) out.add(f.name);
+            }
+        }
+        return out;
     }
 
     private static String getSuperDesc(ClassLoader classLoader, String className) {

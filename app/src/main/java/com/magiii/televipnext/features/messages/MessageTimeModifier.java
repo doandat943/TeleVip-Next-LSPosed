@@ -124,7 +124,8 @@ public class MessageTimeModifier {
 
             for (Method m : localeCls.getDeclaredMethods()) {
                 if (Modifier.isStatic(m.getModifiers()) || m.getParameterTypes().length != 0) continue;
-                if (!"org.telegram.messenger.time.FastDateFormat".equals(m.getReturnType().getName())) continue;
+                String fastDateFmtName = Obfuscate.getClassName(ClassNames.FAST_DATE_FORMAT);
+                if (!fastDateFmtName.equals(m.getReturnType().getName())) continue;
                 m.setAccessible(true);
                 Object fmt = m.invoke(instance);
                 if (fmt == null) continue;

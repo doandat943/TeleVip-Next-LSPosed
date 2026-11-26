@@ -2,6 +2,8 @@ package com.magiii.televipnext.settings.hook;
 
 
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 
 import com.magiii.televipnext.Class.ClassLoad;
@@ -22,6 +24,7 @@ import com.magiii.televipnext.virtuals.SettingsIconResolver;
 import com.magiii.televipnext.virtuals.ui.Components.UItem;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,18 +43,17 @@ public class SettingsHook {
 
             Class<?> settingCellClass = ClassLoad.getClass(ClassNames.SETTINGS_ACTIVITY_SETTING_CELL, Utils.classLoader, false);
             if (settingCellClass != null) {
-                HMethod.hookMethod(settingCellClass, Obfuscate.getMethodName("SettingsActivity$SettingCell", "set"), ArgsResolver.merge("set", new Class[]{int.class, int.class, int.class, CharSequence.class, CharSequence.class, CharSequence.class}, new BaseMethodHook() {
+                XposedCompat.hookAllMethods(settingCellClass, Obfuscate.getMethodName("SettingsActivity$SettingCell", "set"), new BaseMethodHook() {
                     @Override
                     protected void afterMethod(MethodHookParam param) {
-                        int id = (int) param.args[2];
-                        if (id == 8353847) {
-                            ImageView iconView = (ImageView) ReflectHelper.getObjectField(param.thisObject, Obfuscate.getFieldName("SettingsActivity$SettingCell", "iconView"));
+                        if (param.args.length >= 3 && param.args[2] instanceof Integer && ((Integer) param.args[2]) == 8353847) {
+                            ImageView iconView = findSettingCellIconView(param.thisObject);
                             if (iconView != null) {
                                 iconView.setImageDrawable(ghostDrawable);
                             }
                         }
                     }
-                }));
+                });
             } else {
                 String bindName = Obfuscate.getMethodName("SettingsActivity$SettingCell$Factory", "bindView");
                 if (bindName != null) {
@@ -61,18 +63,9 @@ public class SettingsHook {
                             if (param.args.length >= 2 && param.args[0] instanceof View && param.args[1] != null) {
                                 UItem uItem = new UItem(param.args[1]);
                                 if (uItem.getID() == 8353847) {
-                                    View cell = (View) param.args[0];
-                                    for (java.lang.reflect.Field f : cell.getClass().getDeclaredFields()) {
-                                        if (ImageView.class.isAssignableFrom(f.getType())) {
-                                            f.setAccessible(true);
-                                            try {
-                                                ImageView iv = (ImageView) f.get(cell);
-                                                if (iv != null) {
-                                                    iv.setImageDrawable(ghostDrawable);
-                                                    break;
-                                                }
-                                            } catch (Throwable ignored) {}
-                                        }
+                                    ImageView iconView = findSettingCellIconView(param.args[0]);
+                                    if (iconView != null) {
+                                        iconView.setImageDrawable(ghostDrawable);
                                     }
                                 }
                             }
@@ -165,6 +158,46 @@ public class SettingsHook {
         } catch (Throwable t){
             Logger.e(t);
         }
+    }
+
+    private static ImageView findSettingCellIconView(Object cell) {
+        if (cell == null) return null;
+        try {
+            Field iconField = ReflectHelper.findFieldIfExists(
+                    cell.getClass(), Obfuscate.getFieldName("SettingsActivity$SettingCell", "iconView"));
+            if (iconField != null) {
+                iconField.setAccessible(true);
+                Object v = iconField.get(cell);
+                if (v instanceof ImageView) return (ImageView) v;
+            }
+        } catch (Throwable ignored) {}
+
+        if (cell instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) cell;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                View child = vg.getChildAt(i);
+                if (child instanceof FrameLayout) {
+                    FrameLayout fl = (FrameLayout) child;
+                    for (int j = 0; j < fl.getChildCount(); j++) {
+                        View inner = fl.getChildAt(j);
+                        if (inner instanceof ImageView) {
+                            return (ImageView) inner;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (Field f : cell.getClass().getDeclaredFields()) {
+            if (ImageView.class.isAssignableFrom(f.getType())) {
+                try {
+                    f.setAccessible(true);
+                    Object v = f.get(cell);
+                    if (v instanceof ImageView) return (ImageView) v;
+                } catch (Throwable ignored) {}
+            }
+        }
+        return null;
     }
 
     public void oldSettings(SettingsController settingsController){
