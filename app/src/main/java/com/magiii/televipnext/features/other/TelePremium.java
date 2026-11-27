@@ -33,7 +33,8 @@ public class TelePremium {
                 }
                 if (ClientManager.is(ClientManager.Client.iMe) || ClientManager.is(ClientManager.Client.iMeWeb)) {
                     Class<?> ForkPremiumPreferencClass = ReflectHelper.findClassIfExists("com.iMe.storage.data.locale.prefs.impl.ForkPremiumPreference", Utils.classLoader);
-                    if (ForkPremiumPreferencClass != null) {
+                    if (ForkPremiumPreferencClass != null
+                            && ReflectHelper.findMethodExactIfExists(ForkPremiumPreferencClass, "isPremium") != null) {
                         HMethod.hookMethod(ForkPremiumPreferencClass, "isPremium", new BaseMethodHook() {
                             @Override
                             protected void beforeMethod(MethodHookParam param) {

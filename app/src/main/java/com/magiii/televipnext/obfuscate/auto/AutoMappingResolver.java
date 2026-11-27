@@ -428,6 +428,7 @@ public class AutoMappingResolver {
                         {msgObjDesc, msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"},
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/lang/CharSequence;"},
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Landroid/view/View;"},
+                        {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/HashMap;"},
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"}
                 };
                 for (String[] variant : fillMenuVariants) {
@@ -435,6 +436,26 @@ public class AutoMappingResolver {
                     if (fillMenuName != null) {
                         fillMenuParams = variant;
                         break;
+                    }
+                }
+                if (fillMenuName == null) {
+                    DexScanner.MethodInfo bestFillMenu = null;
+                    for (DexScanner.MethodInfo m : scanner.getMethods(chatActDesc)) {
+                        if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length < 4
+                                || !msgObjDesc.equals(m.paramDescs[0]) || m.getInsnsSize() <= 1000) {
+                            continue;
+                        }
+                        int alCount = 0;
+                        for (String p : m.paramDescs) {
+                            if ("Ljava/util/ArrayList;".equals(p)) alCount++;
+                        }
+                        if (alCount >= 3 && (bestFillMenu == null || m.getInsnsSize() > bestFillMenu.getInsnsSize())) {
+                            bestFillMenu = m;
+                        }
+                    }
+                    if (bestFillMenu != null) {
+                        fillMenuName = bestFillMenu.name;
+                        fillMenuParams = bestFillMenu.paramDescs;
                     }
                 }
                 addMethod("ChatActivity", "fillMessageMenu", fillMenuName);
