@@ -1,7 +1,5 @@
 package com.magiii.televipnext.Clients;
 
-import android.view.View;
-
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 
@@ -11,11 +9,10 @@ import java.util.Map;
 
 public class Nicegram {
 
-    public static class ParameterResolver
-    {
-        static Map<String,Class<?>[]> objectList = new HashMap<>();
+    public static class ParameterResolver {
+        static Map<String, Class<?>[]> objectList = new HashMap<>();
 
-        public static void register(String name,  Class<?>[] classes){
+        public static void register(String name, Class<?>[] classes) {
             objectList.put(name, classes);
         }
 
@@ -23,24 +20,20 @@ public class Nicegram {
             return objectList.get(name);
         }
 
-        public static boolean has(String name)
-        {
-            boolean has = false;
-            Class<?>[] classes = objectList.get(name);
-            if (classes != null){
-                has = true;
-            }
-            return has;
+        public static boolean has(String name) {
+            return objectList.get(name) != null;
         }
     }
 
-
     public static void loadParameter() {
-
-        ParameterResolver.register("fillMessageMenu",new Class[]{ClassLoad.getClass(ClassNames.MESSAGE_OBJECT), ArrayList.class, ArrayList.class, ArrayList.class, ArrayList.class, ArrayList.class, ArrayList.class});
-
-        ParameterResolver.register("processSelectedOption",new Class[]{int.class, View.class});
-
-
+        ParameterResolver.register("fillMessageMenu", new Class[]{
+                ClassLoad.getClass(ClassNames.MESSAGE_OBJECT),
+                ArrayList.class,
+                ArrayList.class,
+                ArrayList.class,
+                ArrayList.class,
+                ArrayList.class,
+                ArrayList.class
+        });
     }
 }
