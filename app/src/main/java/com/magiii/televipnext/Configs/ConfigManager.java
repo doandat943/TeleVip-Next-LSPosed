@@ -32,6 +32,7 @@ import com.magiii.televipnext.features.otherFeatures.AlwaysSaveMedia;
 import com.magiii.televipnext.features.otherFeatures.CopyNameHook;
 import com.magiii.televipnext.features.otherFeatures.EditOnlineTextView;
 import com.magiii.televipnext.features.otherFeatures.FeatureInitializer;
+import com.magiii.televipnext.features.otherFeatures.ShowProfileIdDc;
 import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.logging.Logger;
 
@@ -320,8 +321,8 @@ public class ConfigManager {
                 ConfigPreferences.getBoolean(Keys.HideSponsoredAds), HideSponsoredAds::init);
         items.add(hideSponsoredAds);
 
-        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
-            showUserID = new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), EditOnlineTextView::init);
+        if (!hasNativeFullProfileIdDc()) {
+            showUserID = new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), ShowProfileIdDc::init);
             items.add(showUserID);
         }
         if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
@@ -432,6 +433,9 @@ public class ConfigManager {
             if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
                 AlwaysShowProxy.init();
             }
+            if (!hasNativeFullProfileIdDc()) {
+                ShowProfileIdDc.init();
+            }
             if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
                 HideBottomBarTabs.init();
             }
@@ -445,6 +449,14 @@ public class ConfigManager {
         } catch (Throwable e) {
             Logger.e(e);
         }
+    }
+
+    private static boolean hasNativeFullProfileIdDc() {
+        return ClientManager.is(ClientManager.Client.Cherrygram)
+                || ClientManager.is(ClientManager.Client.NagramXF)
+                || ClientManager.is(ClientManager.Client.ExteraGram)
+                || ClientManager.is(ClientManager.Client.NagramX)
+                || ClientManager.is(ClientManager.Client.Octogram);
     }
 
     public static boolean isShowDeletedAnyEnabled() {

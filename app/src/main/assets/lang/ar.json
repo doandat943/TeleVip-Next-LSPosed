@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "أكتوبر",
   "GregorianMonthNovember": "نوفمبر",
   "GregorianMonthDecember": "ديسمبر",
-  "ShowUserID": "عرض معرف المستخدم",
+  "ShowUserID": "إظهار المعرّف ومركز البيانات في الملف الشخصي",
   "Open": "فتح",
   "OpenGhostMode": "هل تود فتح الوضع الشبح الآن؟",
   "HideSeenPrivateChat": "المحادثات الخاصة",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "منع الرجوع العرضي بالسحب في صفحات الملف الشخصي",
   "HideProxySponsorDesc": "إزالة القناة المروّجة عند الاتصال عبر بروكسي",
   "HideSponsoredAdsDesc": "حظر إعلانات تيليجرام الممولة في القنوات والبوتات والفيديوهات ونتائج البحث",
-  "ShowUserIDDesc": "إظهار معرّف تيليجرام الرقمي في صفحات الملف الشخصي",
+  "ShowUserIDDesc": "يعرض المعرّف الرقمي ومركز البيانات (DC) وتاريخ إنشاء الحساب في بطاقة معلومات الملف الشخصي",
   "CalendarDesc": "عرض التاريخ الهجري أو الفارسي في العناوين والطوابع الزمنية",
   "RemovesContentSavingDesc": "إعادة التوجيه والنسخ والحفظ من المحادثات والقنوات المقيدة",
   "SayWhereCopyCameFromDesc": "إضافة ترويسة قابلة للنقر \"تمت إعادة التوجيه من\" تشير إلى المرسل والرسالة الأصلية عند النسخ من محادثات مقيدة",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "انقر لإعادة تشغيل تيليجرام وتفعيل التحديث",
   "UpdateRestartAction": "إعادة تشغيل",
   "UpdateSignatureMismatch": "توقيع ملف التحديث لا يطابق هذا التطبيق",
-  "UpdateAllowUnknownSources": "يرجى السماح بتثبيت التحديثات من TeleVip Next"
+  "UpdateAllowUnknownSources": "يرجى السماح بتثبيت التحديثات من TeleVip Next",
+  "ProfileCreatedSelfHint": "أنشأت حسابك تقريبًا في %s.",
+  "ProfileCreatedOtherHint": "تم إنشاء الحساب تقريبًا في %s.",
+  "ProfileJoinedChatHint": "انضممت إلى %1$s في %2$s.",
+  "ProfileCreatedChatSelfHint": "أنشأت %1$s في %2$s.",
+  "ProfileCreatedChatHint": "تم إنشاء %1$s في %2$s."
 }

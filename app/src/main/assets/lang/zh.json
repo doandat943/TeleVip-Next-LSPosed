@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "十月",
   "GregorianMonthNovember": "十一月",
   "GregorianMonthDecember": "十二月",
-  "ShowUserID": "显示用户ID",
+  "ShowUserID": "在个人资料中显示 ID 和 DC",
   "Open": "打开",
   "OpenGhostMode": "您想现在打开幽灵模式吗？",
   "HideSeenPrivateChat": "私人聊天",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "防止在个人资料页面误触滑动返回",
   "HideProxySponsorDesc": "在使用代理连接时移除赞助频道入口",
   "HideSponsoredAdsDesc": "屏蔽频道、机器人、视频和搜索结果中的 Telegram 赞助广告",
-  "ShowUserIDDesc": "在个人资料页面显示数字 Telegram 用户 ID",
+  "ShowUserIDDesc": "在个人资料信息卡片中显示数字 ID、数据中心 (DC) 和账号创建日期",
   "CalendarDesc": "在聊天标题和时间戳中显示伊斯兰历或波斯历",
   "RemovesContentSavingDesc": "允许从禁止保存的聊天和频道中转发、复制和保存内容",
   "SayWhereCopyCameFromDesc": "从受限聊天复制时添加可点击的“转发自”标题，链接到发送者和原消息",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "点击重启 Telegram 以启用更新",
   "UpdateRestartAction": "重启",
   "UpdateSignatureMismatch": "更新包签名与当前应用不一致",
-  "UpdateAllowUnknownSources": "请允许 TeleVip Next 安装应用更新"
+  "UpdateAllowUnknownSources": "请允许 TeleVip Next 安装应用更新",
+  "ProfileCreatedSelfHint": "您的账号大约创建于 %s。",
+  "ProfileCreatedOtherHint": "该账号大约创建于 %s。",
+  "ProfileJoinedChatHint": "您于 %2$s 加入了 %1$s。",
+  "ProfileCreatedChatSelfHint": "您于 %2$s 创建了 %1$s。",
+  "ProfileCreatedChatHint": "%1$s 创建于 %2$s。"
 }

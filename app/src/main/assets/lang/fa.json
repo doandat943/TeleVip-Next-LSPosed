@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "اکتبر",
   "GregorianMonthNovember": "نوامبر",
   "GregorianMonthDecember": "دسامبر",
-  "ShowUserID": "نمایش شناسه کاربر",
+  "ShowUserID": "نمایش شناسه و DC در پروفایل",
   "Open": "باز کردن",
   "OpenGhostMode": "آیا می‌خواهید اکنون حالت شبح را باز کنید؟",
   "HideSeenPrivateChat": "چت‌های خصوصی",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "جلوگیری از بازگشت تصادفی با کشیدن در صفحه پروفایل",
   "HideProxySponsorDesc": "حذف کانال اسپانسر هنگام اتصال از طریق پروکسی",
   "HideSponsoredAdsDesc": "مسدود کردن تبلیغات اسپانسری تلگرام در کانال‌ها، ربات‌ها، ویدیوها و جستجو",
-  "ShowUserIDDesc": "نمایش شناسه عددی تلگرام کاربران در صفحه پروفایل",
+  "ShowUserIDDesc": "شناسه عددی، مرکز داده (DC) و تاریخ تقریبی ساخت حساب را در کارت اطلاعات پروفایل نمایش می‌دهد",
   "CalendarDesc": "نمایش تاریخ هجری یا شمسی در سربرگ چت‌ها و زمان پیام‌ها",
   "RemovesContentSavingDesc": "امکان فوروارد، کپی و ذخیره از چت‌ها و کانال‌های دارای محدودیت",
   "SayWhereCopyCameFromDesc": "افزودن سرصفحه قابل کلیک «نقل‌شده از» با لینک به فرستنده و پیام اصلی هنگام کپی از چت‌های محدود",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "برای راه‌اندازی مجدد تلگرام و فعال‌سازی لمس کنید",
   "UpdateRestartAction": "راه‌اندازی مجدد",
   "UpdateSignatureMismatch": "امضای فایل APK با این برنامه مطابقت ندارد",
-  "UpdateAllowUnknownSources": "لطفاً اجازه نصب به‌روزرسانی از TeleVip Next را بدهید"
+  "UpdateAllowUnknownSources": "لطفاً اجازه نصب به‌روزرسانی از TeleVip Next را بدهید",
+  "ProfileCreatedSelfHint": "حساب خود را تقریباً در تاریخ %s ساخته‌اید.",
+  "ProfileCreatedOtherHint": "این حساب تقریباً در تاریخ %s ساخته شده است.",
+  "ProfileJoinedChatHint": "شما در تاریخ %2$s به %1$s پیوستید.",
+  "ProfileCreatedChatSelfHint": "شما %1$s را در تاریخ %2$s ساخته‌اید.",
+  "ProfileCreatedChatHint": "%1$s در تاریخ %2$s ساخته شده است."
 }

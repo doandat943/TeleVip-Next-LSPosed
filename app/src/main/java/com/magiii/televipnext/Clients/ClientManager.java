@@ -25,7 +25,10 @@ public class ClientManager {
         ForkgramClassic("org.forkgram.classic"),
         Turrit("org.telegram.group", com.magiii.televipnext.Clients.Turrit.class),
         NagramXF("fork.risin42.nagramx"),
-        Mercurygram("it.belloworld.mercurygram");
+        Mercurygram("it.belloworld.mercurygram"),
+        ExteraGram("com.exteragram.messenger"),
+        NagramX("nu.gpu.nagram"),
+        Octogram("it.octogram.android");
 
         private final boolean tgnetObfuscated;
         private final String pkg;

@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "Tháng 10",
   "GregorianMonthNovember": "Tháng 11",
   "GregorianMonthDecember": "Tháng 12",
-  "ShowUserID": "Hiện ID người dùng",
+  "ShowUserID": "Hiển thị ID và DC trong hồ sơ",
   "Open": "Mở",
   "OpenGhostMode": "Bạn có muốn mở Chế độ Ẩn danh ngay bây giờ không?",
   "HideSeenPrivateChat": "Trò chuyện riêng tư",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "Ngăn vuốt nhầm quay lại khi đang xem trang cá nhân",
   "HideProxySponsorDesc": "Ẩn mục kênh tài trợ khi kết nối qua Proxy",
   "HideSponsoredAdsDesc": "Chặn quảng cáo tài trợ của Telegram trong kênh, bot, video và kết quả tìm kiếm",
-  "ShowUserIDDesc": "Hiển thị Telegram ID dạng số trên trang hồ sơ người dùng",
+  "ShowUserIDDesc": "Hiển thị ID dạng số, trung tâm dữ liệu (DC) và ngày tạo tài khoản trong thẻ thông tin hồ sơ",
   "CalendarDesc": "Hiển thị Hồi lịch hoặc lịch Ba Tư trên tiêu đề chat và thời gian tin nhắn",
   "RemovesContentSavingDesc": "Cho phép chuyển tiếp, sao chép và lưu nội dung từ nhóm/kênh hạn chế lưu",
   "SayWhereCopyCameFromDesc": "Thêm dòng \"Chuyển tiếp từ\" có thể nhấn tới người gửi và tin gốc khi sao chép từ chat hạn chế",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "Chạm để khởi động lại Telegram và kích hoạt",
   "UpdateRestartAction": "Khởi động lại",
   "UpdateSignatureMismatch": "Chữ ký APK cập nhật không khớp với ứng dụng hiện tại",
-  "UpdateAllowUnknownSources": "Vui lòng cấp quyền cài đặt ứng dụng cho TeleVip Next"
+  "UpdateAllowUnknownSources": "Vui lòng cấp quyền cài đặt ứng dụng cho TeleVip Next",
+  "ProfileCreatedSelfHint": "Bạn đã tạo tài khoản vào khoảng %s.",
+  "ProfileCreatedOtherHint": "Tài khoản được tạo vào khoảng %s.",
+  "ProfileJoinedChatHint": "Bạn đã tham gia %1$s vào %2$s.",
+  "ProfileCreatedChatSelfHint": "Bạn đã tạo %1$s vào %2$s.",
+  "ProfileCreatedChatHint": "%1$s được tạo vào %2$s."
 }

@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "October",
   "GregorianMonthNovember": "November",
   "GregorianMonthDecember": "December",
-  "ShowUserID": "Show User ID",
+  "ShowUserID": "Show ID and DC in Profile",
   "Open": "Open",
   "OpenGhostMode": "Would you like to open Ghost Mode now?",
   "HideSeenPrivateChat": "Private Chats",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "Prevents accidental swipe-back gestures on profile screens",
   "HideProxySponsorDesc": "Removes the sponsored channel entry when connected via proxy",
   "HideSponsoredAdsDesc": "Block Telegram sponsored ads in channels, bots, videos, and search results",
-  "ShowUserIDDesc": "Shows numeric Telegram user IDs on profile pages",
+  "ShowUserIDDesc": "Displays numeric ID, Data Center, and account creation date in the profile info card",
   "CalendarDesc": "Display Hijri or Persian dates in chat headers and timestamps",
   "RemovesContentSavingDesc": "Forward, copy and save from chats and channels that restrict it",
   "SayWhereCopyCameFromDesc": "Add a clickable \"Forwarded from\" header linking to the sender and original message when copying from restricted chats",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "Tap to restart Telegram and activate",
   "UpdateRestartAction": "Restart",
   "UpdateSignatureMismatch": "Update APK signature does not match this installation",
-  "UpdateAllowUnknownSources": "Please allow installing updates from TeleVip Next"
+  "UpdateAllowUnknownSources": "Please allow installing updates from TeleVip Next",
+  "ProfileCreatedSelfHint": "You created your account approximately on %s.",
+  "ProfileCreatedOtherHint": "Account created approximately on %s.",
+  "ProfileJoinedChatHint": "You joined %1$s on %2$s.",
+  "ProfileCreatedChatSelfHint": "You created %1$s on %2$s.",
+  "ProfileCreatedChatHint": "%1$s was created on %2$s."
 }

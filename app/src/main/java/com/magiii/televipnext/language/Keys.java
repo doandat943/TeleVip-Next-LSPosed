@@ -190,4 +190,9 @@ public class Keys {
     public static final String UpdateRestartAction = "UpdateRestartAction";
     public static final String UpdateSignatureMismatch = "UpdateSignatureMismatch";
     public static final String UpdateAllowUnknownSources = "UpdateAllowUnknownSources";
+    public static final String ProfileCreatedSelfHint = "ProfileCreatedSelfHint";
+    public static final String ProfileCreatedOtherHint = "ProfileCreatedOtherHint";
+    public static final String ProfileJoinedChatHint = "ProfileJoinedChatHint";
+    public static final String ProfileCreatedChatSelfHint = "ProfileCreatedChatSelfHint";
+    public static final String ProfileCreatedChatHint = "ProfileCreatedChatHint";
 }

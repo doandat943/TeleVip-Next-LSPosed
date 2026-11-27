@@ -5,7 +5,6 @@ import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.logging.Logger;
-import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
 import com.magiii.televipnext.utils.Utils;
 
@@ -16,7 +15,7 @@ public class FeatureInitializer {
     public static void init() {
 
         try {
-            if (!FeatureStateManager.isChatEnabled() || !FeatureStateManager.isProfileEnabled()) {
+            if (!FeatureStateManager.isChatEnabled()) {
 
                 Class<?> actionBarClass = ReflectHelper.findClassIfExists(
                         Obfuscate.getClassName("org.telegram.ui.ActionBar.ActionBar"),
@@ -40,17 +39,11 @@ public class FeatureInitializer {
                                     FeatureStateManager.saveChat(name);
                                     ChatHook.init(name);
                                 }
-
-                                if (name.contains("ProfileActivity") && !FeatureStateManager.isProfileEnabled()) {
-                                    FeatureStateManager.saveProfile(name);
-                                    ProfileHook.init(name);
-                                }
                             }
                         });
 
             } else {
                 ChatHook.init(FeatureStateManager.getChatClass());
-                ProfileHook.init(FeatureStateManager.getProfileClass());
             }
 
         } catch (Throwable t) {

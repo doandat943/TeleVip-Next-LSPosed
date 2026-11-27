@@ -78,22 +78,33 @@ public class MessagesController {
      * Looks up a cached TLRPC.Chat by positive chat/channel ID, supporting both Long and primitive long overloads.
      */
     public Object getChat(long chatId) {
+        return lookupById("getChat", chatId);
+    }
+
+    /**
+     * Looks up a cached TLRPC.User by user ID, supporting both Long and primitive long overloads.
+     */
+    public Object getUser(long userId) {
+        return lookupById("getUser", userId);
+    }
+
+    private Object lookupById(String methodKey, long id) {
         if (messagesController == null) return null;
         Class<?> cls = messagesController.getClass();
-        String mapped = Obfuscate.getMethodName("MessagesController", "getChat");
-        if (mapped != null && !"getChat".equals(mapped)) {
+        String mapped = Obfuscate.getMethodName("MessagesController", methodKey);
+        if (mapped != null && !methodKey.equals(mapped)) {
             if (ReflectHelper.findMethodExactIfExists(cls, mapped, Long.class) != null) {
-                return ReflectHelper.callMethod(messagesController, mapped, Long.valueOf(chatId));
+                return ReflectHelper.callMethod(messagesController, mapped, Long.valueOf(id));
             }
             if (ReflectHelper.findMethodExactIfExists(cls, mapped, long.class) != null) {
-                return ReflectHelper.callMethod(messagesController, mapped, chatId);
+                return ReflectHelper.callMethod(messagesController, mapped, id);
             }
         }
-        if (ReflectHelper.findMethodExactIfExists(cls, "getChat", Long.class) != null) {
-            return ReflectHelper.callMethod(messagesController, "getChat", Long.valueOf(chatId));
+        if (ReflectHelper.findMethodExactIfExists(cls, methodKey, Long.class) != null) {
+            return ReflectHelper.callMethod(messagesController, methodKey, Long.valueOf(id));
         }
-        if (ReflectHelper.findMethodExactIfExists(cls, "getChat", long.class) != null) {
-            return ReflectHelper.callMethod(messagesController, "getChat", chatId);
+        if (ReflectHelper.findMethodExactIfExists(cls, methodKey, long.class) != null) {
+            return ReflectHelper.callMethod(messagesController, methodKey, id);
         }
         return null;
     }

@@ -95,7 +95,7 @@
   "GregorianMonthOctober": "Octubre",
   "GregorianMonthNovember": "Noviembre",
   "GregorianMonthDecember": "Diciembre",
-  "ShowUserID": "Mostrar ID de usuario",
+  "ShowUserID": "Mostrar ID y DC en el perfil",
   "Open": "Abrir",
   "OpenGhostMode": "¿Deseas abrir el Modo Fantasma ahora?",
   "HideSeenPrivateChat": "Chats privados",
@@ -157,7 +157,7 @@
   "DisableProfileSwipeBackDesc": "Evita gestos accidentales de retroceso en pantallas de perfil",
   "HideProxySponsorDesc": "Elimina el canal patrocinado al conectarse mediante proxy",
   "HideSponsoredAdsDesc": "Bloquea los anuncios patrocinados de Telegram en canales, bots, videos y búsqueda",
-  "ShowUserIDDesc": "Muestra el ID numérico de Telegram en las páginas de perfil",
+  "ShowUserIDDesc": "Muestra el ID numérico, el centro de datos (DC) y la fecha de creación en la tarjeta de perfil",
   "CalendarDesc": "Muestra fechas Hégira o Persa en encabezados y marcas de tiempo del chat",
   "RemovesContentSavingDesc": "Reenvía, copia y guarda contenido de chats y canales con restricción",
   "SayWhereCopyCameFromDesc": "Añade un encabezado clickable \"Reenviado de\" hacia el remitente y el mensaje original al copiar desde chats restringidos",
@@ -231,5 +231,10 @@
   "UpdateInstalledSubtitle": "Toca para reiniciar Telegram y activarlo",
   "UpdateRestartAction": "Reiniciar",
   "UpdateSignatureMismatch": "La firma del APK no coincide con esta aplicación",
-  "UpdateAllowUnknownSources": "Permite instalar actualizaciones desde TeleVip Next"
+  "UpdateAllowUnknownSources": "Permite instalar actualizaciones desde TeleVip Next",
+  "ProfileCreatedSelfHint": "Creaste tu cuenta aproximadamente el %s.",
+  "ProfileCreatedOtherHint": "Cuenta creada aproximadamente el %s.",
+  "ProfileJoinedChatHint": "Te uniste a %1$s el %2$s.",
+  "ProfileCreatedChatSelfHint": "Creaste %1$s el %2$s.",
+  "ProfileCreatedChatHint": "%1$s se creó el %2$s."
 }

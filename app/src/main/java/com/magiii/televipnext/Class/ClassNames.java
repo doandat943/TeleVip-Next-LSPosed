@@ -91,4 +91,9 @@ public class ClassNames {
     public static final String AVATAR_STORY_PARAMS = "org.telegram.ui.Stories.StoriesUtilities$AvatarStoryParams";
     public static final String MAIN_TABS_ACTIVITY = "org.telegram.ui.MainTabsActivity";
     public static final String VIEW_PAGER_ACTIVITY_PAGER_LAYOUT = "org.telegram.ui.ViewPagerActivity$ViewPagerActivityPagerLayout";
+    public static final String PROFILE_LIST_ADAPTER = "org.telegram.ui.ProfileActivity$ListAdapter";
+    public static final String TEXT_DETAIL_CELL = "org.telegram.ui.Cells.TextDetailCell";
+    public static final String NEKO_PROFILE_ID_VIEW = "org.telegram.ui.ProfileActivity$NekoIdView";
+    public static final String TLRPC_USER_PROFILE_PHOTO = "org.telegram.tgnet.TLRPC$UserProfilePhoto";
+    public static final String TLRPC_CHAT_PHOTO = "org.telegram.tgnet.TLRPC$ChatPhoto";
    }
