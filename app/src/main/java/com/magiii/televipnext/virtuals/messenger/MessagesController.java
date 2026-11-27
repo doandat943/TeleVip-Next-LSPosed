@@ -45,8 +45,7 @@ public class MessagesController {
     }
 
     public void processNewDifferenceParams(int pts, int date, int pts_count) {
-        //Nagram
-        ReflectHelper.callMethod(messagesController, "processNewDifferenceParams", pts, date, pts_count);
+        processNewDifferenceParams(-1, pts, date, pts_count);
     }
 
     public void removePromoDialog() {

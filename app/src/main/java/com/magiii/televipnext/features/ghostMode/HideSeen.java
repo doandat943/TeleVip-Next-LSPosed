@@ -264,7 +264,7 @@ public class HideSeen {
 
             if (inputPeerChannel) {
                 TLRPC.TL_channels_readHistory request;
-                if (!ClientManager.is(ClientManager.Client.Nagram)) {
+                if (!ClientManager.is(ClientManager.Client.Nagram) || TLChannels_readHistory == null) {
                     request = new TLRPC.TL_channels_readHistory();
                     Object inputChannel = buildInputChannel(peer);
                     if (inputChannel == null) {
@@ -279,7 +279,7 @@ public class HideSeen {
                 req = request.getTL_channels_readHistory();
             } else {
                 TLRPC.TL_messages_readHistory request;
-                if (!ClientManager.is(ClientManager.Client.Nagram)) {
+                if (!ClientManager.is(ClientManager.Client.Nagram) || TLMessages_readHistory == null) {
                     request = new TLRPC.TL_messages_readHistory();
                 } else {
                     request = new TLRPC.TL_messages_readHistory(TLMessages_readHistory);
@@ -295,11 +295,7 @@ public class HideSeen {
                     Class<?> affectedCls = ClassLoad.getClass(ClassNames.TL_MESSAGES_AFFECTED);
                     if (affectedCls != null && affectedCls.isInstance(response)) {
                         TLRPC.TL_messages_affectedMessages res = new TLRPC.TL_messages_affectedMessages(response);
-                        if (!ClientManager.is(ClientManager.Client.Nagram)) {
-                            MessagesController.getMessagesController().processNewDifferenceParams(-1, res.getPts(), -1, res.getPtsCount());
-                        } else {
-                            MessagesController.getMessagesController().processNewDifferenceParams(res.getPts(), -1, res.getPtsCount());
-                        }
+                        MessagesController.getMessagesController().processNewDifferenceParams(-1, res.getPts(), -1, res.getPtsCount());
                     }
                 }
             }));
