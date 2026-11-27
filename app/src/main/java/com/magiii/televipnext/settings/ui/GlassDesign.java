@@ -54,6 +54,7 @@ public final class GlassDesign {
     public static final int ICON_TELEGRAM = 8;
     public static final int ICON_RESTART = 9;
     public static final int ICON_CODE = 10;
+    public static final int ICON_UPDATE = 11;
 
     private GlassDesign() {}
 
@@ -917,6 +918,26 @@ public final class GlassDesign {
                             c.drawPath(right, stroke);
 
                             c.drawLine(13.4f, 6.0f, 10.6f, 18.0f, stroke);
+                            break;
+                        }
+                        case ICON_UPDATE: {
+                            // Downward arrow into tray representing update download/install
+                            stroke.setStrokeWidth(2.1f);
+                            c.drawLine(12.0f, 4.2f, 12.0f, 14.5f, stroke);
+                            Path chevron = new Path();
+                            chevron.moveTo(7.8f, 10.8f);
+                            chevron.lineTo(12.0f, 15.0f);
+                            chevron.lineTo(16.2f, 10.8f);
+                            c.drawPath(chevron, stroke);
+
+                            Path tray = new Path();
+                            tray.moveTo(5.2f, 15.5f);
+                            tray.lineTo(5.2f, 18.2f);
+                            tray.quadTo(5.2f, 19.5f, 6.5f, 19.5f);
+                            tray.lineTo(17.5f, 19.5f);
+                            tray.quadTo(18.8f, 19.5f, 18.8f, 18.2f);
+                            tray.lineTo(18.8f, 15.5f);
+                            c.drawPath(tray, stroke);
                             break;
                         }
                         case ICON_RESTART:

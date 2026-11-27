@@ -111,6 +111,11 @@ public class ConfigManager {
     public static ConfigItem hideUpdateApp;
     public static ConfigItem fixTLError;
 
+    // Updates
+    public static ConfigItem updatesSettings;
+    public static ConfigItem autoUpdateCheck;
+    public static ConfigItem checkForUpdates;
+
     // Button
     public static ConfigItem btnChannel;
     public static ConfigItem btnRestartApp;
@@ -350,6 +355,22 @@ public class ConfigManager {
         fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
         items.add(hideUpdateApp);
         items.add(fixTLError);
+
+        items.add(shadows);
+
+        // Updates
+        if (!ConfigPreferences.contains(Keys.AutoUpdateCheck)) {
+            ConfigPreferences.putBoolean(Keys.AutoUpdateCheck, true);
+        }
+        updatesSettings = new ConfigItem(ConfigItem.HEADER, Keys.UpdatesSettings);
+        items.add(updatesSettings);
+
+        autoUpdateCheck = new ConfigItem(ConfigItem.SWITCH, Keys.AutoUpdateCheck,
+                ConfigPreferences.getBoolean(Keys.AutoUpdateCheck), null);
+        items.add(autoUpdateCheck);
+
+        checkForUpdates = new ConfigItem(ConfigItem.TEXT, Keys.CheckForUpdates);
+        items.add(checkForUpdates);
 
         items.add(shadows);
 

@@ -8,8 +8,8 @@ android {
         applicationId "com.magiii.televipnext"
         minSdk 27
         targetSdk 36
-        versionCode 7
-        versionName "1.2.4"
+        versionCode 8
+        versionName "1.2.5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -38,6 +38,10 @@ android {
                 keyPassword releaseKeyPassword
             }
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
@@ -70,4 +74,5 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.appcompat)
     implementation(libs.material)
+    testImplementation "junit:junit:4.13.2"
 }

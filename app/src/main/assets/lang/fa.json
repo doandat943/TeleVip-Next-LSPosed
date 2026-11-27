@@ -210,5 +210,22 @@
   "HideBottomBarTabsDesc": "تب‌های ناوبری پایین را برای مخفی کردن انتخاب کنید. مخفی کردن همه کل نوار را پنهان کرده و تنظیمات را در منوی ⋮ نگه می‌دارد",
   "HideBottomTabContacts": "مخاطبین",
   "HideBottomTabSettingsCalls": "تنظیمات / تماس‌ها",
-  "HideBottomTabProfile": "پروفایل"
+  "HideBottomTabProfile": "پروفایل",
+  "UpdatesSettings": "به‌روزرسانی‌ها",
+  "AutoUpdateCheck": "بررسی و دانلود خودکار آپدیت",
+  "AutoUpdateCheckDesc": "بررسی خودکار نسخه‌های جدید و دانلود پیش‌زمینه فایل APK جدید",
+  "CheckForUpdates": "بررسی به‌روزرسانی",
+  "CheckForUpdatesDesc": "نسخه فعلی: %s",
+  "UpdateChecking": "در حال بررسی...",
+  "UpdateDownloading": "در حال دانلود...",
+  "UpdateReadyTitle": "TeleVip Next %s آماده است",
+  "UpdateReadySubtitle": "در پس‌زمینه دانلود شد — برای نصب لمس کنید",
+  "UpdateInstallAction": "نصب",
+  "UpdateUpToDate": "شما از آخرین نسخه استفاده می‌کنید",
+  "UpdateCheckFailed": "بررسی به‌روزرسانی ناموفق بود",
+  "UpdateInstalledTitle": "TeleVip Next %s نصب شد",
+  "UpdateInstalledSubtitle": "برای راه‌اندازی مجدد تلگرام و فعال‌سازی لمس کنید",
+  "UpdateRestartAction": "راه‌اندازی مجدد",
+  "UpdateSignatureMismatch": "امضای فایل APK با این برنامه مطابقت ندارد",
+  "UpdateAllowUnknownSources": "لطفاً اجازه نصب به‌روزرسانی از TeleVip Next را بدهید"
 }

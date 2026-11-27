@@ -9,6 +9,7 @@ import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
+import com.magiii.televipnext.updater.UpdateManager;
 import com.magiii.televipnext.utils.Utils;
 
 /**
@@ -38,6 +39,21 @@ public final class HookEntry {
                 if (!isStart) {
                     TeleVip.startHook();
                     isStart = true;
+                }
+            }
+        });
+
+        HMethod.hookMethod(Activity.class, "onResume", new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) {
+                if (!(param.thisObject instanceof Activity)) return;
+                Activity act = (Activity) param.thisObject;
+                Class<?> launchCls = ClassLoad.getClass(ClassNames.LAUNCH_ACTIVITY);
+                if (launchCls != null && launchCls.isInstance(act)) {
+                    Utils.setCurrentActivity(act);
+                    if (isStart) {
+                        UpdateManager.onTelegramResumed(act);
+                    }
                 }
             }
         });

@@ -172,4 +172,20 @@ public class Keys {
     public static final String HideBottomTabContacts = "HideBottomTabContacts";
     public static final String HideBottomTabSettingsCalls = "HideBottomTabSettingsCalls";
     public static final String HideBottomTabProfile = "HideBottomTabProfile";
+    public static final String UpdatesSettings = "UpdatesSettings";
+    public static final String AutoUpdateCheck = "AutoUpdateCheck";
+    public static final String CheckForUpdates = "CheckForUpdates";
+    public static final String CheckForUpdatesDesc = "CheckForUpdatesDesc";
+    public static final String UpdateChecking = "UpdateChecking";
+    public static final String UpdateDownloading = "UpdateDownloading";
+    public static final String UpdateReadyTitle = "UpdateReadyTitle";
+    public static final String UpdateReadySubtitle = "UpdateReadySubtitle";
+    public static final String UpdateInstallAction = "UpdateInstallAction";
+    public static final String UpdateUpToDate = "UpdateUpToDate";
+    public static final String UpdateCheckFailed = "UpdateCheckFailed";
+    public static final String UpdateInstalledTitle = "UpdateInstalledTitle";
+    public static final String UpdateInstalledSubtitle = "UpdateInstalledSubtitle";
+    public static final String UpdateRestartAction = "UpdateRestartAction";
+    public static final String UpdateSignatureMismatch = "UpdateSignatureMismatch";
+    public static final String UpdateAllowUnknownSources = "UpdateAllowUnknownSources";
 }

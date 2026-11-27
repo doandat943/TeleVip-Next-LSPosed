@@ -1,14 +1,7 @@
 package com.magiii.televipnext.settings.ui;
 
 import android.app.Activity;
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.SystemClock;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -42,6 +35,7 @@ import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.Obfuscate;
 import com.magiii.televipnext.settings.controller.SettingsController;
 import com.magiii.televipnext.ui.RestartTrampolineActivity;
+import com.magiii.televipnext.updater.UpdateManager;
 import com.magiii.televipnext.utils.DialogUtils;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.ActionBar.Theme;
@@ -74,6 +68,7 @@ public class SettingsActivity {
     private boolean isRtl = false;
     private int lastHeaderPadTop = 0;
     private int lastNavPadBottom = 0;
+    private UpdateManager.Listener updateListener;
 
     public SettingsActivity(Context context) {
         this.context = context;
@@ -82,6 +77,18 @@ public class SettingsActivity {
     public View createView(SettingsController settingsController) {
         this.controller = settingsController;
         rootView = new FrameLayout(context);
+        rootView.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View v) {}
+
+            @Override
+            public void onViewDetachedFromWindow(View v) {
+                if (updateListener != null) {
+                    UpdateManager.removeListener(updateListener);
+                    updateListener = null;
+                }
+            }
+        });
         rebuildUi();
         return rootView;
     }
@@ -109,6 +116,10 @@ public class SettingsActivity {
 
     private void rebuildUi(boolean light) {
         if (rootView == null) return;
+        if (updateListener != null) {
+            UpdateManager.removeListener(updateListener);
+            updateListener = null;
+        }
         isRtl = Translator.isRtl();
         rootView.setLayoutDirection(isRtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         rootView.removeAllViews();
@@ -711,6 +722,7 @@ public class SettingsActivity {
         boolean isDownloadSpeed = Keys.DownloadSpeed.equals(key);
         boolean isAlwaysShowProxy = Keys.AlwaysShowProxy.equals(key);
         boolean isLanguage = Keys.Language.equals(key);
+        boolean isCheckUpdates = Keys.CheckForUpdates.equals(key);
 
         ImageView iconBadge = null;
         LinearLayout.LayoutParams iconLp = null;
@@ -756,28 +768,36 @@ public class SettingsActivity {
             textCol.addView(subTv, subLp);
         }
 
-        boolean isPicker = isCalendar || isDownloadSpeed || isAlwaysShowProxy || isLanguage;
+        boolean hasRightPill = isCalendar || isDownloadSpeed || isAlwaysShowProxy || isLanguage || isCheckUpdates;
         LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
 
-        if (isPicker) {
+        if (hasRightPill) {
             TextView valTv = new TextView(context);
             valTv.setTextColor(p.accentBlue);
             valTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
             valTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            GradientDrawable pill = new GradientDrawable();
+            pill.setColor(p.accentSoft);
+            pill.setCornerRadius(dp(10));
+            valTv.setBackground(pill);
+            valTv.setPadding(dp(10), dp(4), dp(10), dp(4));
+
             if (isCalendar) {
                 valTv.setText(getCalendarLabel(item.getIntValue()));
             } else if (isDownloadSpeed) {
                 valTv.setText(getDownloadSpeedLabel(item.getIntValue()));
             } else if (isLanguage) {
                 valTv.setText(Translator.getLanguageDisplayName(Translator.getSelectedLanguage()));
+            } else if (isCheckUpdates) {
+                bindUpdateStatusPill(valTv, pill, p, UpdateManager.getState(), UpdateManager.getLatestRelease());
+                if (updateListener != null) {
+                    UpdateManager.removeListener(updateListener);
+                }
+                updateListener = (state, release) -> bindUpdateStatusPill(valTv, pill, p, state, release);
+                UpdateManager.addListener(updateListener);
             } else {
                 valTv.setText(getProxyDisplayLabel(item.getIntValue()));
             }
-            valTv.setPadding(dp(10), dp(4), dp(10), dp(4));
-            GradientDrawable pill = new GradientDrawable();
-            pill.setColor(p.accentSoft);
-            pill.setCornerRadius(dp(10));
-            valTv.setBackground(pill);
 
             if (isRtl) {
                 LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(
@@ -806,6 +826,8 @@ public class SettingsActivity {
                     }, item, valTv);
                 } else if (isLanguage) {
                     showLanguagePicker();
+                } else if (isCheckUpdates) {
+                    UpdateManager.onCheckRowClicked(context);
                 } else {
                     showOptionPicker(Translator.get(Keys.AlwaysShowProxy), new String[]{
                             Translator.get(Keys.ProxyDisplayOff),
@@ -898,49 +920,44 @@ public class SettingsActivity {
     }
 
     private void restartHostApp(View anchor) {
-        Activity act = Utils.getCurrentActivity();
-        if (act == null) return;
-        String hostPkg = act.getPackageName();
-        Intent hostLaunch = act.getPackageManager().getLaunchIntentForPackage(hostPkg);
-        ComponentName hostComp = hostLaunch != null ? hostLaunch.getComponent() : null;
+        RestartTrampolineActivity.restartHost(Utils.getCurrentActivity());
+    }
 
-        try {
-            Intent trampoline = new Intent()
-                    .setClassName("com.magiii.televipnext", RestartTrampolineActivity.class.getName())
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                    .putExtra(RestartTrampolineActivity.EXTRA_TARGET_PACKAGE, hostPkg);
-            if (hostComp != null) {
-                trampoline.putExtra(RestartTrampolineActivity.EXTRA_TARGET_COMPONENT, hostComp);
-            }
-            act.startActivity(trampoline);
-            act.overridePendingTransition(0, 0);
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                try { act.finishAffinity(); } catch (Throwable ignored) {}
-                android.os.Process.killProcess(android.os.Process.myPid());
-                Runtime.getRuntime().exit(0);
-            }, 200);
-            return;
-        } catch (Throwable ignored) {}
-
-        if (hostLaunch != null) {
-            hostLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            try {
-                AlarmManager am = (AlarmManager) act.getSystemService(Context.ALARM_SERVICE);
-                PendingIntent pi = PendingIntent.getActivity(
-                        act, 0, hostLaunch, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
-                if (am != null) {
-                    am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 400, pi);
-                }
-            } catch (Throwable ignored) {}
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                try { act.finishAffinity(); } catch (Throwable ignored) {}
-                android.os.Process.killProcess(android.os.Process.myPid());
-                Runtime.getRuntime().exit(0);
-            }, 150);
+    private void bindUpdateStatusPill(
+            TextView pillTv,
+            GradientDrawable pillBg,
+            GlassDesign.Palette p,
+            UpdateManager.State state,
+            UpdateManager.ReleaseInfo info) {
+        int readyGreen = Color.rgb(48, 209, 88);
+        int readyBg = Color.argb(p.light ? 28 : 40, 48, 209, 88);
+        if (state == UpdateManager.State.READY_TO_INSTALL && info != null) {
+            pillTv.setText(Translator.get(Keys.UpdateInstallAction) + " " + info.tag);
+            pillTv.setTextColor(readyGreen);
+            pillBg.setColor(readyBg);
+        } else if (state == UpdateManager.State.INSTALLED_NEEDS_RESTART) {
+            pillTv.setText(Translator.get(Keys.UpdateRestartAction));
+            pillTv.setTextColor(readyGreen);
+            pillBg.setColor(readyBg);
+        } else if (state == UpdateManager.State.CHECKING) {
+            pillTv.setText(Translator.get(Keys.UpdateChecking));
+            pillTv.setTextColor(p.accentBlue);
+            pillBg.setColor(p.accentSoft);
+        } else if (state == UpdateManager.State.DOWNLOADING) {
+            pillTv.setText(Translator.get(Keys.UpdateDownloading));
+            pillTv.setTextColor(p.accentBlue);
+            pillBg.setColor(p.accentSoft);
+        } else {
+            pillTv.setText(UpdateManager.getCurrentVersionTag());
+            pillTv.setTextColor(p.accentBlue);
+            pillBg.setColor(p.accentSoft);
         }
     }
 
     private String buildSubtitleText(ConfigItem item) {
+        if (Keys.CheckForUpdates.equals(item.getKey())) {
+            return Translator.get(Keys.CheckForUpdatesDesc, UpdateManager.getCurrentVersionTag());
+        }
         String desc = Translator.getOrDefault(item.getKey() + "Desc", null);
         if (desc == null || desc.isEmpty()) {
             desc = item.getValue();
@@ -978,6 +995,8 @@ public class SettingsActivity {
             return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(42, 196, 155), r, GlassDesign.ICON_UI, Color.WHITE);
         } else if (Keys.StoriesSettings.equals(headerKey)) {
             return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(175, 82, 222), r, GlassDesign.ICON_STORIES, Color.WHITE);
+        } else if (Keys.UpdatesSettings.equals(headerKey)) {
+            return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(48, 209, 88), r, GlassDesign.ICON_UPDATE, Color.WHITE);
         }
         return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(255, 138, 52), r, GlassDesign.ICON_SPARKLES, Color.WHITE);
     }

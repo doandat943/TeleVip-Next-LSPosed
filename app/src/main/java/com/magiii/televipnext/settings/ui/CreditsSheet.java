@@ -30,6 +30,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.magiii.televipnext.Clients.ClientManager;
+import com.magiii.televipnext.BuildConfig;
 import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.logging.Logger;
@@ -558,7 +559,7 @@ public final class CreditsSheet {
                 }
             }
         } catch (Throwable ignored) {}
-        return "v1.2.3 (6)";
+        return "v" + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")";
     }
 
     private static int resolveIconType(String iconName) {

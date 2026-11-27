@@ -1,11 +1,15 @@
 package com.magiii.televipnext.ui;
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import com.magiii.televipnext.Clients.ClientManager;
 
@@ -21,6 +25,48 @@ public class RestartTrampolineActivity extends Activity {
     private static final long RELAUNCH_DELAY_MS = 500L;
 
     private boolean scheduled = false;
+
+    public static void restartHost(Activity act) {
+        if (act == null) return;
+        String hostPkg = act.getPackageName();
+        Intent hostLaunch = act.getPackageManager().getLaunchIntentForPackage(hostPkg);
+        ComponentName hostComp = hostLaunch != null ? hostLaunch.getComponent() : null;
+
+        try {
+            Intent trampoline = new Intent()
+                    .setClassName("com.magiii.televipnext", RestartTrampolineActivity.class.getName())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    .putExtra(EXTRA_TARGET_PACKAGE, hostPkg);
+            if (hostComp != null) {
+                trampoline.putExtra(EXTRA_TARGET_COMPONENT, hostComp);
+            }
+            act.startActivity(trampoline);
+            act.overridePendingTransition(0, 0);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try { act.finishAffinity(); } catch (Throwable ignored) {}
+                android.os.Process.killProcess(android.os.Process.myPid());
+                Runtime.getRuntime().exit(0);
+            }, 200);
+            return;
+        } catch (Throwable ignored) {}
+
+        if (hostLaunch != null) {
+            hostLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            try {
+                AlarmManager am = (AlarmManager) act.getSystemService(Context.ALARM_SERVICE);
+                PendingIntent pi = PendingIntent.getActivity(
+                        act, 0, hostLaunch, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+                if (am != null) {
+                    am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 400, pi);
+                }
+            } catch (Throwable ignored) {}
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try { act.finishAffinity(); } catch (Throwable ignored) {}
+                android.os.Process.killProcess(android.os.Process.myPid());
+                Runtime.getRuntime().exit(0);
+            }, 150);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

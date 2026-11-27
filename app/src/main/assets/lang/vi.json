@@ -210,5 +210,22 @@
   "HideBottomBarTabsDesc": "Chọn các tab muốn ẩn ở thanh dưới cùng. Ẩn tất cả sẽ ẩn cả thanh và giữ Cài đặt trong menu ⋮",
   "HideBottomTabContacts": "Danh bạ",
   "HideBottomTabSettingsCalls": "Cài đặt / Cuộc gọi",
-  "HideBottomTabProfile": "Hồ sơ"
+  "HideBottomTabProfile": "Hồ sơ",
+  "UpdatesSettings": "Cập nhật",
+  "AutoUpdateCheck": "Tự động kiểm tra & tải cập nhật",
+  "AutoUpdateCheckDesc": "Tự động kiểm tra bản mới và tải sẵn APK ở nền",
+  "CheckForUpdates": "Kiểm tra cập nhật",
+  "CheckForUpdatesDesc": "Phiên bản hiện tại: %s",
+  "UpdateChecking": "Đang kiểm tra...",
+  "UpdateDownloading": "Đang tải...",
+  "UpdateReadyTitle": "TeleVip Next %s đã sẵn sàng",
+  "UpdateReadySubtitle": "Đã tải sẵn ở nền — chạm để cài đặt ngay",
+  "UpdateInstallAction": "Cài đặt",
+  "UpdateUpToDate": "Bạn đang dùng phiên bản mới nhất",
+  "UpdateCheckFailed": "Không thể kiểm tra cập nhật",
+  "UpdateInstalledTitle": "Đã cài đặt TeleVip Next %s",
+  "UpdateInstalledSubtitle": "Chạm để khởi động lại Telegram và kích hoạt",
+  "UpdateRestartAction": "Khởi động lại",
+  "UpdateSignatureMismatch": "Chữ ký APK cập nhật không khớp với ứng dụng hiện tại",
+  "UpdateAllowUnknownSources": "Vui lòng cấp quyền cài đặt ứng dụng cho TeleVip Next"
 }

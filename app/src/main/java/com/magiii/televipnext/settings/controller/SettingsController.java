@@ -13,7 +13,9 @@ import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.settings.ui.GlassDialog;
 import com.magiii.televipnext.settings.ui.SettingsActivity;
+import com.magiii.televipnext.settings.ui.UpdateBanner;
 import com.magiii.televipnext.logging.Logger;
+import com.magiii.televipnext.updater.UpdateManager;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.messenger.browser.Browser;
 import com.magiii.televipnext.virtuals.ui.LaunchActivity;
@@ -137,6 +139,8 @@ public class SettingsController {
             ));
 
             show(settingsView);
+            UpdateManager.onTeleVipOpened(act);
+            UpdateBanner.bringToFrontIfShown(act);
             Logger.w("SettingsController.openView() displayed TeleVip Settings");
         } catch (Throwable e) {
             Logger.e(e);

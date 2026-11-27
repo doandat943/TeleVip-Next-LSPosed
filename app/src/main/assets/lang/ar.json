@@ -210,5 +210,22 @@
   "HideBottomBarTabsDesc": "اختر تبويبات التنقل السفلية التي تريد إخفاءها. إخفاء الكل يُخفي الشريط بالكامل ويبقي الإعدادات في قائمة ⋮",
   "HideBottomTabContacts": "جهات الاتصال",
   "HideBottomTabSettingsCalls": "الإعدادات / المكالمات",
-  "HideBottomTabProfile": "الملف الشخصي"
+  "HideBottomTabProfile": "الملف الشخصي",
+  "UpdatesSettings": "التحديثات",
+  "AutoUpdateCheck": "التحقق والتنزيل التلقائي للتحديثات",
+  "AutoUpdateCheckDesc": "التحقق تلقائياً من التحديثات وتنزيل ملف APK الجديد مسبقاً في الخلفية",
+  "CheckForUpdates": "التحقق من التحديثات",
+  "CheckForUpdatesDesc": "الإصدار الحالي: %s",
+  "UpdateChecking": "جارٍ التحقق...",
+  "UpdateDownloading": "جارٍ التنزيل...",
+  "UpdateReadyTitle": "TeleVip Next %s جاهز",
+  "UpdateReadySubtitle": "تم التنزيل في الخلفية — انقر للتثبيت فوراً",
+  "UpdateInstallAction": "تثبيت",
+  "UpdateUpToDate": "أنت تستخدم أحدث إصدار",
+  "UpdateCheckFailed": "فشل التحقق من التحديثات",
+  "UpdateInstalledTitle": "تم تثبيت TeleVip Next %s",
+  "UpdateInstalledSubtitle": "انقر لإعادة تشغيل تيليجرام وتفعيل التحديث",
+  "UpdateRestartAction": "إعادة تشغيل",
+  "UpdateSignatureMismatch": "توقيع ملف التحديث لا يطابق هذا التطبيق",
+  "UpdateAllowUnknownSources": "يرجى السماح بتثبيت التحديثات من TeleVip Next"
 }

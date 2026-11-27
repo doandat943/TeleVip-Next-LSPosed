@@ -210,5 +210,22 @@
   "HideBottomBarTabsDesc": "Choose bottom navigation tabs to hide. Hiding all hides the entire bar and keeps Settings in the ⋮ menu",
   "HideBottomTabContacts": "Contacts",
   "HideBottomTabSettingsCalls": "Settings / Calls",
-  "HideBottomTabProfile": "Profile"
+  "HideBottomTabProfile": "Profile",
+  "UpdatesSettings": "Updates",
+  "AutoUpdateCheck": "Auto-Check & Download Updates",
+  "AutoUpdateCheckDesc": "Automatically check for updates and pre-download new APKs in the background",
+  "CheckForUpdates": "Check for Updates",
+  "CheckForUpdatesDesc": "Current version: %s",
+  "UpdateChecking": "Checking...",
+  "UpdateDownloading": "Downloading...",
+  "UpdateReadyTitle": "TeleVip Next %s Ready",
+  "UpdateReadySubtitle": "Downloaded in background — tap to install",
+  "UpdateInstallAction": "Install",
+  "UpdateUpToDate": "You are on the latest version",
+  "UpdateCheckFailed": "Failed to check for updates",
+  "UpdateInstalledTitle": "TeleVip Next %s Installed",
+  "UpdateInstalledSubtitle": "Tap to restart Telegram and activate",
+  "UpdateRestartAction": "Restart",
+  "UpdateSignatureMismatch": "Update APK signature does not match this installation",
+  "UpdateAllowUnknownSources": "Please allow installing updates from TeleVip Next"
 }
