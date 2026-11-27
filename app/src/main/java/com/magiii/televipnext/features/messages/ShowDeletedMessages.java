@@ -33,7 +33,11 @@ import com.magiii.televipnext.virtuals.tgnet.TLRPC;
 import com.magiii.televipnext.virtuals.ui.ChatActivity;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.magiii.televipnext.xposed.XposedCompat;
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -45,6 +49,7 @@ public class ShowDeletedMessages {
     private static final int RED_DELETE_COLOR = 0xFFFF453A;
 
     private static volatile long allowDeleteUntilMs = 0L;
+    private static final ConcurrentHashMap<Integer, Long> allowedLocalDeleteIds = new ConcurrentHashMap<>();
     private static boolean hooksInstalled = false;
     private static boolean menuHooksInstalled = false;
 
@@ -61,8 +66,43 @@ public class ShowDeletedMessages {
         }
     }
 
+    public static void allowLocalDeleteIds(Collection<?> ids, long durationMs) {
+        if (ids == null || ids.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        long expiry = now + Math.max(0L, durationMs);
+        if (allowedLocalDeleteIds.size() > 256) {
+            Iterator<Map.Entry<Integer, Long>> it = allowedLocalDeleteIds.entrySet().iterator();
+            while (it.hasNext()) {
+                if (it.next().getValue() < now) {
+                    it.remove();
+                }
+            }
+        }
+        for (Object item : ids) {
+            if (item instanceof Integer) {
+                int id = (Integer) item;
+                if (id > 0) {
+                    allowedLocalDeleteIds.merge(id, expiry, Math::max);
+                }
+            }
+        }
+    }
+
     private static boolean isDeleteAllowedNow() {
         return System.currentTimeMillis() <= allowDeleteUntilMs;
+    }
+
+    private static boolean areAllIdsAllowed(List<?> ids) {
+        if (ids == null || ids.isEmpty()) return false;
+        long now = System.currentTimeMillis();
+        boolean sawInt = false;
+        for (Object item : ids) {
+            if (!(item instanceof Integer)) continue;
+            sawInt = true;
+            Long exp = allowedLocalDeleteIds.get(item);
+            if (exp == null || exp < now) return false;
+        }
+        return sawInt;
     }
 
     public static boolean isAnyScopeEnabled() {
@@ -71,6 +111,17 @@ public class ShowDeletedMessages {
 
     public static void markMessagesDeletedForController(MessagesStorage messagesStorage, long dialogId, ArrayList<Integer> delMsg) {
         MessageStorage.markMessagesDeleted(messagesStorage, dialogId, delMsg);
+    }
+
+    private static boolean shouldKeepDialogUpdate(MessagesController mc, long dialogId) {
+        if (dialogId > 0L) {
+            return ConfigManager.showDeletedPrivate != null && ConfigManager.showDeletedPrivate.isEnable();
+        }
+        if (dialogId < 0L) {
+            return shouldKeepChannelUpdate(mc, -dialogId);
+        }
+        return (ConfigManager.showDeletedPrivate != null && ConfigManager.showDeletedPrivate.isEnable())
+                || (ConfigManager.showDeletedGroups != null && ConfigManager.showDeletedGroups.isEnable());
     }
 
     private static boolean shouldKeepChannelUpdate(MessagesController mc, long channelId) {
@@ -94,8 +145,12 @@ public class ShowDeletedMessages {
             SparseArray<Object> dialogMessages = mc != null ? mc.getDialogMessagesByIds() : null;
             Object msgObj = dialogMessages != null ? dialogMessages.get(msgId) : null;
             if (msgObj == null) return null;
-            TLRPC.Message owner = new MessageObject(msgObj).getMessageOwner();
+            MessageObject mo = new MessageObject(msgObj);
+            TLRPC.Message owner = mo.getMessageOwner();
             if (owner == null || owner.get_Message() == null) return null;
+            long did = resolveDialogId(mo, owner.get_Message());
+            if (did > 0L) return Boolean.TRUE;
+            if (did < 0L) return Boolean.FALSE;
             Object peer = ReflectHelper.getObjectField(owner.get_Message(), "peer_id");
             if (peer != null) {
                 long chatId = getLongField(peer, "chat_id");
@@ -112,15 +167,17 @@ public class ShowDeletedMessages {
             TLRPC.TL_updateDeleteChannelMessages channelMessages = new TLRPC.TL_updateDeleteChannelMessages(item);
             long channelId = channelMessages.getChannelID();
             if (!shouldKeepChannelUpdate(messagesController, channelId)) {
+                allowLocalDeleteIds(channelMessages.getMessages(), 3000L);
                 return false;
             }
 
             LongSparseArray dialogMessage = messagesController.getDialogMessage();
-            ArrayList<Object> dialogMessages = dialogMessage.get(-channelId);
+            ArrayList<Object> dialogMessages = dialogMessage != null ? dialogMessage.get(-channelId) : null;
             if (dialogMessages != null) {
                 for (final Object msgObj : dialogMessages) {
                     TLRPC.Message owner = new MessageObject(msgObj).getMessageOwner();
-                    if (channelMessages.getMessages().contains(owner.getId())) {
+                    if (owner != null && channelMessages.getMessages() != null
+                            && channelMessages.getMessages().contains(owner.getId())) {
                         owner.setFlags(owner.getFlags() | FLAG_DELETED);
                     }
                 }
@@ -133,11 +190,12 @@ public class ShowDeletedMessages {
         if (updateDeleteMessages) {
             boolean privOn = ConfigManager.showDeletedPrivate != null && ConfigManager.showDeletedPrivate.isEnable();
             boolean grpOn = ConfigManager.showDeletedGroups != null && ConfigManager.showDeletedGroups.isEnable();
+            ArrayList<Integer> messages = new TLRPC.TL_updateDeleteMessages(item).getMessages();
             if (!privOn && !grpOn) {
+                allowLocalDeleteIds(messages, 3000L);
                 return false;
             }
 
-            ArrayList<Integer> messages = new TLRPC.TL_updateDeleteMessages(item).getMessages();
             if (messages == null || messages.isEmpty()) return true;
 
             SparseArray<Object> dialogMessages = messagesController.getDialogMessagesByIds();
@@ -152,7 +210,9 @@ public class ShowDeletedMessages {
                     Object msgObj = dialogMessages != null ? dialogMessages.get(id) : null;
                     if (msgObj != null) {
                         TLRPC.Message owner = new MessageObject(msgObj).getMessageOwner();
-                        owner.setFlags(owner.getFlags() | FLAG_DELETED);
+                        if (owner != null) {
+                            owner.setFlags(owner.getFlags() | FLAG_DELETED);
+                        }
                     }
                 } else {
                     passIds.add(id);
@@ -165,6 +225,7 @@ public class ShowDeletedMessages {
             if (passIds.isEmpty()) {
                 return true;
             }
+            allowLocalDeleteIds(passIds, 3000L);
             messages.clear();
             messages.addAll(passIds);
             return false;
@@ -183,6 +244,9 @@ public class ShowDeletedMessages {
                                 protected void beforeMethod(MethodHookParam param) {
                                     if (!isAnyScopeEnabled()) return;
                                     try {
+                                        if (param.args == null || param.args.length == 0 || !(param.args[0] instanceof ArrayList)) {
+                                            return;
+                                        }
                                         @SuppressWarnings("unchecked")
                                         ArrayList<Object> updates = (ArrayList<Object>) param.args[0];
                                         if (updates == null || updates.isEmpty()) {
@@ -192,6 +256,10 @@ public class ShowDeletedMessages {
                                         ArrayList<Object> result = new ArrayList<>();
 
                                         for (Object update : updates) {
+                                            if (update == null) {
+                                                result.add(null);
+                                                continue;
+                                            }
                                             String name = update.getClass().getName();
                                             boolean updateDeleteChannelMessages;
                                             boolean updateDeleteMessages;
@@ -209,7 +277,6 @@ public class ShowDeletedMessages {
                                                         updateDeleteChannelMessages, updateDeleteMessages)) {
                                                     continue;
                                                 }
-                                                allowLocalDeleteFor(1500L);
                                             }
 
                                             result.add(update);
@@ -236,25 +303,31 @@ public class ShowDeletedMessages {
         hooksInstalled = true;
 
         try {
-            HMethod.hookMethod(
-                    ClassLoad.getClass(ClassNames.MESSAGES_STORAGE),
-                    Obfuscate.getMethodName("MessagesStorage", "markMessagesAsDeleted"),
-                    ArgsResolver.merge("markMessagesAsDeleted", new Class[]{long.class, ArrayList.class, boolean.class, boolean.class, int.class, int.class},
-                            new BaseMethodHook() {
-                                @Override
-                                protected void beforeMethod(MethodHookParam param) {
-                                    if (!isAnyScopeEnabled() || isDeleteAllowedNow()) return;
-                                    if (param.args != null && param.args.length > 0 && param.args[0] instanceof Long) {
-                                        long channelId = (Long) param.args[0];
-                                        if (channelId != 0L && !shouldKeepChannelUpdate(
-                                                MessagesController.getMessagesController(), Math.abs(channelId))) {
-                                            return;
-                                        }
-                                    }
-                                    param.setResult(null);
+            Class<?> msClass = ClassLoad.getClass(ClassNames.MESSAGES_STORAGE);
+            if (msClass != null) {
+                XposedCompat.hookAllMethods(
+                        msClass,
+                        Obfuscate.getMethodName("MessagesStorage", "markMessagesAsDeleted"),
+                        new BaseMethodHook() {
+                            @Override
+                            protected void beforeMethod(MethodHookParam param) {
+                                if (!isAnyScopeEnabled()) return;
+                                if (param.args == null || param.args.length < 5
+                                        || !(param.args[0] instanceof Long)
+                                        || !(param.args[1] instanceof ArrayList)) {
+                                    return;
                                 }
+                                ArrayList<?> ids = (ArrayList<?>) param.args[1];
+                                if (isDeleteAllowedNow() || areAllIdsAllowed(ids)) return;
+                                long dialogId = (Long) param.args[0];
+                                if (!shouldKeepDialogUpdate(MessagesController.getMessagesController(), dialogId)) {
+                                    return;
+                                }
+                                param.setResult(null);
                             }
-                    ));
+                        }
+                );
+            }
 
             HMethod.hookMethod(
                     ClassLoad.getClass(ClassNames.NOTIFICATIONS_CONTROLLER),
@@ -269,28 +342,27 @@ public class ShowDeletedMessages {
                                 }
                             }));
 
-            HMethod.hookMethod(
-                    ClassLoad.getClass(ClassNames.MESSAGES_CONTROLLER),
-                    Obfuscate.getMethodName("MessagesController", "deleteMessages"),
-                    ArgsResolver.merge("deleteMessages", new Class[]{ArrayList.class,
-                                    ArrayList.class,
-                                    ClassLoad.getClass(ClassNames.TLRPC_ENCRYPTED_CHAT),
-                                    long.class,
-                                    boolean.class,
-                                    int.class,
-                                    boolean.class,
-                                    long.class,
-                                    ClassLoad.getClass(ClassNames.TL_OBJECT),
-                                    int.class,
-                                    boolean.class,
-                                    int.class},
-                            new BaseMethodHook() {
-                                @Override
-                                protected void beforeMethod(MethodHookParam param) {
-                                    allowLocalDeleteFor(2000L);
+            Class<?> mcClass = ClassLoad.getClass(ClassNames.MESSAGES_CONTROLLER);
+            if (mcClass != null) {
+                XposedCompat.hookAllMethods(
+                        mcClass,
+                        Obfuscate.getMethodName("MessagesController", "deleteMessages"),
+                        new BaseMethodHook() {
+                            @Override
+                            protected void beforeMethod(MethodHookParam param) {
+                                if (param.args == null || param.args.length < 6 || !(param.args[0] instanceof ArrayList)) {
+                                    return;
+                                }
+                                ArrayList<?> ids = (ArrayList<?>) param.args[0];
+                                if (!ids.isEmpty()) {
+                                    allowLocalDeleteIds(ids, 5000L);
+                                } else {
+                                    allowLocalDeleteFor(1500L);
                                 }
                             }
-                    ));
+                        }
+                );
+            }
 
             HMethod.hookMethod(
                     ClassLoad.getClass(ClassNames.NOTIFICATION_CENTER),
@@ -299,20 +371,25 @@ public class ShowDeletedMessages {
                             new BaseMethodHook() {
                                 @Override
                                 protected void beforeMethod(MethodHookParam param) {
-                                    if (isAnyScopeEnabled() && !isDeleteAllowedNow()) {
-                                        int id = (int) param.args[0];
-                                        if (id == NotificationCenter.getMessagesDeleted()) {
-                                            Object[] notifArgs = (param.args.length > 1 && param.args[1] instanceof Object[])
-                                                    ? (Object[]) param.args[1] : null;
-                                            if (notifArgs != null && notifArgs.length >= 2 && notifArgs[1] instanceof Long) {
-                                                long channelId = (Long) notifArgs[1];
-                                                if (channelId != 0L && !shouldKeepChannelUpdate(
-                                                        MessagesController.getMessagesController(), Math.abs(channelId))) {
-                                                    return;
-                                                }
-                                            }
-                                            param.setResult(null);
+                                    if (!isAnyScopeEnabled()) return;
+                                    int id = (int) param.args[0];
+                                    if (id == NotificationCenter.getMessagesDeleted()) {
+                                        if (isDeleteAllowedNow()) return;
+                                        Object[] notifArgs = (param.args.length > 1 && param.args[1] instanceof Object[])
+                                                ? (Object[]) param.args[1] : null;
+                                        if (notifArgs != null && notifArgs.length >= 1
+                                                && notifArgs[0] instanceof ArrayList
+                                                && areAllIdsAllowed((ArrayList<?>) notifArgs[0])) {
+                                            return;
                                         }
+                                        if (notifArgs != null && notifArgs.length >= 2 && notifArgs[1] instanceof Long) {
+                                            long channelId = (Long) notifArgs[1];
+                                            if (channelId != 0L && !shouldKeepChannelUpdate(
+                                                    MessagesController.getMessagesController(), Math.abs(channelId))) {
+                                                return;
+                                            }
+                                        }
+                                        param.setResult(null);
                                     }
                                 }
                             }));
@@ -419,7 +496,7 @@ public class ShowDeletedMessages {
                 @Override
                 protected void beforeMethod(MethodHookParam param) {
                     try {
-                        if (param.args == null || param.args.length != 1 || !(param.args[0] instanceof Integer)) {
+                        if (param.args == null || param.args.length < 1 || !(param.args[0] instanceof Integer)) {
                             return;
                         }
                         if ((Integer) param.args[0] != OPTION_LOCAL_DELETE) return;

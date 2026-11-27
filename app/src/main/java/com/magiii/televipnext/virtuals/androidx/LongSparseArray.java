@@ -15,7 +15,10 @@ public class LongSparseArray {
         this.longSparseArray = longSparseArray;
     }
 
+    @SuppressWarnings("unchecked")
     public ArrayList<Object> get(long id){
-        return (ArrayList<Object>) ReflectHelper.callMethod(longSparseArray, Obfuscate.getMethodName("LongSparseArray", "get"), id);
+        if (longSparseArray == null) return null;
+        Object val = ReflectHelper.callMethod(longSparseArray, Obfuscate.getMethodName("LongSparseArray", "get"), id);
+        return val instanceof ArrayList ? (ArrayList<Object>) val : null;
     }
 }

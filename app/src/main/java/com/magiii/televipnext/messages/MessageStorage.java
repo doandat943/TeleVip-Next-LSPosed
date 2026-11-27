@@ -92,23 +92,25 @@ public class MessageStorage {
                         while (cursor.next()) {
                             NativeByteBuffer data = cursor.byteBufferValue(0);
                             if (data == null || data.nativeByteBuffer == null) continue;
-                            int mid = cursor.intValue(1);
-                            long lastDialogId = cursor.longValue(2);
+                            try {
+                                int mid = cursor.intValue(1);
+                                long lastDialogId = cursor.longValue(2);
 
-                            data.position(4);
-                            int flags = data.readInt32(true);
-                            flags |= ShowDeletedMessages.FLAG_DELETED;
-                            data.position(4);
-                            data.writeInt32(flags);
-                            data.position(0);
+                                data.position(4);
+                                int flags = data.readInt32(true);
+                                flags |= ShowDeletedMessages.FLAG_DELETED;
+                                data.position(4);
+                                data.writeInt32(flags);
+                                data.position(0);
 
-                            state.requery();
-                            state.bindByteBuffer(1, data);
-                            state.bindLong(2, lastDialogId);
-                            state.bindInteger(3, mid);
-                            state.step();
-
-                            data.reuse();
+                                state.requery();
+                                state.bindByteBuffer(1, data);
+                                state.bindLong(2, lastDialogId);
+                                state.bindInteger(3, mid);
+                                state.step();
+                            } finally {
+                                data.reuse();
+                            }
                         }
                     } finally {
                         if (cursor != null) {

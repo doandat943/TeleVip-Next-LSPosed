@@ -25,7 +25,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 45;
+    private static final int SCHEMA_VERSION = 46;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -113,6 +113,9 @@ public class AutoMappingResolver {
         if (applicationLoaderDesc == null) {
             applicationLoaderDesc = scanner.getSuperClass("Lorg/telegram/messenger/ApplicationLoaderImpl;");
         }
+        if (applicationLoaderDesc == null && hasClass(scanner, "Lorg/telegram/messenger/ApplicationLoader;")) {
+            applicationLoaderDesc = "Lorg/telegram/messenger/ApplicationLoader;";
+        }
         String baseFragmentDesc = getSuperDesc(classLoader, ClassNames.PROFILE_ACTIVITY);
         if (baseFragmentDesc == null) {
             baseFragmentDesc = scanner.getSuperClass(DexScanner.javaToDesc(ClassNames.PROFILE_ACTIVITY));
@@ -120,7 +123,9 @@ public class AutoMappingResolver {
 
         if (applicationLoaderDesc != null) {
             addClass(ClassNames.APPLICATION_LOADER, applicationLoaderDesc);
-            String appCtxField = scanner.findSingleField(applicationLoaderDesc, true, "Landroid/content/Context;");
+            String appCtxField = hasFieldNamed(scanner, applicationLoaderDesc, "applicationContext")
+                    ? "applicationContext"
+                    : scanner.findSingleField(applicationLoaderDesc, true, "Landroid/content/Context;");
             if (appCtxField == null) {
                 for (DexScanner.FieldInfo wf : scanner.getWrittenStaticFieldsInMethod(
                         applicationLoaderDesc, "onCreate", new String[0], applicationLoaderDesc)) {
@@ -558,19 +563,31 @@ public class AutoMappingResolver {
             if (msgStorageDesc != null) {
                 addClass(ClassNames.MESSAGES_STORAGE, msgStorageDesc);
                 addMethod("MessagesStorage", "getInstance",
-                        scanner.findSingleMethod(msgStorageDesc, true, msgStorageDesc, "I"));
+                        hasMethodNamed(scanner, msgStorageDesc, "getInstance")
+                                ? "getInstance"
+                                : scanner.findSingleMethod(msgStorageDesc, true, msgStorageDesc, "I"));
                 addMethod("MessagesStorage", "getDatabase",
-                        scanner.findSingleMethod(msgStorageDesc, false, "Lorg/telegram/SQLite/SQLiteDatabase;"));
+                        hasMethodNamed(scanner, msgStorageDesc, "getDatabase")
+                                ? "getDatabase"
+                                : scanner.findSingleMethod(msgStorageDesc, false, "Lorg/telegram/SQLite/SQLiteDatabase;"));
                 addMethod("MessagesStorage", "markMessagesAsDeleted",
-                        scanner.findSingleMethod(msgStorageDesc, false, "Ljava/util/ArrayList;",
+                        hasMethodNamed(scanner, msgStorageDesc, "markMessagesAsDeleted")
+                                ? "markMessagesAsDeleted"
+                                : scanner.findSingleMethod(msgStorageDesc, false, "Ljava/util/ArrayList;",
                                 "J", "Ljava/util/ArrayList;", "Z", "Z", "I", "I"));
                 String tlMsgsDesc = DexScanner.javaToDesc(ClassNames.TL_MESSAGES_MESSAGES);
                 DexScanner.MethodInfo bestPutMsgs = null;
+                boolean rawPutMsgs = false;
                 for (DexScanner.MethodInfo m : scanner.getMethods(msgStorageDesc)) {
-                    if (!m.isStatic && "V".equals(m.returnDesc)) {
+                    if (!m.isStatic && "V".equals(m.returnDesc) && !m.name.startsWith("lambda$")) {
                         for (String p : m.paramDescs) {
                             if (tlMsgsDesc.equals(p)) {
-                                if (bestPutMsgs == null || m.getInsnsSize() > bestPutMsgs.getInsnsSize()) {
+                                if ("putMessages".equals(m.name)) {
+                                    bestPutMsgs = m;
+                                    rawPutMsgs = true;
+                                    break;
+                                }
+                                if (!rawPutMsgs && (bestPutMsgs == null || m.getInsnsSize() > bestPutMsgs.getInsnsSize())) {
                                     bestPutMsgs = m;
                                 }
                                 break;
@@ -596,7 +613,9 @@ public class AutoMappingResolver {
                             } else if (!dm.isStatic && dm.paramDescs.length == 1
                                     && "Ljava/lang/Runnable;".equals(dm.paramDescs[0])
                                     && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
-                                if (bestPostRun == null || dm.getInsnsSize() < bestPostRun.getInsnsSize()) {
+                                if ("postRunnable".equals(dm.name)) {
+                                    bestPostRun = dm;
+                                } else if (bestPostRun == null || (!"postRunnable".equals(bestPostRun.name) && dm.getInsnsSize() < bestPostRun.getInsnsSize())) {
                                     bestPostRun = dm;
                                 }
                             }
@@ -606,10 +625,14 @@ public class AutoMappingResolver {
                             addClass("org.telegram.messenger.DispatchQueue", m.returnDesc);
                             addMethod("DispatchQueue", "postRunnable", bestPostRun.name);
                             String utilDesc = DexScanner.javaToDesc(ClassNames.UTILITIES);
-                            for (DexScanner.FieldInfo wf : scanner.getWrittenFieldsInMethod(utilDesc, "<clinit>", new String[0], utilDesc)) {
-                                if (m.returnDesc.equals(wf.typeDesc)) {
-                                    addField("Utilities", "stageQueue", wf.name);
-                                    break;
+                            if (hasFieldNamed(scanner, utilDesc, "stageQueue")) {
+                                addField("Utilities", "stageQueue", "stageQueue");
+                            } else {
+                                for (DexScanner.FieldInfo wf : scanner.getWrittenStaticFieldsInMethod(utilDesc, "<clinit>", new String[0], utilDesc)) {
+                                    if (m.returnDesc.equals(wf.typeDesc)) {
+                                        addField("Utilities", "stageQueue", wf.name);
+                                        break;
+                                    }
                                 }
                             }
                             break;
@@ -622,7 +645,21 @@ public class AutoMappingResolver {
             if (msgCtrlDesc != null) {
                 addClass(ClassNames.MESSAGES_CONTROLLER, msgCtrlDesc);
                 addMethod("MessagesController", "getInstance",
-                        scanner.findSingleMethod(msgCtrlDesc, true, msgCtrlDesc, "I"));
+                        hasMethodNamed(scanner, msgCtrlDesc, "getInstance")
+                                ? "getInstance"
+                                : scanner.findSingleMethod(msgCtrlDesc, true, msgCtrlDesc, "I"));
+                if (msgStorageDesc != null) {
+                    String getMs = hasMethodNamed(scanner, baseControllerDesc, "getMessagesStorage")
+                            || hasMethodNamed(scanner, msgCtrlDesc, "getMessagesStorage")
+                            ? "getMessagesStorage"
+                            : scanner.findSingleMethod(baseControllerDesc, false, msgStorageDesc);
+                    if (getMs == null) {
+                        getMs = scanner.findSingleMethod(msgCtrlDesc, false, msgStorageDesc);
+                    }
+                    if (getMs != null) {
+                        addMethod("MessagesController", "getMessagesStorage", getMs);
+                    }
+                }
                 addMethod("MessagesController", "isChatNoForwards",
                         scanner.findSingleMethod(msgCtrlDesc, false, "Z", DexScanner.javaToDesc(ClassNames.TLRPC_CHAT)));
                 String getChatBoxed = scanner.findSingleMethod(msgCtrlDesc, false, DexScanner.javaToDesc(ClassNames.TLRPC_CHAT), "Ljava/lang/Long;");
@@ -644,14 +681,20 @@ public class AutoMappingResolver {
                     }
                 }
                 addMethod("MessagesController", "processUpdateArray",
-                        scanner.findSingleMethod(msgCtrlDesc, false, "Z",
+                        hasMethodNamed(scanner, msgCtrlDesc, "processUpdateArray")
+                                ? "processUpdateArray"
+                                : scanner.findSingleMethod(msgCtrlDesc, false, "Z",
                                 "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Z", "I"));
-                String deleteMeth = scanner.findSingleMethod(msgCtrlDesc, false, "V",
+                String deleteMeth = hasMethodNamed(scanner, msgCtrlDesc, "deleteMessages")
+                        ? "deleteMessages"
+                        : scanner.findSingleMethod(msgCtrlDesc, false, "V",
                         "Ljava/util/ArrayList;", "Ljava/util/ArrayList;",
                         DexScanner.javaToDesc(ClassNames.TLRPC_ENCRYPTED_CHAT),
                         "J", "Z", "I", "Z", "J", DexScanner.javaToDesc(ClassNames.TL_OBJECT), "I", "Z", "I");
                 addMethod("MessagesController", "deleteMessages", deleteMeth);
-                String procDiff = scanner.findMethodByString(msgCtrlDesc, "APPLY PTS", false, "V", "I", "I", "I");
+                String procDiff = hasMethodNamed(scanner, msgCtrlDesc, "processNewDifferenceParams")
+                        ? "processNewDifferenceParams"
+                        : scanner.findMethodByString(msgCtrlDesc, "APPLY PTS", false, "V", "I", "I", "I");
                 if (procDiff == null) {
                     procDiff = scanner.findMethodByString(msgCtrlDesc, "APPLY PTS", false, "V", "I", "I", "I", "I");
                 }
@@ -665,7 +708,9 @@ public class AutoMappingResolver {
                     addMethod("MessagesController", "getInputChannel",
                             scanner.findSingleMethod(msgCtrlDesc, true, "Lorg/telegram/tgnet/TLRPC$InputChannel;", "J"));
                 }
-                String dialogMsgsByIds = scanner.findSingleField(msgCtrlDesc, false, "Landroid/util/SparseArray;");
+                String dialogMsgsByIds = hasFieldNamed(scanner, msgCtrlDesc, "dialogMessagesByIds")
+                        ? "dialogMessagesByIds"
+                        : scanner.findSingleField(msgCtrlDesc, false, "Landroid/util/SparseArray;");
                 if (dialogMsgsByIds == null && deleteMeth != null) {
                     for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
                         if ("Landroid/util/SparseArray;".equals(rf.typeDesc)) {
@@ -676,47 +721,8 @@ public class AutoMappingResolver {
                 }
                 addField("MessagesController", "dialogMessagesByIds", dialogMsgsByIds);
 
-                // Identify LongSparseArray type and dialogMessage field (prefer field read in deleteMessages)
-                java.util.Set<String> delReadFields = new java.util.HashSet<>();
-                if (deleteMeth != null) {
-                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
-                        delReadFields.add(rf.name);
-                    }
-                }
-                String fallbackLsaField = null;
-                String fallbackLsaType = null;
-                String fallbackLsaGet = null;
-                for (DexScanner.FieldInfo f : scanner.getFields(msgCtrlDesc)) {
-                    if (!f.isStatic && !f.typeDesc.startsWith("Lorg/telegram/") && !f.typeDesc.startsWith("Landroid/") && !f.typeDesc.startsWith("Ljava/")) {
-                        List<DexScanner.MethodInfo> lsaMeths = scanner.getMethods(f.typeDesc);
-                        String getLongName = null;
-                        for (DexScanner.MethodInfo lm : lsaMeths) {
-                            if (!lm.isStatic && "Ljava/lang/Object;".equals(lm.returnDesc) && lm.paramDescs.length == 1 && "J".equals(lm.paramDescs[0])) {
-                                getLongName = lm.name;
-                                break;
-                            }
-                        }
-                        if (getLongName != null) {
-                            if (fallbackLsaField == null) {
-                                fallbackLsaField = f.name;
-                                fallbackLsaType = f.typeDesc;
-                                fallbackLsaGet = getLongName;
-                            }
-                            if (delReadFields.contains(f.name)) {
-                                addClass(ClassNames.LONG_SPARES_ARRAY, f.typeDesc);
-                                addMethod("LongSparseArray", "get", getLongName);
-                                addField("MessagesController", "dialogMessage", f.name);
-                                fallbackLsaField = null;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (fallbackLsaField != null) {
-                    addClass(ClassNames.LONG_SPARES_ARRAY, fallbackLsaType);
-                    addMethod("LongSparseArray", "get", fallbackLsaGet);
-                    addField("MessagesController", "dialogMessage", fallbackLsaField);
-                }
+                // Identify LongSparseArray type and dialogMessage field (raw check -> 2-arg delete helper -> deleteMessages read)
+                resolveDialogMessageField(scanner, msgCtrlDesc, deleteMeth);
 
                 resolveMessagesControllerExtras(scanner, msgCtrlDesc);
             }
@@ -1016,28 +1022,36 @@ public class AutoMappingResolver {
             if (bestPost != null) {
                 addMethod("NotificationCenter", "postNotificationName", bestPost);
             }
-            String mcDesc = classMap.get(ClassNames.MESSAGES_CONTROLLER) != null
-                    ? DexScanner.javaToDesc(classMap.get(ClassNames.MESSAGES_CONTROLLER))
-                    : null;
-            String delMeth = methodMap.get("MessagesController#deleteMessages");
-            if (mcDesc != null && delMeth != null) {
-                String lastNotifInt = null;
-                for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(mcDesc, delMeth, null, notifCenterDesc)) {
-                    if ("I".equals(rf.typeDesc)) {
-                        lastNotifInt = rf.name;
+            if (hasFieldNamed(scanner, notifCenterDesc, "messagesDeleted")) {
+                addField("NotificationCenter", "messagesDeleted", "messagesDeleted");
+            } else {
+                String mcDesc = classMap.get(ClassNames.MESSAGES_CONTROLLER) != null
+                        ? DexScanner.javaToDesc(classMap.get(ClassNames.MESSAGES_CONTROLLER))
+                        : null;
+                String delMeth = methodMap.get("MessagesController#deleteMessages");
+                if (mcDesc != null && delMeth != null) {
+                    String lastNotifInt = null;
+                    for (DexScanner.FieldInfo rf : scanner.getReadStaticFieldsInMethod(mcDesc, delMeth, null, notifCenterDesc)) {
+                        if ("I".equals(rf.typeDesc)) {
+                            lastNotifInt = rf.name;
+                        }
+                    }
+                    if (lastNotifInt != null) {
+                        addField("NotificationCenter", "messagesDeleted", lastNotifInt);
                     }
                 }
-                if (lastNotifInt != null) {
-                    addField("NotificationCenter", "messagesDeleted", lastNotifInt);
-                }
             }
-            String tlErrField = scanner.findReadStaticFieldBeforeString(
-                    DexScanner.javaToDesc(ClassNames.LAUNCH_ACTIVITY),
-                    "didReceivedNotification",
-                    new String[]{"I", "I", "[Ljava/lang/Object;"},
-                    notifCenterDesc, "I", "TL Error");
-            if (tlErrField != null) {
-                addField("NotificationCenter", "tlSchemeParseException", tlErrField);
+            if (hasFieldNamed(scanner, notifCenterDesc, "tlSchemeParseException")) {
+                addField("NotificationCenter", "tlSchemeParseException", "tlSchemeParseException");
+            } else {
+                String tlErrField = scanner.findReadStaticFieldBeforeString(
+                        DexScanner.javaToDesc(ClassNames.LAUNCH_ACTIVITY),
+                        "didReceivedNotification",
+                        new String[]{"I", "I", "[Ljava/lang/Object;"},
+                        notifCenterDesc, "I", "TL Error");
+                if (tlErrField != null) {
+                    addField("NotificationCenter", "tlSchemeParseException", tlErrField);
+                }
             }
         }
 
@@ -2078,7 +2092,8 @@ public class AutoMappingResolver {
         String factoryDesc = scanner.findClassByPredicate("Lorg/telegram/ui/", (desc, fields, methods) -> {
             if (desc.contains("/Components/")) return false;
             for (DexScanner.MethodInfo m : methods) {
-                if (m.isStatic && m.returnDesc.startsWith("Lorg/telegram/ui/Components/")
+                if (m.isStatic && !desc.equals(m.returnDesc)
+                        && m.returnDesc.startsWith("Lorg/telegram/ui/Components/")
                         && (m.paramDescs.length == 7 || m.paramDescs.length == 6)
                         && "I".equals(m.paramDescs[0]) && "I".equals(m.paramDescs[1])
                         && "I".equals(m.paramDescs[2]) && "I".equals(m.paramDescs[3])
@@ -2197,27 +2212,94 @@ public class AutoMappingResolver {
         if (cs1 != null) addField("UItem", "text", cs1);
         if (cs2 != null) addField("UItem", "subtext", cs2);
 
-        // Find SettingsActivity: has static (Self, ArrayList) -> V and static (Self, UItem) -> V
-        final String[] fillItemsName = new String[1];
-        final String[] onClickName = new String[1];
-        String settingsDesc = scanner.findClassByPredicate("Lorg/telegram/ui/", (desc, fields, methods) -> {
-            if (desc.contains("$") || desc.contains("/Components/") || desc.contains("/Cells/")) return false;
-            String fill = null, click = null;
+        // Find SettingsActivity by ranking top-level classes by total calls to Factory returning UItem in ArrayList methods
+        final String[] bestSettingsDesc = new String[1];
+        final String[] bestFillName = new String[1];
+        final String[] bestUniversalAdapter = new String[1];
+        final int[] bestCallScore = new int[]{0};
+
+        scanner.findClassByPredicate("Lorg/telegram/ui/", (desc, fields, methods) -> {
+            if (desc.equals(factoryDesc) || desc.contains("$") || desc.contains("/Components/") || desc.contains("/Cells/")) {
+                return false;
+            }
+            int totalCalls = 0;
+            String localBestFill = null;
+            int localBestFillCalls = 0;
+            String localAdapter = null;
             for (DexScanner.MethodInfo m : methods) {
-                if (m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 2 && desc.equals(m.paramDescs[0])) {
-                    if ("Ljava/util/ArrayList;".equals(m.paramDescs[1])) fill = m.name;
-                    else if (uItemDesc.equals(m.paramDescs[1])) click = m.name;
+                if (m.codeOff == 0) continue;
+                boolean hasArrayList = false;
+                for (String p : m.paramDescs) {
+                    if ("Ljava/util/ArrayList;".equals(p)) {
+                        hasArrayList = true;
+                        break;
+                    }
+                }
+                if (!hasArrayList) continue;
+                int callCount = 0;
+                for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(desc, m.name, m.paramDescs, factoryDesc)) {
+                    if (uItemDesc.equals(mr.returnDesc)) {
+                        callCount++;
+                    }
+                }
+                if (callCount > 0) {
+                    totalCalls += callCount;
+                    if (callCount > localBestFillCalls) {
+                        localBestFillCalls = callCount;
+                        localBestFill = m.name;
+                        localAdapter = null;
+                        for (String p : m.paramDescs) {
+                            if (p.startsWith("Lorg/telegram/ui/Components/") && !uItemDesc.equals(p)) {
+                                localAdapter = p;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
-            if (fill != null && click != null) {
-                fillItemsName[0] = fill;
-                onClickName[0] = click;
-                return true;
+            if (totalCalls > bestCallScore[0]) {
+                bestCallScore[0] = totalCalls;
+                bestSettingsDesc[0] = desc;
+                bestFillName[0] = localBestFill;
+                bestUniversalAdapter[0] = localAdapter;
             }
             return false;
         });
 
-        if (settingsDesc == null) {
+        if (bestSettingsDesc[0] != null) {
+            String settingsDesc = bestSettingsDesc[0];
+            addClass("org.telegram.ui.SettingsActivity", settingsDesc);
+            if (bestUniversalAdapter[0] != null) {
+                addClass(ClassNames.UNIVERSAL_ADAPTER, bestUniversalAdapter[0]);
+            }
+            if (bestFillName[0] != null) {
+                addMethod("SettingsActivity", "fillItems", bestFillName[0]);
+            }
+
+            DexScanner.MethodInfo bestClick = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(settingsDesc)) {
+                if (!"V".equals(m.returnDesc) || m.codeOff == 0) continue;
+                if (m.paramDescs.length < 2 || m.paramDescs.length > 5) continue;
+                boolean takesUItem = false;
+                for (String p : m.paramDescs) {
+                    if (uItemDesc.equals(p)) {
+                        takesUItem = true;
+                        break;
+                    }
+                }
+                if (!takesUItem) continue;
+                if ("onClick".equals(m.name)) {
+                    bestClick = m;
+                    break;
+                }
+                if (bestClick == null || m.getInsnsSize() > bestClick.getInsnsSize()) {
+                    bestClick = m;
+                }
+            }
+            if (bestClick != null) {
+                addMethod("SettingsActivity", "onClick", bestClick.name);
+            }
+        } else {
             String directSettingsDesc = "Lorg/telegram/ui/SettingsActivity;";
             String fill = null, click = null, universalAdapterDesc = null;
             for (DexScanner.MethodInfo m : scanner.getMethods(directSettingsDesc)) {
@@ -2245,10 +2327,6 @@ public class AutoMappingResolver {
                 if (fill != null) addMethod("SettingsActivity", "fillItems", fill);
                 if (click != null) addMethod("SettingsActivity", "onClick", click);
             }
-        } else {
-            addClass("org.telegram.ui.SettingsActivity", settingsDesc);
-            addMethod("SettingsActivity", "fillItems", fillItemsName[0]);
-            addMethod("SettingsActivity", "onClick", onClickName[0]);
         }
     }
 
@@ -2681,7 +2759,28 @@ public class AutoMappingResolver {
             addMethod("SQLiteCursor", "next", scanner.findSingleMethod(cursorDesc, false, "Z"));
             addMethod("SQLiteCursor", "byteBufferValue",
                     scanner.findSingleMethod(cursorDesc, false, "Lorg/telegram/tgnet/NativeByteBuffer;", "I"));
-            addMethod("SQLiteCursor", "intValue", scanner.findSingleMethod(cursorDesc, false, "I", "I"));
+
+            String intValMeth = null;
+            if (hasMethodNamed(scanner, cursorDesc, "intValue")) {
+                intValMeth = "intValue";
+            } else {
+                for (DexScanner.MethodInfo m : scanner.getMethods(cursorDesc)) {
+                    if (!m.isStatic && "I".equals(m.returnDesc) && m.paramDescs.length == 1 && "I".equals(m.paramDescs[0])) {
+                        for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(cursorDesc, m.name, m.paramDescs, cursorDesc)) {
+                            if ("columnIntValue".equals(ref.name) && "I".equals(ref.returnDesc)
+                                    && ref.paramDescs.length == 2 && "J".equals(ref.paramDescs[0]) && "I".equals(ref.paramDescs[1])) {
+                                intValMeth = m.name;
+                                break;
+                            }
+                        }
+                        if (intValMeth != null) break;
+                    }
+                }
+                if (intValMeth == null) {
+                    intValMeth = scanner.findSingleMethod(cursorDesc, false, "I", "I");
+                }
+            }
+            addMethod("SQLiteCursor", "intValue", intValMeth);
             addMethod("SQLiteCursor", "longValue", scanner.findSingleMethod(cursorDesc, false, "J", "I"));
 
             for (DexScanner.MethodInfo m : scanner.getMethods(cursorDesc)) {
@@ -2704,11 +2803,157 @@ public class AutoMappingResolver {
                     scanner.findSingleMethod(stmtDesc, false, "V", "I", "I"));
             addMethod("SQLitePreparedStatement", "bindLong",
                     scanner.findSingleMethod(stmtDesc, false, "V", "I", "J"));
-            addMethod("SQLitePreparedStatement", "requery",
-                    scanner.findSingleMethod(stmtDesc, false, stmtDesc));
+
+            String requeryMeth = null;
+            if (hasMethodNamed(scanner, stmtDesc, "requery")) {
+                requeryMeth = "requery";
+            } else {
+                for (DexScanner.MethodInfo m : scanner.getMethods(stmtDesc)) {
+                    if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                        for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(stmtDesc, m.name, new String[0], stmtDesc)) {
+                            if ("reset".equals(ref.name) && ref.paramDescs.length == 1 && "J".equals(ref.paramDescs[0])) {
+                                requeryMeth = m.name;
+                                break;
+                            }
+                        }
+                        if (requeryMeth != null) break;
+                    }
+                }
+            }
+            addMethod("SQLitePreparedStatement", "requery", requeryMeth);
             addMethod("SQLitePreparedStatement", "step",
-                    scanner.findSingleMethod(stmtDesc, false, "I"));
+                    hasMethodNamed(scanner, stmtDesc, "step")
+                            ? "step"
+                            : scanner.findSingleMethod(stmtDesc, false, "I"));
         }
+    }
+
+    private void resolveDialogMessageField(DexScanner scanner, String msgCtrlDesc, String deleteMeth) {
+        // 1. Mixed-mode raw field preservation
+        for (DexScanner.FieldInfo f : scanner.getFields(msgCtrlDesc)) {
+            if (!f.isStatic && "dialogMessage".equals(f.name)) {
+                String getLong = findLongSparseArrayGet(scanner, f.typeDesc);
+                if (getLong != null) {
+                    addClass(ClassNames.LONG_SPARES_ARRAY, f.typeDesc);
+                    addMethod("LongSparseArray", "get", getLong);
+                    addField("MessagesController", "dialogMessage", f.name);
+                    return;
+                }
+            }
+        }
+
+        // 2. Map all candidate LongSparseArray fields on MessagesController
+        Map<String, String> lsaFieldTypes = new HashMap<>();
+        Map<String, String> lsaTypeGetMethod = new HashMap<>();
+        String firstLsaField = null;
+        for (DexScanner.FieldInfo f : scanner.getFields(msgCtrlDesc)) {
+            if (!f.isStatic && !f.typeDesc.startsWith("Lorg/telegram/")
+                    && !f.typeDesc.startsWith("Landroid/") && !f.typeDesc.startsWith("Ljava/")) {
+                String getLong = lsaTypeGetMethod.get(f.typeDesc);
+                if (getLong == null && !lsaTypeGetMethod.containsKey(f.typeDesc)) {
+                    getLong = findLongSparseArrayGet(scanner, f.typeDesc);
+                    lsaTypeGetMethod.put(f.typeDesc, getLong);
+                }
+                if (getLong != null) {
+                    lsaFieldTypes.put(f.name, f.typeDesc);
+                    if (firstLsaField == null) firstLsaField = f.name;
+                }
+            }
+        }
+        if (lsaFieldTypes.isEmpty()) return;
+
+        // 3. Find dialogMessage via 2-arg helper (J, ArrayList) or (ArrayList, J)
+        Set<String> delCalledNames = new HashSet<>();
+        if (deleteMeth != null) {
+            for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
+                if (ref.paramDescs.length == 2
+                        && (("J".equals(ref.paramDescs[0]) && "Ljava/util/ArrayList;".equals(ref.paramDescs[1]))
+                        || ("Ljava/util/ArrayList;".equals(ref.paramDescs[0]) && "J".equals(ref.paramDescs[1])))) {
+                    delCalledNames.add(ref.name);
+                }
+            }
+        }
+
+        String helperMatchedField = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(msgCtrlDesc)) {
+            if (m.isStatic || m.paramDescs.length != 2) continue;
+            boolean isTwoArg = ("J".equals(m.paramDescs[0]) && "Ljava/util/ArrayList;".equals(m.paramDescs[1]))
+                    || ("Ljava/util/ArrayList;".equals(m.paramDescs[0]) && "J".equals(m.paramDescs[1]));
+            if (!isTwoArg) continue;
+            int insns = m.getInsnsSize();
+            if (insns < 20 || insns > 220) continue;
+
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, m.name, m.paramDescs, msgCtrlDesc)) {
+                if (lsaFieldTypes.containsKey(rf.name)) {
+                    if (delCalledNames.contains(m.name)) {
+                        String lsaType = lsaFieldTypes.get(rf.name);
+                        addClass(ClassNames.LONG_SPARES_ARRAY, lsaType);
+                        addMethod("LongSparseArray", "get", lsaTypeGetMethod.get(lsaType));
+                        addField("MessagesController", "dialogMessage", rf.name);
+                        return;
+                    }
+                    if (helperMatchedField == null && insns >= 40 && insns <= 160) {
+                        helperMatchedField = rf.name;
+                    }
+                }
+            }
+        }
+        if (helperMatchedField != null) {
+            String lsaType = lsaFieldTypes.get(helperMatchedField);
+            addClass(ClassNames.LONG_SPARES_ARRAY, lsaType);
+            addMethod("LongSparseArray", "get", lsaTypeGetMethod.get(lsaType));
+            addField("MessagesController", "dialogMessage", helperMatchedField);
+            return;
+        }
+
+        // 4. Fallback: field read directly in deleteMessages, or first LongSparseArray field
+        if (deleteMeth != null) {
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(msgCtrlDesc, deleteMeth, null, msgCtrlDesc)) {
+                if (lsaFieldTypes.containsKey(rf.name)) {
+                    String lsaType = lsaFieldTypes.get(rf.name);
+                    addClass(ClassNames.LONG_SPARES_ARRAY, lsaType);
+                    addMethod("LongSparseArray", "get", lsaTypeGetMethod.get(lsaType));
+                    addField("MessagesController", "dialogMessage", rf.name);
+                    return;
+                }
+            }
+        }
+        if (firstLsaField != null) {
+            String lsaType = lsaFieldTypes.get(firstLsaField);
+            addClass(ClassNames.LONG_SPARES_ARRAY, lsaType);
+            addMethod("LongSparseArray", "get", lsaTypeGetMethod.get(lsaType));
+            addField("MessagesController", "dialogMessage", firstLsaField);
+        }
+    }
+
+    private static String findLongSparseArrayGet(DexScanner scanner, String lsaDesc) {
+        String fallback = null;
+        for (DexScanner.MethodInfo lm : scanner.getMethods(lsaDesc)) {
+            if (!lm.isStatic && "Ljava/lang/Object;".equals(lm.returnDesc)
+                    && lm.paramDescs.length == 1 && "J".equals(lm.paramDescs[0])) {
+                if ("get".equals(lm.name)) return "get";
+                if (fallback == null) fallback = lm.name;
+            }
+        }
+        return fallback;
+    }
+
+    private static boolean hasClass(DexScanner scanner, String desc) {
+        return !scanner.getMethods(desc).isEmpty() || !scanner.getFields(desc).isEmpty();
+    }
+
+    private static boolean hasFieldNamed(DexScanner scanner, String classDesc, String fieldName) {
+        for (DexScanner.FieldInfo f : scanner.getFields(classDesc)) {
+            if (fieldName.equals(f.name)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasMethodNamed(DexScanner scanner, String classDesc, String methodName) {
+        for (DexScanner.MethodInfo m : scanner.getMethods(classDesc)) {
+            if (methodName.equals(m.name)) return true;
+        }
+        return false;
     }
 
     private static Set<String> collectWrittenDialogFields(

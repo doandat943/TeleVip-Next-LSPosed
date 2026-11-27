@@ -62,7 +62,9 @@ public class MessagesController {
     }
 
     public LongSparseArray getDialogMessage() {
-        return  new LongSparseArray(ReflectHelper.getObjectField(messagesController, Obfuscate.getFieldName("MessagesController", "dialogMessage")));
+        if (messagesController == null) return null;
+        Object val = ReflectHelper.getObjectField(messagesController, Obfuscate.getFieldName("MessagesController", "dialogMessage"));
+        return val != null ? new LongSparseArray(val) : null;
     }
 
     public static SharedPreferences getGlobalMainSettings() {
@@ -98,7 +100,21 @@ public class MessagesController {
     }
 
     public MessagesStorage getMessagesStorage() {
-        return new MessagesStorage(ReflectHelper.callMethod(messagesController, Obfuscate.getMethodName("MessagesController", "getMessagesStorage")));
+        if (messagesController != null) {
+            try {
+                String mName = Obfuscate.getMethodName("MessagesController", "getMessagesStorage");
+                if (mName != null && ReflectHelper.findMethodExactIfExists(messagesController.getClass(), mName) != null) {
+                    Object ms = ReflectHelper.callMethod(messagesController, mName);
+                    if (ms != null) return new MessagesStorage(ms);
+                }
+                if (!"getMessagesStorage".equals(mName)
+                        && ReflectHelper.findMethodExactIfExists(messagesController.getClass(), "getMessagesStorage") != null) {
+                    Object ms = ReflectHelper.callMethod(messagesController, "getMessagesStorage");
+                    if (ms != null) return new MessagesStorage(ms);
+                }
+            } catch (Throwable ignored) {}
+        }
+        return MessagesStorage.getMessagesStorage();
     }
 
     public static MessagesController getInstance(int num){

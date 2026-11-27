@@ -169,7 +169,7 @@ public class SaveEditsHistory {
                             if (ConfigManager.saveEditsHistory == null || !ConfigManager.saveEditsHistory.isEnable()) {
                                 return;
                             }
-                            if (param.args == null || param.args.length != 1 || !(param.args[0] instanceof Integer)) {
+                            if (param.args == null || param.args.length < 1 || !(param.args[0] instanceof Integer)) {
                                 return;
                             }
                             int option = (Integer) param.args[0];

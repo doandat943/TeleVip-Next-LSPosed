@@ -106,7 +106,7 @@ public class SettingsHook {
                                     } else {
                                         for (Method fm : SettingsActivity$SettingCell$FactoryClass.getDeclaredMethods()) {
                                             Class<?>[] pt = fm.getParameterTypes();
-                                            if (fm.getName().equals(ofName) && pt.length == 7
+                                            if (Modifier.isStatic(fm.getModifiers()) && fm.getName().equals(ofName) && pt.length == 7
                                                     && pt[0] == int.class && pt[1] == int.class
                                                     && pt[2] == int.class && pt[3] == int.class
                                                     && pt[4] == CharSequence.class && pt[5] == CharSequence.class) {
@@ -124,6 +124,13 @@ public class SettingsHook {
                                 }
                                 if (uItem == null) return;
 
+                                for (Object existing : arrayList) {
+                                    if (existing != null && UItemClass != null && UItemClass.isInstance(existing)) {
+                                        if (new UItem(existing).getID() == 8353847) return;
+                                    }
+                                }
+
+                                boolean inserted = false;
                                 for (int i = 0; i < arrayList.size(); i++) {
                                     UItem item = new UItem(arrayList.get(i));
 
@@ -133,7 +140,21 @@ public class SettingsHook {
                                         if (shadowItem != null) {
                                             arrayList.add(i + 1, shadowItem);
                                         }
+                                        inserted = true;
                                         break;
+                                    }
+                                }
+                                if (!inserted) {
+                                    for (int i = 0; i < arrayList.size(); i++) {
+                                        UItem item = new UItem(arrayList.get(i));
+                                        if (item.getText() != null) {
+                                            arrayList.add(i, uItem);
+                                            Object shadowItem = createShadowItem(arrayList, UItemClass);
+                                            if (shadowItem != null) {
+                                                arrayList.add(i + 1, shadowItem);
+                                            }
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -146,6 +167,7 @@ public class SettingsHook {
                     onClickName, new BaseMethodHook() {
                         @Override
                         protected void afterMethod(final MethodHookParam param) {
+                            if (param.args == null || param.args.length < 2 || param.args.length > 5) return;
                             Object rawItem = null;
                             for (Object arg : param.args) {
                                 if (arg != null && UItemClass != null && UItemClass.isInstance(arg)) {

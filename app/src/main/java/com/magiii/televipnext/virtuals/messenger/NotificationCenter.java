@@ -75,7 +75,7 @@ public class NotificationCenter {
                     postName = "postNotificationName";
                 }
                 Object[] payload = new Object[]{msgIds, channelId, Boolean.FALSE, Boolean.FALSE, Boolean.FALSE, 0};
-                ShowDeletedMessages.allowLocalDeleteFor(1500L);
+                ShowDeletedMessages.allowLocalDeleteIds(msgIds, 3000L);
                 ReflectHelper.callMethod(instance, postName, notifId, (Object) payload);
             } catch (Throwable t) {
                 Logger.e(t);
