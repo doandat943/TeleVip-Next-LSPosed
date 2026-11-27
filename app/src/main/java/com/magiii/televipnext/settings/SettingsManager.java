@@ -12,7 +12,14 @@ import com.magiii.televipnext.xposed.ReflectHelper;
 
 public class SettingsManager {
 
+    private static volatile SettingsController activeController;
+
+    public static SettingsController getSettingsController() {
+        return activeController;
+    }
+
     public static void init(SettingsController settingsController) {
+        activeController = settingsController;
 
         SettingsActivity.init(settingsController);
 

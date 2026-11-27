@@ -26,7 +26,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 56;
+    private static final int SCHEMA_VERSION = 57;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -3847,6 +3847,25 @@ public class AutoMappingResolver {
         }
 
         String showMenuName = scanner.findMethodByString(dialogsActDesc, "proxy_enabled", false, "V");
+        if (showMenuName == null) {
+            int bestAddCalls = 1;
+            for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
+                if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                int addCalls = 0;
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                        dialogsActDesc, m.name, m.paramDescs, null)) {
+                    if (ref.ownerDesc.startsWith("Lorg/telegram/ui/Components/")
+                            && ("V".equals(ref.returnDesc) || ref.ownerDesc.equals(ref.returnDesc))
+                            && isItemOptionsIconAddParams(ref.paramDescs)) {
+                        addCalls++;
+                    }
+                }
+                if (addCalls > bestAddCalls) {
+                    bestAddCalls = addCalls;
+                    showMenuName = m.name;
+                }
+            }
+        }
         if (showMenuName != null) {
             addMethod("DialogsActivity", "showOverflowMenu", showMenuName);
             String[] noParams = new String[0];
@@ -3866,6 +3885,24 @@ public class AutoMappingResolver {
                     addClass(ClassNames.ITEM_OPTIONS, itemOptionsDesc);
                     addMethod("ItemOptions", "addViewSubItem", addViewName);
                     break;
+                }
+            }
+            if (itemOptionsDesc == null) {
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                        dialogsActDesc, showMenuName, noParams, null)) {
+                    if (ref.ownerDesc.startsWith("Lorg/telegram/ui/Components/")
+                            && ("V".equals(ref.returnDesc) || ref.ownerDesc.equals(ref.returnDesc))
+                            && isItemOptionsIconAddParams(ref.paramDescs)) {
+                        itemOptionsDesc = ref.ownerDesc;
+                        addClass(ClassNames.ITEM_OPTIONS, itemOptionsDesc);
+                        break;
+                    }
+                }
+            }
+            if (itemOptionsDesc != null) {
+                String addIconName = resolveItemOptionsAddIconMethod(scanner, itemOptionsDesc);
+                if (addIconName != null) {
+                    addMethod("ItemOptions", "addIconItem", addIconName);
                 }
             }
             if (subItemDesc != null) {
@@ -3893,36 +3930,79 @@ public class AutoMappingResolver {
                     }
                 }
             }
-            if (itemOptionsDesc != null && addViewName != null) {
+            if (itemOptionsDesc != null) {
                 List<DexScanner.MethodRef> optCalls = scanner.getCalledMethodsInMethod(
                         dialogsActDesc, showMenuName, noParams, itemOptionsDesc);
-                int addIdx = -1;
-                for (int i = 0; i < optCalls.size(); i++) {
-                    DexScanner.MethodRef c = optCalls.get(i);
-                    if (addViewName.equals(c.name) && c.paramDescs.length == 1) {
-                        addIdx = i;
-                        break;
-                    }
-                }
-                if (addIdx >= 0) {
-                    String addGapName = null;
-                    for (int i = addIdx - 1; i >= 0; i--) {
+                if (addViewName != null) {
+                    int addIdx = -1;
+                    for (int i = 0; i < optCalls.size(); i++) {
                         DexScanner.MethodRef c = optCalls.get(i);
-                        if (c.paramDescs.length == 0
-                                && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
-                            addGapName = c.name;
-                            addMethod("ItemOptions", "addGap", addGapName);
+                        if (addViewName.equals(c.name) && c.paramDescs.length == 1) {
+                            addIdx = i;
                             break;
                         }
                     }
-                    for (int i = addIdx + 1; i < optCalls.size(); i++) {
-                        DexScanner.MethodRef c = optCalls.get(i);
-                        if (c.paramDescs.length == 0
-                                && (addGapName == null || !addGapName.equals(c.name))
-                                && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
-                            addMethod("ItemOptions", "show", c.name);
-                            break;
+                    if (addIdx >= 0) {
+                        String addGapName = null;
+                        for (int i = addIdx - 1; i >= 0; i--) {
+                            DexScanner.MethodRef c = optCalls.get(i);
+                            if (c.paramDescs.length == 0
+                                    && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
+                                addGapName = c.name;
+                                addMethod("ItemOptions", "addGap", addGapName);
+                                break;
+                            }
                         }
+                        for (int i = addIdx + 1; i < optCalls.size(); i++) {
+                            DexScanner.MethodRef c = optCalls.get(i);
+                            if (c.paramDescs.length == 0
+                                    && (addGapName == null || !addGapName.equals(c.name))
+                                    && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
+                                addMethod("ItemOptions", "show", c.name);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    String gapMethod = hasZeroArgMethodNamed(scanner, itemOptionsDesc, "addGap") ? "addGap" : null;
+                    int firstAdd = -1;
+                    int lastAdd = -1;
+                    for (int i = 0; i < optCalls.size(); i++) {
+                        DexScanner.MethodRef c = optCalls.get(i);
+                        if (isItemOptionsIconAddParams(c.paramDescs)) {
+                            if (firstAdd < 0) firstAdd = i;
+                            lastAdd = i;
+                        }
+                    }
+                    if (gapMethod == null && firstAdd >= 0 && lastAdd > firstAdd) {
+                        for (int i = firstAdd + 1; i < lastAdd; i++) {
+                            DexScanner.MethodRef c = optCalls.get(i);
+                            if (c.paramDescs.length == 0
+                                    && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
+                                gapMethod = c.name;
+                                break;
+                            }
+                        }
+                    }
+                    if (gapMethod != null) {
+                        addMethod("ItemOptions", "addGap", gapMethod);
+                    }
+                    String showMethod = null;
+                    if (hasZeroArgMethodNamed(scanner, itemOptionsDesc, "show")) {
+                        showMethod = "show";
+                    } else if (lastAdd >= 0) {
+                        for (int i = lastAdd + 1; i < optCalls.size(); i++) {
+                            DexScanner.MethodRef c = optCalls.get(i);
+                            if (c.paramDescs.length == 0
+                                    && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))
+                                    && (gapMethod == null || !gapMethod.equals(c.name))) {
+                                showMethod = c.name;
+                                break;
+                            }
+                        }
+                    }
+                    if (showMethod != null) {
+                        addMethod("ItemOptions", "show", showMethod);
                     }
                 }
             }
@@ -3954,6 +4034,47 @@ public class AutoMappingResolver {
                 if (updateHeaderVisName != null) break;
             }
         }
+    }
+
+    private static boolean isItemOptionsIconAddParams(String[] p) {
+        if (p == null) return false;
+        if (p.length == 3) {
+            return "I".equals(p[0])
+                    && "Ljava/lang/CharSequence;".equals(p[1])
+                    && "Ljava/lang/Runnable;".equals(p[2]);
+        }
+        if (p.length == 4) {
+            return "I".equals(p[0])
+                    && "Ljava/lang/CharSequence;".equals(p[1])
+                    && (("Ljava/lang/Runnable;".equals(p[2]) && "Z".equals(p[3]))
+                        || ("Z".equals(p[2]) && "Ljava/lang/Runnable;".equals(p[3])));
+        }
+        return false;
+    }
+
+    private static String resolveItemOptionsAddIconMethod(DexScanner scanner, String itemOptionsDesc) {
+        String best4Arg = null;
+        int best4Score = -1;
+        for (DexScanner.MethodInfo m : scanner.getMethods(itemOptionsDesc)) {
+            if (m.isStatic || !("V".equals(m.returnDesc) || itemOptionsDesc.equals(m.returnDesc))) {
+                continue;
+            }
+            if (!isItemOptionsIconAddParams(m.paramDescs)) continue;
+            if (m.paramDescs.length == 3) {
+                return m.name;
+            }
+            if ("add".equals(m.name)) {
+                return "add";
+            }
+            int staticReads = scanner.getReadStaticFieldsInMethod(
+                    itemOptionsDesc, m.name, m.paramDescs, null).size();
+            int score = staticReads * 1000 + m.getInsnsSize();
+            if (score > best4Score) {
+                best4Score = score;
+                best4Arg = m.name;
+            }
+        }
+        return best4Arg;
     }
 
     private void resolveMainTabs(DexScanner scanner, String userConfigDesc) {
@@ -4153,11 +4274,16 @@ public class AutoMappingResolver {
 
         if (userConfigDesc != null) {
             String showCallsTabField = null;
-            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
-                    mainTabsDesc, "createView", new String[]{"Landroid/content/Context;"}, userConfigDesc)) {
-                if ("Z".equals(rf.typeDesc)) {
-                    showCallsTabField = rf.name;
-                    break;
+            if (hasFieldNamed(scanner, userConfigDesc, "showCallsTab")) {
+                showCallsTabField = "showCallsTab";
+            }
+            if (showCallsTabField == null) {
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                        mainTabsDesc, "createView", new String[]{"Landroid/content/Context;"}, userConfigDesc)) {
+                    if ("Z".equals(rf.typeDesc)) {
+                        showCallsTabField = rf.name;
+                        break;
+                    }
                 }
             }
             if (showCallsTabField == null) {
@@ -4172,9 +4298,6 @@ public class AutoMappingResolver {
                         }
                     }
                 }
-            }
-            if (showCallsTabField == null && hasFieldNamed(scanner, userConfigDesc, "showCallsTab")) {
-                showCallsTabField = "showCallsTab";
             }
             if (showCallsTabField != null) {
                 addField("UserConfig", "showCallsTab", showCallsTabField);

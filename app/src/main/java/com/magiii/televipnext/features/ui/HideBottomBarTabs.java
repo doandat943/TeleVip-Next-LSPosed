@@ -12,15 +12,21 @@ import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.settings.SettingsManager;
+import com.magiii.televipnext.settings.controller.SettingsController;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.messenger.UserConfig;
 import com.magiii.televipnext.xposed.ReflectHelper;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 public class HideBottomBarTabs {
@@ -50,6 +56,8 @@ public class HideBottomBarTabs {
 
     private static final ThreadLocal<Boolean> IN_APPLY = new ThreadLocal<>();
     private static final ThreadLocal<Object> TEMP_SHOW_CALLS_UC = new ThreadLocal<>();
+    private static final ThreadLocal<Object> CURRENT_OVERFLOW_DIALOGS = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> SETTINGS_ADDED_IN_MENU = new ThreadLocal<>();
 
     private static String tabsField;
     private static String tabsViewField;
@@ -71,7 +79,17 @@ public class HideBottomBarTabs {
     private static String showCallsTabField;
     private static String showOverflowMenuMethod;
 
+    private static Class<?> itemOptionsCls;
+    private static String itemOptionsAddIconMethod;
+    private static String itemOptionsAddGapMethod;
+    private static String itemOptionsShowMethod;
+    private static Method addIconItemMethodObj;
+
+    private static String presentFragmentMethod;
+    private static Class<?> settingsActivityCls;
+
     private static boolean symbolsResolved;
+
     private static Method setViewVisibleMethodObj;
     private static boolean setViewVisibleChecked;
     private static Method setMaxWidthMethodObj;
@@ -82,6 +100,9 @@ public class HideBottomBarTabs {
     private static boolean scrollToPositionChecked;
     private static Method selectTabMethodObj;
     private static boolean selectTabChecked;
+
+    private static Set<Integer> settingsIconResIds;
+    private static int settingsLabelResId = -1;
 
     public static boolean isHideContacts() {
         return ConfigManager.hideBottomTabContacts != null && ConfigManager.hideBottomTabContacts.isEnable();
@@ -115,8 +136,8 @@ public class HideBottomBarTabs {
     }
 
     /**
-     * Hooks MainTabsActivity, ViewPagerActivityPagerLayout, and DialogsActivity's overflow menu to
-     * hide selected bottom navigation tabs without requiring an app restart.
+     * Hooks MainTabsActivity, ViewPagerActivityPagerLayout, and DialogsActivity's 3-dot ItemOptions
+     * menu to hide selected bottom navigation tabs without locking out Settings or TeleVip Next.
      */
     public static void init() {
         if (!loaded) {
@@ -229,13 +250,38 @@ public class HideBottomBarTabs {
             }
 
             Class<?> dialogsCls = ClassLoad.getClass(ClassNames.DIALOGS_ACTIVITY, Utils.classLoader, false);
-            if (dialogsCls != null && hasNoArgMethod(dialogsCls, showOverflowMenuMethod) && showCallsTabField != null) {
-                HMethod.hookMethod(dialogsCls, showOverflowMenuMethod, new BaseMethodHook() {
-                    @Override
-                    protected void beforeMethod(MethodHookParam param) {
-                        if (!isHideSettingsOrCalls()) return;
-                        Object uc = resolveUserConfig(param.thisObject);
-                        if (uc == null) return;
+            if (dialogsCls != null) {
+                installOverflowSafetyNet(dialogsCls);
+            }
+        } catch (Throwable t) {
+            Logger.e(t);
+        }
+    }
+
+    private static void installOverflowSafetyNet(Class<?> dialogsCls) {
+        if (showOverflowMenuMethod == null || !hasNoArgMethod(dialogsCls, showOverflowMenuMethod)) {
+            return;
+        }
+
+        boolean canHookShow = itemOptionsCls != null
+                && itemOptionsShowMethod != null
+                && !itemOptionsShowMethod.equals(itemOptionsAddGapMethod)
+                && hasNoArgMethod(itemOptionsCls, itemOptionsShowMethod);
+
+        addIconItemMethodObj = canHookShow ? findAddIconItemMethod() : null;
+        if (addIconItemMethodObj == null && showCallsTabField == null) {
+            return;
+        }
+
+        HMethod.hookMethod(dialogsCls, showOverflowMenuMethod, new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) {
+                if (!isHideSettingsOrCalls()) return;
+                CURRENT_OVERFLOW_DIALOGS.set(param.thisObject);
+                SETTINGS_ADDED_IN_MENU.set(Boolean.FALSE);
+                if (showCallsTabField != null) {
+                    Object uc = resolveUserConfig(param.thisObject);
+                    if (uc != null) {
                         try {
                             if (!ReflectHelper.getBooleanField(uc, showCallsTabField)) {
                                 ReflectHelper.setBooleanField(uc, showCallsTabField, true);
@@ -244,22 +290,116 @@ public class HideBottomBarTabs {
                         } catch (Throwable ignored) {
                         }
                     }
-
-                    @Override
-                    protected void afterMethod(MethodHookParam param) {
-                        Object uc = TEMP_SHOW_CALLS_UC.get();
-                        if (uc != null) {
-                            TEMP_SHOW_CALLS_UC.remove();
-                            try {
-                                ReflectHelper.setBooleanField(uc, showCallsTabField, false);
-                            } catch (Throwable ignored) {
-                            }
-                        }
-                    }
-                });
+                }
             }
-        } catch (Throwable t) {
-            Logger.e(t);
+
+            @Override
+            protected void afterMethod(MethodHookParam param) {
+                CURRENT_OVERFLOW_DIALOGS.remove();
+                SETTINGS_ADDED_IN_MENU.remove();
+                Object uc = TEMP_SHOW_CALLS_UC.get();
+                if (uc != null) {
+                    TEMP_SHOW_CALLS_UC.remove();
+                    try {
+                        ReflectHelper.setBooleanField(uc, showCallsTabField, false);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        });
+
+        if (addIconItemMethodObj == null) {
+            return;
+        }
+
+        BaseMethodHook unconditionalTracker = createSettingsTracker(-1, 0, 1);
+        BaseMethodHook r8AddIfTracker = createSettingsTracker(3, 0, 1);
+        BaseMethodHook plainAddIfTracker = createSettingsTracker(0, 1, 2);
+
+        Set<Method> hooked = new HashSet<>();
+        HMethod.hookMethod(addIconItemMethodObj, unconditionalTracker);
+        hooked.add(addIconItemMethodObj);
+
+        for (Method m : itemOptionsCls.getDeclaredMethods()) {
+            if (Modifier.isStatic(m.getModifiers()) || hooked.contains(m)) continue;
+            Class<?>[] pt = m.getParameterTypes();
+            if (pt.length != 4) continue;
+            BaseMethodHook tracker = null;
+            if (pt[0] == int.class && pt[1] == CharSequence.class
+                    && pt[2] == Runnable.class && pt[3] == boolean.class) {
+                tracker = r8AddIfTracker;
+            } else if (pt[0] == boolean.class && pt[1] == int.class
+                    && pt[2] == CharSequence.class && pt[3] == Runnable.class) {
+                tracker = plainAddIfTracker;
+            } else if (pt[0] == int.class && pt[1] == CharSequence.class
+                    && pt[2] == boolean.class && pt[3] == Runnable.class) {
+                tracker = unconditionalTracker;
+            }
+            if (tracker != null) {
+                m.setAccessible(true);
+                HMethod.hookMethod(m, tracker);
+                hooked.add(m);
+            }
+        }
+
+        HMethod.hookMethod(itemOptionsCls, itemOptionsShowMethod, new BaseMethodHook() {
+            @Override
+            protected void beforeMethod(MethodHookParam param) {
+                Object dialogs = CURRENT_OVERFLOW_DIALOGS.get();
+                if (dialogs == null || Boolean.TRUE.equals(SETTINGS_ADDED_IN_MENU.get())) return;
+                SETTINGS_ADDED_IN_MENU.set(Boolean.TRUE);
+                try {
+                    Context ctx = Utils.getCurrentActivity();
+                    Set<Integer> iconIds = getSettingsIconResIds(ctx);
+                    int iconRes = iconIds.isEmpty() ? 0 : iconIds.iterator().next();
+                    invokeAddIconItem(param.thisObject, iconRes, resolveSettingsLabel(ctx), () -> openSettings(dialogs));
+                } catch (Throwable t) {
+                    Logger.e(t);
+                }
+            }
+        });
+    }
+
+    private static BaseMethodHook createSettingsTracker(int condArgIdx, int iconArgIdx, int labelArgIdx) {
+        return new BaseMethodHook() {
+            @Override
+            protected void afterMethod(MethodHookParam param) {
+                if (CURRENT_OVERFLOW_DIALOGS.get() == null
+                        || Boolean.TRUE.equals(SETTINGS_ADDED_IN_MENU.get())) {
+                    return;
+                }
+                if (condArgIdx >= 0 && (param.args.length <= condArgIdx
+                        || !Boolean.TRUE.equals(param.args[condArgIdx]))) {
+                    return;
+                }
+                if (param.args.length > Math.max(iconArgIdx, labelArgIdx)
+                        && isSettingsMenuEntry(param.args[iconArgIdx], param.args[labelArgIdx])) {
+                    SETTINGS_ADDED_IN_MENU.set(Boolean.TRUE);
+                }
+            }
+        };
+    }
+
+    private static Method findAddIconItemMethod() {
+        if (itemOptionsCls == null || itemOptionsAddIconMethod == null) return null;
+        Method m = ReflectHelper.findMethodExactIfExists(
+                itemOptionsCls, itemOptionsAddIconMethod, int.class, CharSequence.class, Runnable.class);
+        if (m != null) return m;
+        m = ReflectHelper.findMethodExactIfExists(
+                itemOptionsCls, itemOptionsAddIconMethod, int.class, CharSequence.class, Runnable.class, boolean.class);
+        if (m != null) return m;
+        return ReflectHelper.findMethodExactIfExists(
+                itemOptionsCls, itemOptionsAddIconMethod, int.class, CharSequence.class, boolean.class, Runnable.class);
+    }
+
+    private static void invokeAddIconItem(Object io, int iconRes, String label, Runnable action) throws Throwable {
+        Class<?>[] pt = addIconItemMethodObj.getParameterTypes();
+        if (pt.length == 3) {
+            addIconItemMethodObj.invoke(io, iconRes, label, action);
+        } else if (pt[2] == Runnable.class) {
+            addIconItemMethodObj.invoke(io, iconRes, label, action, false);
+        } else {
+            addIconItemMethodObj.invoke(io, iconRes, label, false, action);
         }
     }
 
@@ -287,6 +427,113 @@ public class HideBottomBarTabs {
         getUserConfigMethod = Obfuscate.getMethodName("BaseFragment", "getUserConfig");
         showCallsTabField = Obfuscate.getFieldName("UserConfig", "showCallsTab");
         showOverflowMenuMethod = Obfuscate.getMethodName("DialogsActivity", "showOverflowMenu");
+
+        itemOptionsCls = ClassLoad.getClass(ClassNames.ITEM_OPTIONS, Utils.classLoader, false);
+        itemOptionsAddIconMethod = Obfuscate.getMethodName("ItemOptions", "addIconItem");
+        itemOptionsAddGapMethod = Obfuscate.getMethodName("ItemOptions", "addGap");
+        itemOptionsShowMethod = Obfuscate.getMethodName("ItemOptions", "show");
+
+        presentFragmentMethod = Obfuscate.getMethodName("BaseFragment", "presentFragment");
+        settingsActivityCls = ReflectHelper.findClassIfExists(
+                Obfuscate.getClassName("org.telegram.ui.SettingsActivity"), Utils.classLoader);
+    }
+
+    private static void openSettings(Object dialogsActivity) {
+        if (dialogsActivity != null && settingsActivityCls != null) {
+            try {
+                Object fragment = ReflectHelper.newInstance(settingsActivityCls);
+                if (fragment != null) {
+                    Method pf = findPresentFragmentMethod(dialogsActivity.getClass(), fragment.getClass());
+                    if (pf != null) {
+                        pf.invoke(dialogsActivity, fragment);
+                        return;
+                    }
+                }
+            } catch (Throwable t) {
+                Logger.e(t);
+            }
+        }
+        SettingsController controller = SettingsManager.getSettingsController();
+        if (controller != null) {
+            AndroidUtilities.runOnUIThread(controller::openView);
+        }
+    }
+
+    private static Method findPresentFragmentMethod(Class<?> dialogsCls, Class<?> fragmentCls) {
+        for (String name : new String[]{presentFragmentMethod, "presentFragment"}) {
+            if (name == null) continue;
+            for (Class<?> c = dialogsCls; c != null && c != Object.class; c = c.getSuperclass()) {
+                for (Method m : c.getDeclaredMethods()) {
+                    if (!Modifier.isStatic(m.getModifiers()) && name.equals(m.getName())
+                            && m.getParameterCount() == 1
+                            && m.getParameterTypes()[0].isAssignableFrom(fragmentCls)) {
+                        m.setAccessible(true);
+                        return m;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSettingsMenuEntry(Object iconArg, Object labelArg) {
+        Context ctx = Utils.getCurrentActivity();
+        if (iconArg instanceof Integer) {
+            int iconRes = (Integer) iconArg;
+            if (iconRes != 0 && getSettingsIconResIds(ctx).contains(iconRes)) return true;
+        }
+        if (labelArg instanceof CharSequence) {
+            return resolveSettingsLabel(ctx).equalsIgnoreCase(labelArg.toString().trim());
+        }
+        return false;
+    }
+
+    private static Set<Integer> getSettingsIconResIds(Context ctx) {
+        if (settingsIconResIds != null) return settingsIconResIds;
+        Set<Integer> ids = new LinkedHashSet<>();
+        String[] names = {"msg_settings", "msg_settings_old", "msg_settings_ny", "msg_settings_14", "msg_settings_hw"};
+        Class<?> rDrawable = ClassLoad.getClass(ClassNames.DRAWABLE, Utils.classLoader, false);
+        for (String name : names) {
+            if (ctx != null && ctx.getResources() != null) {
+                int val = ctx.getResources().getIdentifier(name, "drawable", ctx.getPackageName());
+                if (val != 0) ids.add(val);
+            }
+            if (rDrawable != null) {
+                try {
+                    int val = ReflectHelper.getStaticIntField(rDrawable, name);
+                    if (val != 0) ids.add(val);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        if (!ids.isEmpty()) settingsIconResIds = ids;
+        return ids;
+    }
+
+    private static String resolveSettingsLabel(Context ctx) {
+        if (ctx != null && ctx.getResources() != null) {
+            if (settingsLabelResId == -1) {
+                int resId = ctx.getResources().getIdentifier("Settings", "string", ctx.getPackageName());
+                if (resId == 0) {
+                    Class<?> rString = ClassLoad.getClass("org.telegram.messenger.R$string", Utils.classLoader, false);
+                    if (rString != null) {
+                        try {
+                            resId = ReflectHelper.getStaticIntField(rString, "Settings");
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+                settingsLabelResId = resId;
+            }
+            if (settingsLabelResId > 0) {
+                try {
+                    String s = ctx.getString(settingsLabelResId);
+                    if (s != null && !s.isEmpty()) return s;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        return "Settings";
     }
 
     private static void registerInstance(Object mainTabs) {
