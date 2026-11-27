@@ -26,7 +26,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 58;
+    private static final int SCHEMA_VERSION = 59;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -1476,9 +1476,11 @@ public class AutoMappingResolver {
         resolveSQLite(scanner);
 
         // 9. Obfuscated tgnet TL constructors & fields (e.g. Nekogram)
+        String sponsoredReqDescHint = null;
         if (tgnetObfuscated) {
-            resolveObfuscatedTgnetConstructors(scanner, tlObjectDesc);
+            sponsoredReqDescHint = resolveObfuscatedTgnetConstructors(scanner, tlObjectDesc);
         }
+        resolveSponsoredMessagesMethod(scanner, msgCtrlDesc, sponsoredReqDescHint);
 
         // Serialize to JSON
         JSONObject root = new JSONObject();
@@ -1720,6 +1722,28 @@ public class AutoMappingResolver {
                     }
                 }
                 addMethod("MessagesController", isEntities ? "storyEntitiesAllowed" : "storiesEnabled", m.name);
+            }
+        }
+    }
+
+    private void resolveSponsoredMessagesMethod(DexScanner scanner, String msgCtrlDesc, String reqDescHint) {
+        if (msgCtrlDesc == null) return;
+        String mappedReq = classMap.get(ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES);
+        String reqDesc = reqDescHint != null
+                ? reqDescHint
+                : (mappedReq != null
+                    ? DexScanner.javaToDesc(mappedReq)
+                    : DexScanner.javaToDesc(ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES));
+        for (DexScanner.MethodInfo m : scanner.getMethods(msgCtrlDesc)) {
+            if (m.isStatic || m.paramDescs.length != 1 || !"J".equals(m.paramDescs[0])
+                    || "V".equals(m.returnDesc) || m.returnDesc.length() <= 1) {
+                continue;
+            }
+            for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(msgCtrlDesc, m.name, m.paramDescs, reqDesc)) {
+                if ("<init>".equals(ref.name)) {
+                    addMethod("MessagesController", "getSponsoredMessages", m.name);
+                    return;
+                }
             }
         }
     }
@@ -4553,8 +4577,8 @@ public class AutoMappingResolver {
         }
     }
 
-    private void resolveObfuscatedTgnetConstructors(DexScanner scanner, String tlObjectDesc) {
-        if (tlObjectDesc == null) return;
+    private String resolveObfuscatedTgnetConstructors(DexScanner scanner, String tlObjectDesc) {
+        if (tlObjectDesc == null) return null;
         Map<Integer, String> ctorTargets = new HashMap<>();
         ctorTargets.put(0xa20db0e5, ClassNames.TL_UPDATE_DELETE_MESSAGES);
         ctorTargets.put(0xc32d5b12, ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES);
@@ -4571,6 +4595,10 @@ public class AutoMappingResolver {
         ctorTargets.put(0x791451ed, ClassNames.TL_MESSAGES_SET_ENCRYPTED_TYPING);
         ctorTargets.put(0xa556dac8, ClassNames.TL_STORIES_READ_STORIES);
         ctorTargets.put(0xb2028afb, ClassNames.TL_STORIES_INCREMENT_STORY_VIEWS);
+        ctorTargets.put(0x3d6ce850, ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES);
+        ctorTargets.put(0x9bd2f439, ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES);
+        ctorTargets.put(0xec210fbf, ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES);
+        ctorTargets.put(0xb6c8c393, ClassNames.TL_CONTACTS_GET_SPONSORED_PEERS);
 
         // Peer & InputPeer concrete subtypes (for deterministic field resolution via serializeToStream)
         final String PEER_USER_KEY = "_TL_peerUser";
@@ -4702,6 +4730,7 @@ public class AutoMappingResolver {
                 addField("TLRPC$TL_messages_affectedMessages", "pts_count", intFields.get(1));
             }
         }
+        return found.get(ClassNames.TL_MESSAGES_GET_SPONSORED_MESSAGES);
     }
 
     private static String findFirstReadLongField(DexScanner scanner, String subDesc, String ownerDesc) {

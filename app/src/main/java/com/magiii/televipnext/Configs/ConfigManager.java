@@ -15,6 +15,7 @@ import com.magiii.televipnext.features.ghostMode.GhostMode;
 import com.magiii.televipnext.features.ghostMode.HidePhone;
 import com.magiii.televipnext.features.ui.HidePinnedMessages;
 import com.magiii.televipnext.features.ui.HideProxySponsor;
+import com.magiii.televipnext.features.ui.HideSponsoredAds;
 import com.magiii.televipnext.features.ui.HideBottomBarTabs;
 import com.magiii.televipnext.features.ui.HideNewChatButton;
 import com.magiii.televipnext.features.other.HideUpdateApp;
@@ -99,6 +100,7 @@ public class ConfigManager {
     public static ConfigItem disableChannelSwipeBack;
     public static ConfigItem disableProfileSwipeBack;
     public static ConfigItem hideProxySponsor;
+    public static ConfigItem hideSponsoredAds;
     public static ConfigItem showUserID;
     public static ConfigItem customCalendar;
     public static ConfigItem showTimeSeconds;
@@ -314,6 +316,10 @@ public class ConfigManager {
         hideProxySponsor = new ConfigItem(ConfigItem.SWITCH, Keys.HideProxySponsor, true, ConfigPreferences.getBoolean(Keys.HideProxySponsor), HideProxySponsor::init);
         items.add(hideProxySponsor);
 
+        hideSponsoredAds = new ConfigItem(ConfigItem.SWITCH, Keys.HideSponsoredAds,
+                ConfigPreferences.getBoolean(Keys.HideSponsoredAds), HideSponsoredAds::init);
+        items.add(hideSponsoredAds);
+
         if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
             showUserID = new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), EditOnlineTextView::init);
             items.add(showUserID);
@@ -430,6 +436,7 @@ public class ConfigManager {
                 HideBottomBarTabs.init();
             }
             HideNewChatButton.init();
+            HideSponsoredAds.init();
             AlwaysSaveMedia.init();
             ShowDeletedMessages.initMenuHooks();
 

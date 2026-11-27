@@ -68,6 +68,7 @@ public class Keys {
     public static final String UiSettings = "UiSettings";
     public static final String SecretMediaSave = "SecretMediaSave";
     public static final String HideProxySponsor = "HideProxySponsor";
+    public static final String HideSponsoredAds = "HideSponsoredAds";
     public static final String HijriMonthMuharram = "HijriMonthMuharram";
     public static final String HijriMonthSafar = "HijriMonthSafar";
     public static final String HijriMonthRabiAlAwal = "HijriMonthRabiAlAwal";

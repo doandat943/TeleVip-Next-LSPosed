@@ -70,6 +70,8 @@ public class ClassNames {
     public static final String TL_MESSAGES_SET_ENCRYPTED_TYPING = "org.telegram.tgnet.TLRPC$TL_messages_setEncryptedTyping";
     public static final String TL_STORIES_READ_STORIES = "org.telegram.tgnet.tl.TL_stories$TL_stories_readStories";
     public static final String TL_STORIES_INCREMENT_STORY_VIEWS = "org.telegram.tgnet.tl.TL_stories$TL_stories_incrementStoryViews";
+    public static final String TL_MESSAGES_GET_SPONSORED_MESSAGES = "org.telegram.tgnet.TLRPC$TL_messages_getSponsoredMessages";
+    public static final String TL_CONTACTS_GET_SPONSORED_PEERS = "org.telegram.tgnet.TLRPC$TL_contacts_getSponsoredPeers";
     public static final String LONG_SPARES_ARRAY = "androidx.collection.LongSparseArray";
     public static final String SEND_MESSAGES_HELPER = "org.telegram.messenger.SendMessagesHelper";
     public static final String SEND_MESSAGE_PARAMS = "org.telegram.messenger.SendMessagesHelper$SendMessageParams";
