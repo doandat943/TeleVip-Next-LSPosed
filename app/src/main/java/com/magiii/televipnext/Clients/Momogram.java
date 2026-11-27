@@ -3,8 +3,10 @@ package com.magiii.televipnext.Clients;
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public class Momogram {
 
@@ -32,6 +34,28 @@ public class Momogram {
     }
 
     public static void loadParameter() {
-        ParameterResolver.register("sendRequestInternal",new Class[]{ClassLoad.getClass(ClassNames.TL_OBJECT), ClassLoad.getClass(ClassNames.REQUEST_DELEGATE), ClassLoad.getClass(ClassNames.REQUEST_DELEGATE_TIMESTAMP), ClassLoad.getClass(ClassNames.QUICK_ACK_DELEGATE), ClassLoad.getClass(ClassNames.WRITE_TO_SOCKET_DELEGATE), int.class, int.class, int.class, boolean.class, int.class, Runnable.class});
+        ParameterResolver.register("sendRequestInternal", new Class[]{
+                ClassLoad.getClass(ClassNames.TL_OBJECT),
+                ClassLoad.getClass(ClassNames.REQUEST_DELEGATE),
+                ClassLoad.getClass(ClassNames.REQUEST_DELEGATE_TIMESTAMP),
+                ClassLoad.getClass(ClassNames.QUICK_ACK_DELEGATE),
+                ClassLoad.getClass(ClassNames.WRITE_TO_SOCKET_DELEGATE),
+                int.class, int.class, int.class, boolean.class, int.class, Runnable.class
+        });
+        ParameterResolver.register("deleteMessages", new Class[]{
+                ArrayList.class,
+                ArrayList.class,
+                ClassLoad.getClass(ClassNames.TLRPC_ENCRYPTED_CHAT),
+                long.class,
+                boolean.class,
+                int.class,
+                boolean.class,
+                long.class,
+                ClassLoad.getClass(ClassNames.TL_OBJECT),
+                int.class,
+                boolean.class,
+                int.class,
+                BiConsumer.class
+        });
     }
 }

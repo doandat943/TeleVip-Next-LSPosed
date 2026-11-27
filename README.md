@@ -68,7 +68,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 | Plus Messenger (`org.telegram.plus`) | Cherrygram (`uz.unnarsx.cherrygram`) |
 | iMe (`com.iMe.android`) | Nicegram (`app.nicegram`) |
 | iMe Web (`com.iMe.android.web`) | Telegraph (`ir.ilmili.telegraph`) |
-| Forkgram (`org.forkgram.messenger`) | Momogram (`nekox.messenger.broken`) |
+| Forkgram (`org.forkgram.messenger`) | Momogram (`momo.gram`) |
 | ForkClient Beta (`org.forkclient.messenger.beta`) | Turrit (`org.telegram.group`) |
 | Forkgram Classic (`org.forkgram.classic`) | Mercurygram (`it.belloworld.mercurygram`) |
 | X Plus (`com.xplus.messenger`) | |

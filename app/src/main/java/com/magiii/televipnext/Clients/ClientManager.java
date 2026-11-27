@@ -20,7 +20,7 @@ public class ClientManager {
         forkgram("org.forkgram.messenger"),
         forkgramBeta("org.forkclient.messenger.beta"),
         Telegraph("ir.ilmili.telegraph", com.magiii.televipnext.Clients.Telegraph.class),
-        Momogram("nekox.messenger.broken", com.magiii.televipnext.Clients.Momogram.class),
+        Momogram("momo.gram", com.magiii.televipnext.Clients.Momogram.class),
         Nekogram("tw.nekomimi.nekogram", true),
         Cherrygram("uz.unnarsx.cherrygram", true),
         ForkgramClassic("org.forkgram.classic"),

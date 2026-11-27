@@ -14,12 +14,11 @@
         <item>org.forkgram.messenger</item>
         <item>com.iMe.android.web</item>
         <item>ir.ilmili.telegraph</item>
-        <item>nekox.messenger.broken</item>
+        <item>momo.gram</item>
         <item>tw.nekomimi.nekogram</item>
         <item>org.forkgram.classic</item>
         <item>org.telegram.group</item>
         <item>fork.risin42.nagramx</item>
         <item>it.belloworld.mercurygram</item>
-      <!--  <item>momo.gram</item> -->
     </string-array>
 </resources>

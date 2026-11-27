@@ -427,6 +427,7 @@ public class AutoMappingResolver {
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"},
                         {msgObjDesc, msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"},
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/lang/CharSequence;"},
+                        {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Landroid/view/View;"},
                         {msgObjDesc, "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;", "Ljava/util/ArrayList;"}
                 };
                 for (String[] variant : fillMenuVariants) {
@@ -691,6 +692,64 @@ public class AutoMappingResolver {
                                 }
                             }
                             break;
+                        }
+                    }
+                }
+                if (!classMap.containsKey("org.telegram.messenger.DispatchQueue")) {
+                    // Fallback when MessagesStorage#getStorageQueue is R8-inlined (e.g. Momogram)
+                    String dqDesc = scanner.findClassByPredicate(null, (d, fs, ms) -> {
+                        if (!"Ljava/lang/Thread;".equals(scanner.getSuperClass(d))) return false;
+                        boolean has1 = false, has2 = false;
+                        for (DexScanner.MethodInfo dm : ms) {
+                            if (!dm.isStatic && dm.paramDescs.length == 1 && "Ljava/lang/Runnable;".equals(dm.paramDescs[0])
+                                    && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
+                                has1 = true;
+                            } else if (!dm.isStatic && dm.paramDescs.length == 2
+                                    && "Ljava/lang/Runnable;".equals(dm.paramDescs[0]) && "J".equals(dm.paramDescs[1])
+                                    && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
+                                has2 = true;
+                            }
+                        }
+                        return has1 && has2;
+                    });
+                    if (dqDesc != null) {
+                        addClass("org.telegram.messenger.DispatchQueue", dqDesc);
+                        DexScanner.MethodInfo bestPostRun = null;
+                        for (DexScanner.MethodInfo dm : scanner.getMethods(dqDesc)) {
+                            if (!dm.isStatic && dm.paramDescs.length == 1 && "Ljava/lang/Runnable;".equals(dm.paramDescs[0])
+                                    && ("Z".equals(dm.returnDesc) || "V".equals(dm.returnDesc))) {
+                                if ("postRunnable".equals(dm.name)) {
+                                    bestPostRun = dm;
+                                    break;
+                                }
+                                if (bestPostRun == null || dm.getInsnsSize() < bestPostRun.getInsnsSize()) {
+                                    bestPostRun = dm;
+                                }
+                            }
+                        }
+                        if (bestPostRun != null) {
+                            addMethod("DispatchQueue", "postRunnable", bestPostRun.name);
+                        }
+                        String utilDesc = DexScanner.javaToDesc(ClassNames.UTILITIES);
+                        if (hasFieldNamed(scanner, utilDesc, "stageQueue")) {
+                            addField("Utilities", "stageQueue", "stageQueue");
+                        } else {
+                            String threadFallback = null;
+                            for (DexScanner.FieldInfo wf : scanner.getWrittenStaticFieldsInMethod(utilDesc, "<clinit>", new String[0], utilDesc)) {
+                                if (dqDesc.equals(wf.typeDesc)
+                                        || scanner.isSubclassOf(wf.typeDesc, dqDesc)
+                                        || scanner.isSubclassOf(dqDesc, wf.typeDesc)) {
+                                    addField("Utilities", "stageQueue", wf.name);
+                                    threadFallback = null;
+                                    break;
+                                }
+                                if (threadFallback == null && scanner.isSubclassOf(wf.typeDesc, "Ljava/lang/Thread;")) {
+                                    threadFallback = wf.name;
+                                }
+                            }
+                            if (threadFallback != null) {
+                                addField("Utilities", "stageQueue", threadFallback);
+                            }
                         }
                     }
                 }
