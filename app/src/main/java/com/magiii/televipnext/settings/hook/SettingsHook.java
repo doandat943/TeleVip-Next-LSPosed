@@ -402,10 +402,15 @@ public class SettingsHook {
 
                             Object drawerLayoutContainer = ReflectHelper.getObjectField(Launch, Obfuscate.getFieldName("LaunchActivity", "drawerLayoutContainer"));
                             if (drawerLayoutContainer != null) {
-                                if (!ClientManager.is(ClientManager.Client.ForkgramClassic)) {
-                                    ReflectHelper.callMethod(drawerLayoutContainer, Obfuscate.getMethodName("DrawerLayoutContainer", "closeDrawer"));
-                                } else {
-                                    ReflectHelper.callMethod(drawerLayoutContainer, Obfuscate.getMethodName("DrawerLayoutContainer", "closeDrawer"), true);
+                                String closeMethod = Obfuscate.getMethodName("DrawerLayoutContainer", "closeDrawer");
+                                Class<?> dlcClass = drawerLayoutContainer.getClass();
+                                if (!ClientManager.is(ClientManager.Client.ForkgramClassic)
+                                        && ReflectHelper.findMethodExactIfExists(dlcClass, closeMethod) != null) {
+                                    ReflectHelper.callMethod(drawerLayoutContainer, closeMethod);
+                                } else if (ReflectHelper.findMethodExactIfExists(dlcClass, closeMethod, boolean.class) != null) {
+                                    ReflectHelper.callMethod(drawerLayoutContainer, closeMethod, true);
+                                } else if (ReflectHelper.findMethodExactIfExists(dlcClass, closeMethod) != null) {
+                                    ReflectHelper.callMethod(drawerLayoutContainer, closeMethod);
                                 }
                             }
 

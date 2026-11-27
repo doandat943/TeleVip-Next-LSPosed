@@ -1463,8 +1463,9 @@ public class AutoMappingResolver {
             }
         }
 
-        // 6. SettingsActivity, SettingCell$Factory, UItem
+        // 6. SettingsActivity, SettingCell$Factory, UItem, and legacy DrawerLayoutAdapter
         resolveSettingsClasses(scanner);
+        resolveDrawerClasses(scanner, launchActDesc);
 
         // 7. AlertDialog$Builder & OnButtonClickListener
         resolveAlertDialog(scanner);
@@ -2650,6 +2651,131 @@ public class AutoMappingResolver {
                 if (fill != null) addMethod("SettingsActivity", "fillItems", fill);
                 if (click != null) addMethod("SettingsActivity", "onClick", click);
             }
+        }
+    }
+
+    private void resolveDrawerClasses(DexScanner scanner, String launchActDesc) {
+        String dlaDesc = "Lorg/telegram/ui/Adapters/DrawerLayoutAdapter;";
+        String dlcDesc = "Lorg/telegram/ui/ActionBar/DrawerLayoutContainer;";
+        if (!hasClass(scanner, dlaDesc)) {
+            return;
+        }
+        addClass(ClassNames.DRAWER_LAYOUT_ADAPTER, dlaDesc);
+
+        String itemDesc = "Lorg/telegram/ui/Adapters/DrawerLayoutAdapter$Item;";
+        if (!hasClass(scanner, itemDesc)) {
+            itemDesc = scanner.findClassByPredicate("Lorg/telegram/ui/Adapters/", (d, fs, ms) -> {
+                for (DexScanner.MethodInfo m : ms) {
+                    if ("<init>".equals(m.name) && m.paramDescs.length == 3
+                            && "I".equals(m.paramDescs[0])
+                            && "Ljava/lang/CharSequence;".equals(m.paramDescs[1])
+                            && "I".equals(m.paramDescs[2])) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        if (itemDesc != null) {
+            addClass("org.telegram.ui.Adapters.DrawerLayoutAdapter$Item", itemDesc);
+        }
+
+        // LaunchActivity fields: drawerLayoutAdapter and drawerLayoutContainer
+        if (launchActDesc != null) {
+            String dlaField = hasFieldNamed(scanner, launchActDesc, "drawerLayoutAdapter")
+                    ? "drawerLayoutAdapter"
+                    : scanner.findSingleField(launchActDesc, false, dlaDesc);
+            if (dlaField != null) {
+                addField("LaunchActivity", "drawerLayoutAdapter", dlaField);
+            }
+            String dlcField = hasFieldNamed(scanner, launchActDesc, "drawerLayoutContainer")
+                    ? "drawerLayoutContainer"
+                    : scanner.findSingleField(launchActDesc, false, dlcDesc);
+            if (dlcField != null) {
+                addField("LaunchActivity", "drawerLayoutContainer", dlcField);
+            }
+        }
+
+        // DrawerLayoutAdapter#resetItems: raw or largest instance () -> V
+        String resetItems = hasMethodNamed(scanner, dlaDesc, "resetItems") ? "resetItems" : null;
+        if (resetItems == null) {
+            DexScanner.MethodInfo bestReset = null;
+            for (DexScanner.MethodInfo m : scanner.getMethods(dlaDesc)) {
+                if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 0
+                        && !m.name.startsWith("<")) {
+                    if (bestReset == null || m.getInsnsSize() > bestReset.getInsnsSize()) {
+                        bestReset = m;
+                    }
+                }
+            }
+            if (bestReset != null && bestReset.getInsnsSize() > 50) {
+                resetItems = bestReset.name;
+            }
+        }
+        if (resetItems != null) {
+            addMethod("DrawerLayoutAdapter", "resetItems", resetItems);
+        }
+
+        // Resolve DrawerLayoutAdapter#getId and DrawerLayoutContainer#closeDrawer from LaunchActivity (View, I, F, F) click handler
+        String getIdMeth = hasMethodNamed(scanner, dlaDesc, "getId") ? "getId" : null;
+        String closeDrawerMeth = hasMethodNamed(scanner, dlcDesc, "closeDrawer") ? "closeDrawer" : null;
+        if (launchActDesc != null && (getIdMeth == null || closeDrawerMeth == null)) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(launchActDesc)) {
+                if (m.paramDescs.length == 4
+                        && "Landroid/view/View;".equals(m.paramDescs[0])
+                        && "I".equals(m.paramDescs[1])
+                        && "F".equals(m.paramDescs[2])
+                        && "F".equals(m.paramDescs[3])) {
+                    if (getIdMeth == null) {
+                        for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(launchActDesc, m.name, m.paramDescs, dlaDesc)) {
+                            if ("I".equals(mr.returnDesc) && mr.paramDescs.length == 1 && "I".equals(mr.paramDescs[0])) {
+                                getIdMeth = mr.name;
+                                break;
+                            }
+                        }
+                    }
+                    if (closeDrawerMeth == null && hasClass(scanner, dlcDesc)) {
+                        Map<String, Integer> closeCounts = new HashMap<>();
+                        for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(launchActDesc, m.name, m.paramDescs, dlcDesc)) {
+                            if ("V".equals(mr.returnDesc) && (mr.paramDescs.length == 0
+                                    || (mr.paramDescs.length == 1 && "Z".equals(mr.paramDescs[0])))) {
+                                closeCounts.put(mr.name, closeCounts.getOrDefault(mr.name, 0) + 1);
+                            }
+                        }
+                        int bestCnt = 0;
+                        for (Map.Entry<String, Integer> e : closeCounts.entrySet()) {
+                            if (e.getValue() > bestCnt) {
+                                bestCnt = e.getValue();
+                                closeDrawerMeth = e.getKey();
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        if (getIdMeth != null) {
+            addMethod("DrawerLayoutAdapter", "getId", getIdMeth);
+        }
+        if (closeDrawerMeth != null) {
+            addMethod("DrawerLayoutContainer", "closeDrawer", closeDrawerMeth);
+        }
+
+        // DrawerLayoutAdapter#items: raw or ArrayList field read in getId(I)
+        String itemsField = hasFieldNamed(scanner, dlaDesc, "items") ? "items" : null;
+        if (itemsField == null && getIdMeth != null) {
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(dlaDesc, getIdMeth, new String[]{"I"}, dlaDesc)) {
+                if ("Ljava/util/ArrayList;".equals(rf.typeDesc)) {
+                    itemsField = rf.name;
+                    break;
+                }
+            }
+        }
+        if (itemsField == null) {
+            itemsField = scanner.findSingleField(dlaDesc, false, "Ljava/util/ArrayList;");
+        }
+        if (itemsField != null) {
+            addField("DrawerLayoutAdapter", "items", itemsField);
         }
     }
 
