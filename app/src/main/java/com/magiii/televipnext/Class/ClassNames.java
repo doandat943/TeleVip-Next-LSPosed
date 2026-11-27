@@ -87,4 +87,6 @@ public class ClassNames {
     public static final String BUTTON_WITH_COUNTER_VIEW = "org.telegram.ui.Stories.recorder.ButtonWithCounterView";
     public static final String STORIES_UTILITIES = "org.telegram.ui.Stories.StoriesUtilities";
     public static final String AVATAR_STORY_PARAMS = "org.telegram.ui.Stories.StoriesUtilities$AvatarStoryParams";
+    public static final String MAIN_TABS_ACTIVITY = "org.telegram.ui.MainTabsActivity";
+    public static final String VIEW_PAGER_ACTIVITY_PAGER_LAYOUT = "org.telegram.ui.ViewPagerActivity$ViewPagerActivityPagerLayout";
    }

@@ -168,4 +168,8 @@ public class Keys {
     public static final String ForwardRestrictedFailed = "ForwardRestrictedFailed";
     public static final String Language = "Language";
     public static final String LanguageAuto = "LanguageAuto";
+    public static final String HideBottomBarTabs = "HideBottomBarTabs";
+    public static final String HideBottomTabContacts = "HideBottomTabContacts";
+    public static final String HideBottomTabSettingsCalls = "HideBottomTabSettingsCalls";
+    public static final String HideBottomTabProfile = "HideBottomTabProfile";
 }

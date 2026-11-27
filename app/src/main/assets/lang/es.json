@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "No se pudo reenviar el mensaje desde un chat restringido",
   "Language": "Idioma",
   "LanguageDesc": "Elige el idioma de TeleVip Next",
-  "LanguageAuto": "Automático"
+  "LanguageAuto": "Automático",
+  "HideBottomBarTabs": "Ocultar pestañas de la barra inferior",
+  "HideBottomBarTabsDesc": "Elige qué pestañas de navegación inferior ocultar. Ocultarlas todas oculta la barra y mantiene Ajustes en el menú ⋮",
+  "HideBottomTabContacts": "Contactos",
+  "HideBottomTabSettingsCalls": "Ajustes / Llamadas",
+  "HideBottomTabProfile": "Perfil"
 }

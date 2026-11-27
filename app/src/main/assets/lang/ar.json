@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "فشل إعادة توجيه الرسالة من محادثة مقيدة",
   "Language": "اللغة",
   "LanguageDesc": "اختر لغة العرض لـ TeleVip Next",
-  "LanguageAuto": "تلقائي (افتراضي)"
+  "LanguageAuto": "تلقائي (افتراضي)",
+  "HideBottomBarTabs": "إخفاء تبويبات الشريط السفلي",
+  "HideBottomBarTabsDesc": "اختر تبويبات التنقل السفلية التي تريد إخفاءها. إخفاء الكل يُخفي الشريط بالكامل ويبقي الإعدادات في قائمة ⋮",
+  "HideBottomTabContacts": "جهات الاتصال",
+  "HideBottomTabSettingsCalls": "الإعدادات / المكالمات",
+  "HideBottomTabProfile": "الملف الشخصي"
 }

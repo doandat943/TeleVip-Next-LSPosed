@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "فوروارد پیام از گفتگوی محدودشده ناموفق بود",
   "Language": "زبان",
   "LanguageDesc": "انتخاب زبان نمایش TeleVip Next",
-  "LanguageAuto": "خودکار (پیش‌فرض)"
+  "LanguageAuto": "خودکار (پیش‌فرض)",
+  "HideBottomBarTabs": "مخفی کردن تب‌های نوار پایین",
+  "HideBottomBarTabsDesc": "تب‌های ناوبری پایین را برای مخفی کردن انتخاب کنید. مخفی کردن همه کل نوار را پنهان کرده و تنظیمات را در منوی ⋮ نگه می‌دارد",
+  "HideBottomTabContacts": "مخاطبین",
+  "HideBottomTabSettingsCalls": "تنظیمات / تماس‌ها",
+  "HideBottomTabProfile": "پروفایل"
 }

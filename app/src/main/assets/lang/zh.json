@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "无法从受限聊天转发消息",
   "Language": "语言",
   "LanguageDesc": "选择 TeleVip Next 的显示语言",
-  "LanguageAuto": "自动（默认）"
+  "LanguageAuto": "自动（默认）",
+  "HideBottomBarTabs": "隐藏底部栏标签页",
+  "HideBottomBarTabsDesc": "选择要隐藏的底部导航标签页。全部隐藏将隐藏整个底部栏，并在 ⋮ 菜单中保留设置入口",
+  "HideBottomTabContacts": "联系人",
+  "HideBottomTabSettingsCalls": "设置 / 通话",
+  "HideBottomTabProfile": "个人资料"
 }

@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "Không thể chuyển tiếp tin nhắn từ cuộc trò chuyện bị hạn chế",
   "Language": "Ngôn ngữ",
   "LanguageDesc": "Chọn ngôn ngữ hiển thị cho TeleVip Next",
-  "LanguageAuto": "Tự động (Mặc định)"
+  "LanguageAuto": "Tự động (Mặc định)",
+  "HideBottomBarTabs": "Ẩn tab thanh điều hướng dưới",
+  "HideBottomBarTabsDesc": "Chọn các tab muốn ẩn ở thanh dưới cùng. Ẩn tất cả sẽ ẩn cả thanh và giữ Cài đặt trong menu ⋮",
+  "HideBottomTabContacts": "Danh bạ",
+  "HideBottomTabSettingsCalls": "Cài đặt / Cuộc gọi",
+  "HideBottomTabProfile": "Hồ sơ"
 }

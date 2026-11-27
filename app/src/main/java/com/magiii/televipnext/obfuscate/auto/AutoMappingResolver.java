@@ -26,7 +26,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 55;
+    private static final int SCHEMA_VERSION = 56;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -1068,6 +1068,7 @@ public class AutoMappingResolver {
         resolveStoryItemHolder(scanner);
         resolveProfileActivity(scanner, msgCtrlDesc);
         resolveDialogsActivityProxy(scanner, baseFragmentDesc, actionBarDesc);
+        resolveMainTabs(scanner, userConfigDesc);
         resolveStoriesController(scanner);
 
         String sharedConfigDesc = findClassByStringsWithFallback(scanner, "Lorg/telegram/messenger/", null, "mainconfig", "saveIncomingPhotos");
@@ -3951,6 +3952,232 @@ public class AutoMappingResolver {
                     }
                 }
                 if (updateHeaderVisName != null) break;
+            }
+        }
+    }
+
+    private void resolveMainTabs(DexScanner scanner, String userConfigDesc) {
+        String mainTabsDesc = findClassByStringsWithFallback(
+                scanner, "Lorg/telegram/ui/", null, "askAboutContacts2", "my_profile");
+        if (mainTabsDesc == null || "Lorg/telegram/ui/ContactsActivity;".equals(mainTabsDesc)) {
+            mainTabsDesc = findClassByStringsWithFallback(
+                    scanner, "Lorg/telegram/ui/", null, "askAboutContacts2", "SwitchAccountHint");
+        }
+        if ((mainTabsDesc == null || "Lorg/telegram/ui/ContactsActivity;".equals(mainTabsDesc))
+                && !scanner.getMethods("Lorg/telegram/ui/MainTabsActivity;").isEmpty()) {
+            mainTabsDesc = "Lorg/telegram/ui/MainTabsActivity;";
+        }
+        if (mainTabsDesc == null || "Lorg/telegram/ui/ContactsActivity;".equals(mainTabsDesc)) {
+            return;
+        }
+        addClass(ClassNames.MAIN_TABS_ACTIVITY, mainTabsDesc);
+
+        String tabsArrField = null;
+        String wrapperField = null;
+        String fadeViewField = null;
+        String tabsViewField = null;
+        String animLinearDesc = null;
+        String setViewVisibleMethod = null;
+
+        for (DexScanner.FieldInfo f : scanner.getFields(mainTabsDesc)) {
+            if (f.isStatic) continue;
+            if (tabsArrField == null && f.typeDesc.startsWith("[L") && !f.typeDesc.startsWith("[Ljava/")) {
+                tabsArrField = f.name;
+            }
+            if (wrapperField == null && "Landroid/widget/FrameLayout;".equals(f.typeDesc)) {
+                wrapperField = f.name;
+            }
+            if ("Landroid/view/View;".equals(f.typeDesc)) {
+                if (fadeViewField == null) fadeViewField = f.name;
+            }
+            if (tabsViewField == null && f.typeDesc.startsWith("Lorg/telegram/ui/")) {
+                String sup = scanner.getSuperClass(f.typeDesc);
+                if (sup != null && !"Ljava/lang/Object;".equals(sup)) {
+                    String candidateVisible = null;
+                    for (DexScanner.MethodInfo m : scanner.getMethods(sup)) {
+                        if (!m.isStatic && "V".equals(m.returnDesc) && m.paramDescs.length == 3
+                                && "Landroid/view/View;".equals(m.paramDescs[0])
+                                && "Z".equals(m.paramDescs[1]) && "Z".equals(m.paramDescs[2])) {
+                            if ("setViewVisible".equals(m.name)) {
+                                candidateVisible = m.name;
+                                break;
+                            }
+                            if (candidateVisible == null) {
+                                candidateVisible = m.name;
+                            }
+                        }
+                    }
+                    if (candidateVisible != null) {
+                        tabsViewField = f.name;
+                        animLinearDesc = sup;
+                        setViewVisibleMethod = candidateVisible;
+                    }
+                }
+            }
+        }
+
+        if (tabsArrField != null) addField("MainTabsActivity", "tabs", tabsArrField);
+        if (wrapperField != null) addField("MainTabsActivity", "tabsViewWrapper", wrapperField);
+        if (tabsViewField != null) addField("MainTabsActivity", "tabsView", tabsViewField);
+        if (setViewVisibleMethod != null) addMethod("AnimatedLinearLayout", "setViewVisible", setViewVisibleMethod);
+
+        String checkCallTabMethod = null;
+        String selectTabMethod = null;
+        String tabsPosMethod = null;
+        String fadeViewMethod = null;
+
+        for (DexScanner.MethodInfo m : scanner.getMethods(mainTabsDesc)) {
+            if (m.isStatic || !"V".equals(m.returnDesc)) continue;
+            if (checkCallTabMethod == null && m.paramDescs.length == 2
+                    && "Z".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])
+                    && !"prepareFragmentToSlide".equals(m.name) && setViewVisibleMethod != null) {
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(mainTabsDesc, m.name, m.paramDescs, null)) {
+                    if (setViewVisibleMethod.equals(ref.name) && ref.paramDescs.length == 3
+                            && (animLinearDesc.equals(ref.ownerDesc) || "Lorg/telegram/ui/Components/AnimatedLinearLayout;".equals(ref.ownerDesc))) {
+                        checkCallTabMethod = m.name;
+                        break;
+                    }
+                }
+            } else if (selectTabMethod == null && m.paramDescs.length == 2
+                    && "I".equals(m.paramDescs[0]) && "Z".equals(m.paramDescs[1])) {
+                selectTabMethod = m.name;
+            } else if (tabsPosMethod == null && m.paramDescs.length == 4
+                    && "I".equals(m.paramDescs[0]) && "F".equals(m.paramDescs[1]) && "F".equals(m.paramDescs[2])) {
+                List<String> selfVoidCalls = new ArrayList<>();
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(mainTabsDesc, m.name, m.paramDescs, mainTabsDesc)) {
+                    if ("V".equals(ref.returnDesc) && ref.paramDescs.length == 0) {
+                        selfVoidCalls.add(ref.name);
+                    }
+                }
+                if (selfVoidCalls.size() >= 2) {
+                    tabsPosMethod = selfVoidCalls.get(0);
+                    fadeViewMethod = selfVoidCalls.get(1);
+                } else if (selfVoidCalls.size() == 1) {
+                    tabsPosMethod = selfVoidCalls.get(0);
+                }
+            }
+        }
+
+        if (fadeViewMethod != null) {
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                    mainTabsDesc, fadeViewMethod, new String[0], mainTabsDesc)) {
+                if ("Landroid/view/View;".equals(rf.typeDesc)
+                        || (rf.typeDesc.startsWith("Lorg/telegram/ui/")
+                        && "Landroid/view/View;".equals(scanner.getSuperClass(rf.typeDesc)))) {
+                    fadeViewField = rf.name;
+                    break;
+                }
+            }
+        }
+        if (fadeViewField == null) {
+            for (DexScanner.FieldInfo f : scanner.getFields(mainTabsDesc)) {
+                if (!f.isStatic && f.typeDesc.startsWith("Lorg/telegram/ui/")
+                        && "Landroid/view/View;".equals(scanner.getSuperClass(f.typeDesc))) {
+                    fadeViewField = f.name;
+                    break;
+                }
+            }
+        }
+
+        if (fadeViewField != null) addField("MainTabsActivity", "fadeView", fadeViewField);
+        if (checkCallTabMethod != null) addMethod("MainTabsActivity", "checkUi_callTabVisible", checkCallTabMethod);
+        if (selectTabMethod != null) addMethod("MainTabsActivity", "selectTab", selectTabMethod);
+        if (tabsPosMethod != null) addMethod("MainTabsActivity", "checkUi_tabsPosition", tabsPosMethod);
+        if (fadeViewMethod != null) addMethod("MainTabsActivity", "checkUi_fadeView", fadeViewMethod);
+
+        String vpaDesc = scanner.getSuperClass(mainTabsDesc);
+        if (vpaDesc != null && !"Ljava/lang/Object;".equals(vpaDesc)) {
+            String vpFieldName = null;
+            String vpLayoutDesc = null;
+            String vpFixedDesc = null;
+            for (DexScanner.FieldInfo f : scanner.getFields(vpaDesc)) {
+                if (f.isStatic) continue;
+                String sup = scanner.getSuperClass(f.typeDesc);
+                if (sup != null && !sup.startsWith("Landroid/") && !sup.startsWith("Ljava/")) {
+                    vpFieldName = f.name;
+                    vpLayoutDesc = f.typeDesc;
+                    vpFixedDesc = sup;
+                    break;
+                }
+            }
+            if (vpFieldName != null && vpLayoutDesc != null) {
+                addField("ViewPagerActivity", "viewPager", vpFieldName);
+                addClass(ClassNames.VIEW_PAGER_ACTIVITY_PAGER_LAYOUT, vpLayoutDesc);
+
+                String backwardMeth = null;
+                String forwardMeth = null;
+                for (DexScanner.MethodInfo m : scanner.getMethods(vpLayoutDesc)) {
+                    if (!m.isStatic && "Z".equals(m.returnDesc)
+                            && m.paramDescs.length == 1 && "Landroid/view/MotionEvent;".equals(m.paramDescs[0])) {
+                        if ("canScrollBackward".equals(m.name)) {
+                            backwardMeth = m.name;
+                        } else if ("canScrollForward".equals(m.name)) {
+                            forwardMeth = m.name;
+                        } else if (m.containsConstInt(1)) {
+                            forwardMeth = m.name;
+                        } else {
+                            backwardMeth = m.name;
+                        }
+                    }
+                }
+                if (backwardMeth != null) addMethod("ViewPagerActivityPagerLayout", "canScrollBackward", backwardMeth);
+                if (forwardMeth != null) addMethod("ViewPagerActivityPagerLayout", "canScrollForward", forwardMeth);
+
+                String getPosMeth = null;
+                String scrollToPosMeth = null;
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(mainTabsDesc, "onBackPressed", new String[]{"Z"}, null)) {
+                    if (!ref.ownerDesc.equals(vpFixedDesc) && !ref.ownerDesc.equals(vpLayoutDesc)) continue;
+                    if (getPosMeth == null && ref.paramDescs.length == 0 && "I".equals(ref.returnDesc)) {
+                        getPosMeth = ref.name;
+                    } else if (scrollToPosMeth == null && ref.paramDescs.length == 1 && "I".equals(ref.paramDescs[0])
+                            && ("Z".equals(ref.returnDesc) || "V".equals(ref.returnDesc))) {
+                        scrollToPosMeth = ref.name;
+                    }
+                }
+                if (getPosMeth == null && vpFixedDesc != null && hasZeroArgMethodNamed(scanner, vpFixedDesc, "getCurrentPosition")) {
+                    getPosMeth = "getCurrentPosition";
+                }
+                if (scrollToPosMeth == null && vpFixedDesc != null) {
+                    for (DexScanner.MethodInfo m : scanner.getMethods(vpFixedDesc)) {
+                        if (!m.isStatic && "scrollToPosition".equals(m.name)
+                                && m.paramDescs.length == 1 && "I".equals(m.paramDescs[0])) {
+                            scrollToPosMeth = "scrollToPosition";
+                            break;
+                        }
+                    }
+                }
+                if (getPosMeth != null) addMethod("ViewPagerFixed", "getCurrentPosition", getPosMeth);
+                if (scrollToPosMeth != null) addMethod("ViewPagerFixed", "scrollToPosition", scrollToPosMeth);
+            }
+        }
+
+        if (userConfigDesc != null) {
+            String showCallsTabField = null;
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                    mainTabsDesc, "createView", new String[]{"Landroid/content/Context;"}, userConfigDesc)) {
+                if ("Z".equals(rf.typeDesc)) {
+                    showCallsTabField = rf.name;
+                    break;
+                }
+            }
+            if (showCallsTabField == null) {
+                String dialogsJava = classMap.get(ClassNames.DIALOGS_ACTIVITY);
+                String showMenuName = methodMap.get("DialogsActivity#showOverflowMenu");
+                if (dialogsJava != null && showMenuName != null) {
+                    for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                            DexScanner.javaToDesc(dialogsJava), showMenuName, new String[0], userConfigDesc)) {
+                        if ("Z".equals(rf.typeDesc)) {
+                            showCallsTabField = rf.name;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (showCallsTabField == null && hasFieldNamed(scanner, userConfigDesc, "showCallsTab")) {
+                showCallsTabField = "showCallsTab";
+            }
+            if (showCallsTabField != null) {
+                addField("UserConfig", "showCallsTab", showCallsTabField);
             }
         }
     }

@@ -205,5 +205,10 @@
   "ForwardRestrictedFailed": "Failed to forward message from restricted chat",
   "Language": "Language",
   "LanguageDesc": "Choose display language for TeleVip Next",
-  "LanguageAuto": "Auto (Default)"
+  "LanguageAuto": "Auto (Default)",
+  "HideBottomBarTabs": "Hide Bottom Bar Tabs",
+  "HideBottomBarTabsDesc": "Choose bottom navigation tabs to hide. Hiding all hides the entire bar and keeps Settings in the ⋮ menu",
+  "HideBottomTabContacts": "Contacts",
+  "HideBottomTabSettingsCalls": "Settings / Calls",
+  "HideBottomTabProfile": "Profile"
 }

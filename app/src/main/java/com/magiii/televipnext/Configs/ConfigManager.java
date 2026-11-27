@@ -15,6 +15,7 @@ import com.magiii.televipnext.features.ghostMode.GhostMode;
 import com.magiii.televipnext.features.ghostMode.HidePhone;
 import com.magiii.televipnext.features.ui.HidePinnedMessages;
 import com.magiii.televipnext.features.ui.HideProxySponsor;
+import com.magiii.televipnext.features.ui.HideBottomBarTabs;
 import com.magiii.televipnext.features.other.HideUpdateApp;
 import com.magiii.televipnext.features.ui.HijriDate;
 import com.magiii.televipnext.features.media.PreventMedia;
@@ -87,6 +88,10 @@ public class ConfigManager {
 
     //UI
     public static ConfigItem ui;
+    public static ConfigItem hideBottomBarTabs;
+    public static ConfigItem hideBottomTabContacts;
+    public static ConfigItem hideBottomTabSettingsCalls;
+    public static ConfigItem hideBottomTabProfile;
     public static ConfigItem language;
     public static ConfigItem hidePinnedMessages;
     public static ConfigItem disableChannelSwipeBack;
@@ -268,6 +273,24 @@ public class ConfigManager {
         ui = new ConfigItem(ConfigItem.HEADER, Keys.UiSettings);
         items.add(ui);
 
+        if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
+            List<ConfigItem> childrenBottomTabs = new ArrayList<>();
+            hideBottomTabContacts = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabContacts,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabContacts), HideBottomBarTabs::init);
+            childrenBottomTabs.add(hideBottomTabContacts);
+
+            hideBottomTabSettingsCalls = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabSettingsCalls,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabSettingsCalls), HideBottomBarTabs::init);
+            childrenBottomTabs.add(hideBottomTabSettingsCalls);
+
+            hideBottomTabProfile = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabProfile,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabProfile), HideBottomBarTabs::init);
+            childrenBottomTabs.add(hideBottomTabProfile);
+
+            hideBottomBarTabs = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.HideBottomBarTabs, childrenBottomTabs);
+            items.add(hideBottomBarTabs);
+        }
+
         hidePinnedMessages = new ConfigItem(ConfigItem.SWITCH, Keys.HidePinnedMessages, ConfigPreferences.getBoolean(Keys.HidePinnedMessages), HidePinnedMessages::init);
         items.add(hidePinnedMessages);
 
@@ -375,6 +398,9 @@ public class ConfigManager {
             }
             if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
                 AlwaysShowProxy.init();
+            }
+            if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
+                HideBottomBarTabs.init();
             }
             AlwaysSaveMedia.init();
             ShowDeletedMessages.initMenuHooks();
