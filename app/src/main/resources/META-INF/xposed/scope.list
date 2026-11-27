@@ -1,6 +1,5 @@
 org.telegram.messenger
 org.telegram.plus
-com.tgconnect.android
 com.iMe.android
 com.xplus.messenger
 xyz.nextalone.nagram
@@ -10,10 +9,8 @@ org.telegram.messenger.web
 org.telegram.messenger.beta
 org.forkclient.messenger.beta
 org.forkgram.messenger
-nu.gpu.nagram
 com.iMe.android.web
 ir.ilmili.telegraph
-ru.dahl.messenger
 nekox.messenger.broken
 tw.nekomimi.nekogram
 org.forkgram.classic

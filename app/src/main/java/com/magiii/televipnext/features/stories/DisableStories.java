@@ -2,7 +2,6 @@ package com.magiii.televipnext.features.stories;
 
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
-import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.Configs.ConfigManager;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
@@ -49,24 +48,20 @@ public class DisableStories {
                         }
                     };
 
-                    if (ClientManager.is(ClientManager.Client.NagramX)) {
-                        HMethod.hookMethod(scClass, "hasStories", long.class, falseHook);
-                    } else {
-                        String hasStories = Obfuscate.getMethodName("StoriesController", "hasStories");
-                        if (ReflectHelper.findMethodExactIfExists(scClass, hasStories) != null) {
-                            HMethod.hookMethod(scClass, hasStories, falseHook);
-                        }
+                    String hasStories = Obfuscate.getMethodName("StoriesController", "hasStories");
+                    if (ReflectHelper.findMethodExactIfExists(scClass, hasStories) != null) {
+                        HMethod.hookMethod(scClass, hasStories, falseHook);
+                    }
 
-                        String hasSelfStories = Obfuscate.getMethodName("StoriesController", "hasSelfStories");
-                        if (!"hasSelfStories".equals(hasSelfStories) && ReflectHelper.findMethodExactIfExists(scClass, hasSelfStories) != null) {
-                            HMethod.hookMethod(scClass, hasSelfStories, falseHook);
-                        }
+                    String hasSelfStories = Obfuscate.getMethodName("StoriesController", "hasSelfStories");
+                    if (!"hasSelfStories".equals(hasSelfStories) && ReflectHelper.findMethodExactIfExists(scClass, hasSelfStories) != null) {
+                        HMethod.hookMethod(scClass, hasSelfStories, falseHook);
+                    }
 
-                        String hasStoriesForDialog = Obfuscate.getMethodName("StoriesController", "hasStoriesForDialog");
-                        String longMethod = !"hasStoriesForDialog".equals(hasStoriesForDialog) ? hasStoriesForDialog : hasStories;
-                        if (ReflectHelper.findMethodExactIfExists(scClass, longMethod, long.class) != null) {
-                            HMethod.hookMethod(scClass, longMethod, long.class, falseHook);
-                        }
+                    String hasStoriesForDialog = Obfuscate.getMethodName("StoriesController", "hasStoriesForDialog");
+                    String longMethod = !"hasStoriesForDialog".equals(hasStoriesForDialog) ? hasStoriesForDialog : hasStories;
+                    if (ReflectHelper.findMethodExactIfExists(scClass, longMethod, long.class) != null) {
+                        HMethod.hookMethod(scClass, longMethod, long.class, falseHook);
                     }
                 }
             }

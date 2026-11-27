@@ -63,15 +63,14 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 | Official & Base | Third-Party Clients |
 |---|---|
 | Telegram (`org.telegram.messenger`) | Nagram (`xyz.nextalone.nagram`) |
-| Telegram Beta (`org.telegram.messenger.beta`) | NagramX (`nu.gpu.nagram`) |
-| Telegram Web (`org.telegram.messenger.web`) | Nagram XF (`fork.risin42.nagramx`) |
-| Plus Messenger (`org.telegram.plus`) | Nekogram (`tw.nekomimi.nekogram`) |
-| TG Connect (`com.tgconnect.android`) | Cherrygram (`uz.unnarsx.cherrygram`) |
+| Telegram Beta (`org.telegram.messenger.beta`) | Nagram XF (`fork.risin42.nagramx`) |
+| Telegram Web (`org.telegram.messenger.web`) | Nekogram (`tw.nekomimi.nekogram`) |
+| Plus Messenger (`org.telegram.plus`) | Cherrygram (`uz.unnarsx.cherrygram`) |
 | iMe (`com.iMe.android`) | Nicegram (`app.nicegram`) |
 | iMe Web (`com.iMe.android.web`) | Telegraph (`ir.ilmili.telegraph`) |
-| Forkgram (`org.forkgram.messenger`) | Telega (`ru.dahl.messenger`) |
-| ForkClient Beta (`org.forkclient.messenger.beta`) | Momogram (`nekox.messenger.broken`) |
-| Forkgram Classic (`org.forkgram.classic`) | Turrit (`org.telegram.group`) |
+| Forkgram (`org.forkgram.messenger`) | Momogram (`nekox.messenger.broken`) |
+| ForkClient Beta (`org.forkclient.messenger.beta`) | Turrit (`org.telegram.group`) |
+| Forkgram Classic (`org.forkgram.classic`) | |
 | X Plus (`com.xplus.messenger`) | |
 
 > Note: Thanks to runtime DEX `AutoMappingResolver`, official Telegram, Telegraph, and Cherrygram updates adapt automatically without waiting for hardcoded mapping updates.

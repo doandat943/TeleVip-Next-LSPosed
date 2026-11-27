@@ -3,7 +3,6 @@
     <string-array name="xposedscope">
         <item>org.telegram.messenger</item>
         <item>org.telegram.plus</item>
-        <item>com.tgconnect.android</item>
         <item>com.iMe.android</item>
         <item>com.xplus.messenger</item>
         <item>xyz.nextalone.nagram</item>
@@ -13,10 +12,8 @@
         <item>org.telegram.messenger.beta</item>
         <item>org.forkclient.messenger.beta</item>
         <item>org.forkgram.messenger</item>
-        <item>nu.gpu.nagram</item>
         <item>com.iMe.android.web</item>
         <item>ir.ilmili.telegraph</item>
-        <item>ru.dahl.messenger</item>
         <item>nekox.messenger.broken</item>
         <item>tw.nekomimi.nekogram</item>
         <item>org.forkgram.classic</item>

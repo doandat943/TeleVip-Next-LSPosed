@@ -192,10 +192,8 @@ public class ConfigManager {
         showDeletedMessages = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.ShowDeletedMessages, childrenDeleted);
         items.add(showDeletedMessages);
 
-        if (!ClientManager.is(ClientManager.Client.NagramX)) {
-            showMessageId = new ConfigItem(ConfigItem.SWITCH, Keys.ShowMessageID, ConfigPreferences.getBoolean(Keys.ShowMessageID), MessageTimeModifier::init);
-            items.add(showMessageId);
-        }
+        showMessageId = new ConfigItem(ConfigItem.SWITCH, Keys.ShowMessageID, ConfigPreferences.getBoolean(Keys.ShowMessageID), MessageTimeModifier::init);
+        items.add(showMessageId);
 
         saveEditsHistory = new ConfigItem(ConfigItem.SWITCH, Keys.SaveEditsHistory, ConfigPreferences.getBoolean(Keys.SaveEditsHistory), SaveEditsHistory::init);
         items.add(saveEditsHistory);
