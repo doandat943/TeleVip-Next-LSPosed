@@ -16,6 +16,7 @@ import com.magiii.televipnext.features.ghostMode.HidePhone;
 import com.magiii.televipnext.features.ui.HidePinnedMessages;
 import com.magiii.televipnext.features.ui.HideProxySponsor;
 import com.magiii.televipnext.features.ui.HideBottomBarTabs;
+import com.magiii.televipnext.features.ui.HideNewChatButton;
 import com.magiii.televipnext.features.other.HideUpdateApp;
 import com.magiii.televipnext.features.ui.HijriDate;
 import com.magiii.televipnext.features.media.PreventMedia;
@@ -92,6 +93,7 @@ public class ConfigManager {
     public static ConfigItem hideBottomTabContacts;
     public static ConfigItem hideBottomTabSettingsCalls;
     public static ConfigItem hideBottomTabProfile;
+    public static ConfigItem hideNewChatButton;
     public static ConfigItem language;
     public static ConfigItem hidePinnedMessages;
     public static ConfigItem disableChannelSwipeBack;
@@ -296,6 +298,10 @@ public class ConfigManager {
             items.add(hideBottomBarTabs);
         }
 
+        hideNewChatButton = new ConfigItem(ConfigItem.SWITCH, Keys.HideNewChatButton,
+                ConfigPreferences.getBoolean(Keys.HideNewChatButton), HideNewChatButton::init);
+        items.add(hideNewChatButton);
+
         hidePinnedMessages = new ConfigItem(ConfigItem.SWITCH, Keys.HidePinnedMessages, ConfigPreferences.getBoolean(Keys.HidePinnedMessages), HidePinnedMessages::init);
         items.add(hidePinnedMessages);
 
@@ -423,6 +429,7 @@ public class ConfigManager {
             if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
                 HideBottomBarTabs.init();
             }
+            HideNewChatButton.init();
             AlwaysSaveMedia.init();
             ShowDeletedMessages.initMenuHooks();
 

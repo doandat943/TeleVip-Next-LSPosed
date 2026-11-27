@@ -211,6 +211,8 @@
   "HideBottomTabContacts": "مخاطبین",
   "HideBottomTabSettingsCalls": "تنظیمات / تماس‌ها",
   "HideBottomTabProfile": "پروفایل",
+  "HideNewChatButton": "مخفی کردن دکمه گفتگوی جدید (+)",
+  "HideNewChatButtonDesc": "مخفی کردن دکمه شناور + شروع گفتگوی جدید در گوشه پایین لیست گفتگوها",
   "UpdatesSettings": "به‌روزرسانی‌ها",
   "AutoUpdateCheck": "بررسی و دانلود خودکار آپدیت",
   "AutoUpdateCheckDesc": "بررسی خودکار نسخه‌های جدید و دانلود پیش‌زمینه فایل APK جدید",

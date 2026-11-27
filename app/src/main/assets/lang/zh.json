@@ -211,6 +211,8 @@
   "HideBottomTabContacts": "联系人",
   "HideBottomTabSettingsCalls": "设置 / 通话",
   "HideBottomTabProfile": "个人资料",
+  "HideNewChatButton": "隐藏新建聊天按钮 (+)",
+  "HideNewChatButtonDesc": "隐藏聊天列表右下角的蓝色 + 悬浮按钮",
   "UpdatesSettings": "更新",
   "AutoUpdateCheck": "自动检查并下载更新",
   "AutoUpdateCheckDesc": "自动检查新版本并在后台预下载安装包",

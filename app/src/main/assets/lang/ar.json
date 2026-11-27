@@ -211,6 +211,8 @@
   "HideBottomTabContacts": "جهات الاتصال",
   "HideBottomTabSettingsCalls": "الإعدادات / المكالمات",
   "HideBottomTabProfile": "الملف الشخصي",
+  "HideNewChatButton": "إخفاء زر المحادثة الجديدة (+)",
+  "HideNewChatButtonDesc": "إخفاء زر + العائم لبدء محادثة جديدة في أسفل قائمة المحادثات",
   "UpdatesSettings": "التحديثات",
   "AutoUpdateCheck": "التحقق والتنزيل التلقائي للتحديثات",
   "AutoUpdateCheckDesc": "التحقق تلقائياً من التحديثات وتنزيل ملف APK الجديد مسبقاً في الخلفية",

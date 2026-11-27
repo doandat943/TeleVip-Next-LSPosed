@@ -26,7 +26,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 57;
+    private static final int SCHEMA_VERSION = 58;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -2119,6 +2119,10 @@ public class AutoMappingResolver {
                     }
                     if (flds.size() >= 2) {
                         String fabStoriesField = flds.contains("floatingButtonStories") ? "floatingButtonStories" : flds.get(1);
+                        String fabField = flds.contains("floatingButton3")
+                                ? "floatingButton3"
+                                : (flds.get(0).equals(fabStoriesField) ? flds.get(1) : flds.get(0));
+                        addField("DialogsActivity", "floatingButton3", fabField);
                         addField("DialogsActivity", "floatingButtonStories", fabStoriesField);
                         addMethod("DialogsActivity", "updateFloatingButtonVisibility", m.name);
                         addMethod("FragmentFloatingButton", "setButtonVisible", setVisName);

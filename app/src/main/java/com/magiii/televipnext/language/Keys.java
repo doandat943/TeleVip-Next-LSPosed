@@ -172,6 +172,7 @@ public class Keys {
     public static final String HideBottomTabContacts = "HideBottomTabContacts";
     public static final String HideBottomTabSettingsCalls = "HideBottomTabSettingsCalls";
     public static final String HideBottomTabProfile = "HideBottomTabProfile";
+    public static final String HideNewChatButton = "HideNewChatButton";
     public static final String UpdatesSettings = "UpdatesSettings";
     public static final String AutoUpdateCheck = "AutoUpdateCheck";
     public static final String CheckForUpdates = "CheckForUpdates";

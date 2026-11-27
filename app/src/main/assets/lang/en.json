@@ -211,6 +211,8 @@
   "HideBottomTabContacts": "Contacts",
   "HideBottomTabSettingsCalls": "Settings / Calls",
   "HideBottomTabProfile": "Profile",
+  "HideNewChatButton": "Hide New Chat Button",
+  "HideNewChatButtonDesc": "Hide the floating + (new chat) button at the bottom right of the chat list",
   "UpdatesSettings": "Updates",
   "AutoUpdateCheck": "Auto-Check & Download Updates",
   "AutoUpdateCheckDesc": "Automatically check for updates and pre-download new APKs in the background",
