@@ -79,7 +79,12 @@ public class SettingsHook {
             final Class<?> UItemClass = ClassLoad.getClass(ClassNames.UITEM);
 
             final String ofName = Obfuscate.getMethodName("SettingsActivity$SettingCell$Factory", "of");
-            XposedCompat.hookAllMethods(SettingsActivityClass, Obfuscate.getMethodName("SettingsActivity", "fillItems"),
+            Class<?> fillTargetClass = ReflectHelper.findClassIfExists(
+                    Obfuscate.getClassName("org.telegram.ui.SettingsActivity$FillItemsLambda"), Utils.classLoader);
+            if (fillTargetClass == null) {
+                fillTargetClass = SettingsActivityClass;
+            }
+            XposedCompat.hookAllMethods(fillTargetClass, Obfuscate.getMethodName("SettingsActivity", "fillItems"),
                     new BaseMethodHook() {
                         @Override
                         @SuppressWarnings("unchecked")
@@ -162,8 +167,13 @@ public class SettingsHook {
                     });
 
             String onClickName = Obfuscate.getMethodName("SettingsActivity", "onClick");
+            Class<?> clickTargetClass = ReflectHelper.findClassIfExists(
+                    Obfuscate.getClassName("org.telegram.ui.SettingsActivity$OnClickLambda"), Utils.classLoader);
+            if (clickTargetClass == null) {
+                clickTargetClass = SettingsActivityClass;
+            }
             XposedCompat.hookAllMethods(
-                    SettingsActivityClass,
+                    clickTargetClass,
                     onClickName, new BaseMethodHook() {
                         @Override
                         protected void afterMethod(final MethodHookParam param) {

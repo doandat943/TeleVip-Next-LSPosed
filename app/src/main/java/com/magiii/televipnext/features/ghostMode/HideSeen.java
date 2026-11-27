@@ -60,6 +60,7 @@ public class HideSeen {
         if (onCompleteOrig == null) return;
         try {
             TLRPC.TL_messages_affectedMessages fakeRes = new TLRPC.TL_messages_affectedMessages();
+            if (fakeRes.getTL_messages_affectedMessages() == null) return;
             fakeRes.setPts(-1);
             fakeRes.setPtsCount(0);
             RequestDelegate onComplete = new RequestDelegate(onCompleteOrig);
@@ -289,6 +290,7 @@ public class HideSeen {
                 req = request.getTL_messages_readHistory();
             }
 
+            if (req == null) return;
             markAllowedReadRequest(req);
             ConnectionsManager.getConnectionsManager().sendRequest(req, RequestDelegate.run((response, error) -> {
                 if (error == null && response != null) {

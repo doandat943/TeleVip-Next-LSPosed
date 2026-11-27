@@ -73,7 +73,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 | Forkgram Classic (`org.forkgram.classic`) | Mercurygram (`it.belloworld.mercurygram`) |
 | X Plus (`com.xplus.messenger`) | |
 
-> Note: Thanks to runtime DEX `AutoMappingResolver`, official Telegram, Telegraph, and Cherrygram updates adapt automatically without waiting for hardcoded mapping updates.
+> Note: Thanks to runtime DEX `AutoMappingResolver` (with root-repackaged & TL-constructor `tgnet` support), official Telegram, Telegraph, Cherrygram, Mercurygram, Nekogram, Nagram, Nicegram, Forkgram, and other obfuscated clients adapt automatically without hardcoded JSON mapping tables.
 
 ---
 

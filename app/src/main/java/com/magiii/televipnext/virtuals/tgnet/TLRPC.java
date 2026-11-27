@@ -194,27 +194,34 @@ public class TLRPC {
     public static class TL_messages_affectedMessages {
         final Object instance;
 
-        public TL_messages_affectedMessages()
-        {
-            this.instance = ReflectHelper.newInstance(ClassLoad.getClass(ClassNames.TL_MESSAGES_AFFECTED));
+        public TL_messages_affectedMessages() {
+            Object created = null;
+            try {
+                Class<?> cls = ClassLoad.getClass(ClassNames.TL_MESSAGES_AFFECTED);
+                if (cls != null) created = ReflectHelper.newInstance(cls);
+            } catch (Throwable ignored) {}
+            this.instance = created;
         }
-        public TL_messages_affectedMessages(Object instance)
-        {
+        public TL_messages_affectedMessages(Object instance) {
             this.instance = instance;
         }
 
         public int getPts(){
+            if (instance == null) return 0;
             return ReflectHelper.getIntField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_affectedMessages", "pts"));
         }
 
         public int getPtsCount(){
+            if (instance == null) return 0;
             return ReflectHelper.getIntField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_affectedMessages", "pts_count"));
         }
         public void setPts(int pts){
+            if (instance == null) return;
             ReflectHelper.setIntField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_affectedMessages", "pts"), pts);
         }
 
         public void setPtsCount(int pts_count){
+            if (instance == null) return;
             ReflectHelper.setIntField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_affectedMessages", "pts_count"), pts_count);
         }
 
@@ -227,20 +234,25 @@ public class TLRPC {
     public static class TL_channels_readHistory {
         final Object instance;
 
-        public TL_channels_readHistory()
-        {
-            this.instance = ReflectHelper.newInstance(ClassLoad.getClass(ClassNames.TL_CHANNELS_READ_HISTORY));
+        public TL_channels_readHistory() {
+            Object created = null;
+            try {
+                Class<?> cls = ClassLoad.getClass(ClassNames.TL_CHANNELS_READ_HISTORY);
+                if (cls != null) created = ReflectHelper.newInstance(cls);
+            } catch (Throwable ignored) {}
+            this.instance = created;
         }
-        public TL_channels_readHistory(Object instance)
-        {
+        public TL_channels_readHistory(Object instance) {
             this.instance = instance;
         }
 
         public void setChannel(Object channel){
+            if (instance == null) return;
             ReflectHelper.setObjectField(instance, Obfuscate.getFieldName("TLRPC$TL_channels_readHistory", "channel"), channel);
         }
 
         public void setMax_id(int max_id){
+            if (instance == null) return;
             ReflectHelper.setIntField(instance, Obfuscate.getFieldName("TLRPC$TL_channels_readHistory", "max_id"), max_id);
         }
 
@@ -252,21 +264,26 @@ public class TLRPC {
     public static class TL_messages_readHistory {
         final Object instance;
 
-        public TL_messages_readHistory()
-        {
-            this.instance = ReflectHelper.newInstance(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_HISTORY));
+        public TL_messages_readHistory() {
+            Object created = null;
+            try {
+                Class<?> cls = ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_HISTORY);
+                if (cls != null) created = ReflectHelper.newInstance(cls);
+            } catch (Throwable ignored) {}
+            this.instance = created;
         }
 
-        public TL_messages_readHistory(Object instance)
-        {
+        public TL_messages_readHistory(Object instance) {
             this.instance = instance;
         }
 
         public void setPeer(InputPeer peer){
+            if (instance == null || peer == null) return;
             ReflectHelper.setObjectField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_readHistory", "peer"), peer.inputPeer);
         }
 
         public void setMax_id(int max_id){
+            if (instance == null) return;
             ReflectHelper.setIntField(instance, Obfuscate.getFieldName("TLRPC$TL_messages_readHistory", "max_id"), max_id);
         }
 
