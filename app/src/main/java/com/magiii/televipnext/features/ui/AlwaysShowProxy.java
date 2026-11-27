@@ -109,27 +109,29 @@ public class AlwaysShowProxy {
             if (dialogsCls == null) return;
 
             resolveSymbols(dialogsCls);
-            if (proxyDrawableCls == null || proxyDrawableField == null || setConnectedMethod == null) {
+            if (proxyDrawableCls == null || proxyDrawableField == null) {
                 Logger.w("AlwaysShowProxy: missing proxy drawable symbols");
                 return;
             }
 
-            HMethod.hookMethod(proxyDrawableCls, setConnectedMethod,
-                    boolean.class, boolean.class, boolean.class,
-                    new BaseMethodHook() {
-                        @Override
-                        protected void afterMethod(MethodHookParam param) {
-                            boolean enabled = Boolean.TRUE.equals(param.args[0]);
-                            boolean connected = Boolean.TRUE.equals(param.args[1]);
-                            boolean animated = Boolean.TRUE.equals(param.args[2]);
-                            LAST_DRAWABLE_STATE.put(param.thisObject, new boolean[]{enabled, connected});
+            if (setConnectedMethod != null) {
+                HMethod.hookMethod(proxyDrawableCls, setConnectedMethod,
+                        boolean.class, boolean.class, boolean.class,
+                        new BaseMethodHook() {
+                            @Override
+                            protected void afterMethod(MethodHookParam param) {
+                                boolean enabled = Boolean.TRUE.equals(param.args[0]);
+                                boolean connected = Boolean.TRUE.equals(param.args[1]);
+                                boolean animated = Boolean.TRUE.equals(param.args[2]);
+                                LAST_DRAWABLE_STATE.put(param.thisObject, new boolean[]{enabled, connected});
 
-                            Object topBar = NATIVE_TO_TOPBAR_DRAWABLE.get(param.thisObject);
-                            if (topBar != null) {
-                                ReflectHelper.callMethod(topBar, setConnectedMethod, enabled, connected, animated);
+                                Object topBar = NATIVE_TO_TOPBAR_DRAWABLE.get(param.thisObject);
+                                if (topBar != null) {
+                                    ReflectHelper.callMethod(topBar, setConnectedMethod, enabled, connected, animated);
+                                }
                             }
-                        }
-                    });
+                        });
+            }
 
             HMethod.hookMethod(dialogsCls, "createView", Context.class, new BaseMethodHook() {
                 @Override
@@ -158,7 +160,14 @@ public class AlwaysShowProxy {
                                 || ENTRIES.containsKey(param.thisObject))) {
                             ensureProxyButton(param.thisObject, null);
                         }
-                        if (ENTRIES.containsKey(param.thisObject)) {
+                        ProxyEntry entry = ENTRIES.get(param.thisObject);
+                        if (entry != null) {
+                            if (setConnectedMethod == null && entry.topBarDrawable != null) {
+                                Object nativeDrawable = ReflectHelper.getObjectField(param.thisObject, proxyDrawableField);
+                                if (nativeDrawable != null) {
+                                    syncDrawableStateByFields(nativeDrawable, entry.topBarDrawable);
+                                }
+                            }
                             syncVisibility(param.thisObject);
                         }
                     }
@@ -263,7 +272,8 @@ public class AlwaysShowProxy {
                     }
                 });
             }
-            if (hasNoArgMethod(itemOptionsCls, itemOptionsShowMethod)) {
+            if (hasNoArgMethod(itemOptionsCls, itemOptionsShowMethod)
+                    && !itemOptionsShowMethod.equals(itemOptionsAddGapMethod)) {
                 HMethod.hookMethod(itemOptionsCls, itemOptionsShowMethod, new BaseMethodHook() {
                     @Override
                     protected void beforeMethod(MethodHookParam param) {
@@ -301,11 +311,13 @@ public class AlwaysShowProxy {
         itemOptionsShowMethod = Obfuscate.getMethodName("ItemOptions", "show");
 
         if (proxyDrawableCls == null || ReflectHelper.findFieldIfExists(dialogsCls, proxyDrawableField) == null) {
+            Class<?> fallbackDrawableCls = null;
+            String fallbackFieldName = null;
             for (Field f : dialogsCls.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
                 Class<?> ft = f.getType();
                 if (!Drawable.class.isAssignableFrom(ft)) continue;
-                if (!ft.getName().contains("ui.Components")) continue;
+                if (ft.getName().startsWith("android.")) continue;
                 Method m = findTripleBooleanVoidMethod(ft);
                 if (m != null) {
                     proxyDrawableCls = ft;
@@ -313,13 +325,51 @@ public class AlwaysShowProxy {
                     setConnectedMethod = m.getName();
                     break;
                 }
+                if (fallbackDrawableCls == null && isLikelyInlinedProxyDrawable(ft)) {
+                    fallbackDrawableCls = ft;
+                    fallbackFieldName = f.getName();
+                }
             }
-        } else if (ReflectHelper.findMethodExactIfExists(
-                proxyDrawableCls, setConnectedMethod, boolean.class, boolean.class, boolean.class) == null) {
+            if (proxyDrawableCls == null && fallbackDrawableCls != null) {
+                proxyDrawableCls = fallbackDrawableCls;
+                proxyDrawableField = fallbackFieldName;
+                setConnectedMethod = null;
+            }
+        } else if (setConnectedMethod == null
+                || ReflectHelper.findMethodExactIfExists(
+                        proxyDrawableCls, setConnectedMethod, boolean.class, boolean.class, boolean.class) == null) {
             Method m = findTripleBooleanVoidMethod(proxyDrawableCls);
-            if (m != null) {
-                setConnectedMethod = m.getName();
+            setConnectedMethod = m != null ? m.getName() : null;
+        }
+    }
+
+    private static boolean isLikelyInlinedProxyDrawable(Class<?> cls) {
+        boolean hasDrawableSetter = false;
+        int nonSyntheticMethods = 0;
+        for (Method m : cls.getDeclaredMethods()) {
+            if (Modifier.isStatic(m.getModifiers()) || m.isSynthetic()) continue;
+            nonSyntheticMethods++;
+            Class<?>[] p = m.getParameterTypes();
+            if (m.getReturnType() == void.class && p.length == 1 && p[0] == Drawable.class) {
+                hasDrawableSetter = true;
             }
+        }
+        return hasDrawableSetter && nonSyntheticMethods <= 10;
+    }
+
+    private static void syncDrawableStateByFields(Object src, Object dst) {
+        if (src == null || dst == null || proxyDrawableCls == null) return;
+        for (Field f : proxyDrawableCls.getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) continue;
+            Class<?> ft = f.getType();
+            if (!ft.isPrimitive()) continue;
+            try {
+                f.setAccessible(true);
+                f.set(dst, f.get(src));
+            } catch (Throwable ignored) {}
+        }
+        if (dst instanceof Drawable) {
+            ((Drawable) dst).invalidateSelf();
         }
     }
 
@@ -398,10 +448,14 @@ public class AlwaysShowProxy {
             if (ctx == null) return;
 
             Object topBarDrawable = ReflectHelper.newInstance(proxyDrawableCls, ctx);
-            boolean[] state = LAST_DRAWABLE_STATE.get(nativeDrawable);
-            boolean enabled = state != null && state[0];
-            boolean connected = state != null && state[1];
-            ReflectHelper.callMethod(topBarDrawable, setConnectedMethod, enabled, connected, false);
+            if (setConnectedMethod != null) {
+                boolean[] state = LAST_DRAWABLE_STATE.get(nativeDrawable);
+                boolean enabled = state != null && state[0];
+                boolean connected = state != null && state[1];
+                ReflectHelper.callMethod(topBarDrawable, setConnectedMethod, enabled, connected, false);
+            } else {
+                syncDrawableStateByFields(nativeDrawable, topBarDrawable);
+            }
 
             Method addItemMethod = resolveAddItemDrawableMethod(actionBarMenu.getClass());
             if (addItemMethod == null) {

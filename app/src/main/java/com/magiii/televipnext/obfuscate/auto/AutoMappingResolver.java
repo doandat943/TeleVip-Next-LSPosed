@@ -25,7 +25,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 47;
+    private static final int SCHEMA_VERSION = 48;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -3038,22 +3038,103 @@ public class AutoMappingResolver {
     private void resolveDialogsActivityProxy(DexScanner scanner, String baseFragmentDesc, String actionBarDesc) {
         String dialogsActDesc = scanner.findClassByStrings(
                 "Lorg/telegram/ui/", baseFragmentDesc, "dialogsType", "proxy_enabled");
+        if (dialogsActDesc == null) {
+            dialogsActDesc = scanner.findClassByStrings(
+                    "Lorg/telegram/ui/", null, "dialogsType", "proxy_enabled");
+        }
+        if (dialogsActDesc == null && !scanner.getMethods("Lorg/telegram/ui/DialogsActivity;").isEmpty()) {
+            dialogsActDesc = "Lorg/telegram/ui/DialogsActivity;";
+        }
         if (dialogsActDesc == null) return;
         addClass(ClassNames.DIALOGS_ACTIVITY, dialogsActDesc);
 
+        if (actionBarDesc == null || scanner.getMethods(actionBarDesc).isEmpty()) {
+            String rawActionBar = "Lorg/telegram/ui/ActionBar/ActionBar;";
+            if (!scanner.getMethods(rawActionBar).isEmpty()) {
+                actionBarDesc = rawActionBar;
+            }
+        }
+
+        // Locate updateProxyButton fallback (takes boolean(s) and uses "proxy_enabled"), e.g. when setConnected is inlined
+        DexScanner.MethodInfo proxyUpdateFallback = null;
+        for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
+            if (m.isStatic || !"V".equals(m.returnDesc)) continue;
+            if (m.paramDescs.length < 1 || m.paramDescs.length > 2) continue;
+            boolean allBool = true;
+            for (String p : m.paramDescs) {
+                if (!"Z".equals(p)) {
+                    allBool = false;
+                    break;
+                }
+            }
+            if (allBool && m.usesString("proxy_enabled")) {
+                if (proxyUpdateFallback == null || m.paramDescs.length == 2) {
+                    proxyUpdateFallback = m;
+                }
+            }
+        }
+
+        Set<String> updateReadFields = new HashSet<>();
+        Set<String> updateWrittenOwners = new HashSet<>();
+        if (proxyUpdateFallback != null) {
+            for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                    dialogsActDesc, proxyUpdateFallback.name, proxyUpdateFallback.paramDescs, dialogsActDesc)) {
+                updateReadFields.add(rf.name);
+            }
+            updateWrittenOwners.addAll(scanner.getWrittenFieldsGroupedByOwner(
+                    dialogsActDesc, proxyUpdateFallback.name, proxyUpdateFallback.paramDescs).keySet());
+        }
+
         String proxyDrawableDesc = null;
+        String proxyDrawableFieldName = null;
         String setConnectedName = null;
-        for (DexScanner.FieldInfo f : scanner.getFields(dialogsActDesc)) {
+        List<DexScanner.FieldInfo> daFields = scanner.getFields(dialogsActDesc);
+        for (DexScanner.FieldInfo f : daFields) {
             if (f.isStatic || f.typeDesc.startsWith("Landroid/")) continue;
             if (!scanner.isSubclassOf(f.typeDesc, "Landroid/graphics/drawable/Drawable;")) continue;
             String setConn = scanner.findSingleMethod(f.typeDesc, false, "V", "Z", "Z", "Z");
             if (setConn != null) {
-                proxyDrawableDesc = f.typeDesc;
-                setConnectedName = setConn;
-                addClass(ClassNames.PROXY_DRAWABLE, proxyDrawableDesc);
+                boolean betterMatch = updateReadFields.contains(f.name) || updateWrittenOwners.contains(f.typeDesc);
+                if (proxyDrawableDesc == null || betterMatch) {
+                    proxyDrawableDesc = f.typeDesc;
+                    proxyDrawableFieldName = f.name;
+                    setConnectedName = setConn;
+                    if (betterMatch) break;
+                }
+            }
+        }
+
+        // Pass 2: R8 may inline ProxyDrawable#setConnected(Z,Z,Z) (e.g. Nagram); identify ProxyDrawable by (Drawable)V + <=10 methods
+        if (proxyDrawableDesc == null) {
+            for (DexScanner.FieldInfo f : daFields) {
+                if (f.isStatic || f.typeDesc.startsWith("Landroid/")) continue;
+                if (!scanner.isSubclassOf(f.typeDesc, "Landroid/graphics/drawable/Drawable;")) continue;
+                boolean hasDrawableSetter = false;
+                int nonCtorInstanceMethods = 0;
+                for (DexScanner.MethodInfo pm : scanner.getMethods(f.typeDesc)) {
+                    if (pm.isStatic || pm.name.startsWith("<")) continue;
+                    nonCtorInstanceMethods++;
+                    if ("V".equals(pm.returnDesc) && pm.paramDescs.length == 1
+                            && "Landroid/graphics/drawable/Drawable;".equals(pm.paramDescs[0])) {
+                        hasDrawableSetter = true;
+                    }
+                }
+                if (hasDrawableSetter && nonCtorInstanceMethods <= 10) {
+                    boolean betterMatch = updateReadFields.contains(f.name) || updateWrittenOwners.contains(f.typeDesc);
+                    if (proxyDrawableDesc == null || betterMatch) {
+                        proxyDrawableDesc = f.typeDesc;
+                        proxyDrawableFieldName = f.name;
+                        if (betterMatch) break;
+                    }
+                }
+            }
+        }
+
+        if (proxyDrawableDesc != null && proxyDrawableFieldName != null) {
+            addClass(ClassNames.PROXY_DRAWABLE, proxyDrawableDesc);
+            addField("DialogsActivity", "proxyDrawable", proxyDrawableFieldName);
+            if (setConnectedName != null) {
                 addMethod("ProxyDrawable", "setConnected", setConnectedName);
-                addField("DialogsActivity", "proxyDrawable", f.name);
-                break;
             }
         }
 
@@ -3084,6 +3165,7 @@ public class AutoMappingResolver {
             }
         }
 
+        boolean resolvedUpdateProxy = false;
         if (proxyDrawableDesc != null && setConnectedName != null) {
             for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
                 if (m.isStatic || !"V".equals(m.returnDesc)) continue;
@@ -3097,11 +3179,17 @@ public class AutoMappingResolver {
                 }
                 if (callsSetConn) {
                     addMethod("DialogsActivity", "updateProxyButton", m.name);
+                    resolvedUpdateProxy = true;
                     break;
                 }
             }
         }
+        if (!resolvedUpdateProxy && proxyUpdateFallback != null) {
+            addMethod("DialogsActivity", "updateProxyButton", proxyUpdateFallback.name);
+        }
 
+        String overflowItemName = null;
+        String updateHeaderVisName = null;
         for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
             if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
             int selfVoidCalls = 0;
@@ -3118,11 +3206,13 @@ public class AutoMappingResolver {
                 }
             }
             if (callsAlphaHelper && selfVoidCalls >= 3) {
+                updateHeaderVisName = m.name;
                 addMethod("DialogsActivity", "updateHeaderVisibility", m.name);
                 if (menuItemDesc != null) {
                     for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
                             dialogsActDesc, m.name, m.paramDescs, dialogsActDesc)) {
                         if (menuItemDesc.equals(rf.typeDesc)) {
+                            overflowItemName = rf.name;
                             addField("DialogsActivity", "overflowItem", rf.name);
                             break;
                         }
@@ -3139,6 +3229,7 @@ public class AutoMappingResolver {
             String itemOptionsDesc = null;
             String addViewName = null;
             String subItemDesc = null;
+            String subItemFieldName = null;
             for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
                     dialogsActDesc, showMenuName, noParams, null)) {
                 if (ref.ownerDesc.startsWith("Lorg/telegram/ui/Components/")
@@ -3157,7 +3248,23 @@ public class AutoMappingResolver {
                 for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
                         dialogsActDesc, showMenuName, noParams, dialogsActDesc)) {
                     if (subItemDesc.equals(rf.typeDesc)) {
+                        subItemFieldName = rf.name;
                         addField("DialogsActivity", "proxySubItem", rf.name);
+                        break;
+                    }
+                }
+            }
+            if (overflowItemName == null) {
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                        dialogsActDesc, showMenuName, noParams, dialogsActDesc)) {
+                    boolean typeMatch = (menuItemDesc != null && menuItemDesc.equals(rf.typeDesc))
+                            || (menuItemDesc == null
+                                && rf.typeDesc.startsWith("Lorg/telegram/ui/ActionBar/")
+                                && !rf.name.equals(subItemFieldName)
+                                && (subItemDesc == null || !subItemDesc.equals(rf.typeDesc)));
+                    if (typeMatch) {
+                        overflowItemName = rf.name;
+                        addField("DialogsActivity", "overflowItem", overflowItemName);
                         break;
                     }
                 }
@@ -3174,23 +3281,53 @@ public class AutoMappingResolver {
                     }
                 }
                 if (addIdx >= 0) {
+                    String addGapName = null;
                     for (int i = addIdx - 1; i >= 0; i--) {
                         DexScanner.MethodRef c = optCalls.get(i);
                         if (c.paramDescs.length == 0
                                 && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
-                            addMethod("ItemOptions", "addGap", c.name);
+                            addGapName = c.name;
+                            addMethod("ItemOptions", "addGap", addGapName);
                             break;
                         }
                     }
                     for (int i = addIdx + 1; i < optCalls.size(); i++) {
                         DexScanner.MethodRef c = optCalls.get(i);
                         if (c.paramDescs.length == 0
+                                && (addGapName == null || !addGapName.equals(c.name))
                                 && ("V".equals(c.returnDesc) || itemOptionsDesc.equals(c.returnDesc))) {
                             addMethod("ItemOptions", "show", c.name);
                             break;
                         }
                     }
                 }
+            }
+        }
+
+        if (updateHeaderVisName == null && overflowItemName != null) {
+            for (DexScanner.MethodInfo m : scanner.getMethods(dialogsActDesc)) {
+                if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                boolean readsOverflow = false;
+                for (DexScanner.FieldInfo rf : scanner.getReadInstanceFieldsInMethod(
+                        dialogsActDesc, m.name, m.paramDescs, dialogsActDesc)) {
+                    if (overflowItemName.equals(rf.name)) {
+                        readsOverflow = true;
+                        break;
+                    }
+                }
+                if (!readsOverflow) continue;
+                for (DexScanner.MethodRef ref : scanner.getCalledMethodsInMethod(
+                        dialogsActDesc, m.name, m.paramDescs, null)) {
+                    if (ref.paramDescs.length == 2
+                            && "Landroid/view/View;".equals(ref.paramDescs[0])
+                            && "F".equals(ref.paramDescs[1])
+                            && "V".equals(ref.returnDesc)) {
+                        addMethod("DialogsActivity", "updateHeaderVisibility", m.name);
+                        updateHeaderVisName = m.name;
+                        break;
+                    }
+                }
+                if (updateHeaderVisName != null) break;
             }
         }
     }
