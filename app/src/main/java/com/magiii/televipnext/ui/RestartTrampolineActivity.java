@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 
+import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.Clients.ClientManager;
 
 /**
@@ -112,11 +113,16 @@ public class RestartTrampolineActivity extends Activity {
         }, RELAUNCH_DELAY_MS);
     }
 
-    private static boolean isAllowedPackage(String pkg) {
+    private boolean isAllowedPackage(String pkg) {
         if (pkg == null || pkg.isEmpty()) return false;
         for (ClientManager.Client c : ClientManager.Client.values()) {
             if (c.hasPackage(pkg)) return true;
         }
-        return false;
+        try {
+            return getPackageManager().getActivityInfo(
+                    new ComponentName(pkg, ClassNames.LAUNCH_ACTIVITY), 0) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 }

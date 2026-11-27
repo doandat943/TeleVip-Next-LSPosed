@@ -1,6 +1,5 @@
 package com.magiii.televipnext.Clients;
 
-import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -92,8 +91,8 @@ public class ClientManager {
 
         Client client = getCurrent();
 
-        return client != null
-                && client.isTgnetObfuscated()
+        return (client == null || client.isTgnetObfuscated())
+                && Utils.classLoader != null
                 && ReflectHelper.findClassIfExists(ClassNames.MESSAGE, Utils.classLoader) == null;
 
     }
@@ -107,8 +106,12 @@ public class ClientManager {
 
         }
 
-        return ClassLoad.getClass(ClassNames.CONNECTIONS_MANAGER, classLoader, false) != null
-                && ClassLoad.getClass(ClassNames.LAUNCH_ACTIVITY, classLoader, false) != null;
+        if (classLoader == null) return false;
+        if (ReflectHelper.findClassIfExists(ClassNames.LAUNCH_ACTIVITY, classLoader) == null) {
+            return false;
+        }
+        return ReflectHelper.findClassIfExists(ClassNames.CONNECTIONS_MANAGER, classLoader) != null
+                || ReflectHelper.findClassIfExists(ClassNames.APPLICATION_LOADER, classLoader) != null;
     }
 
 }
