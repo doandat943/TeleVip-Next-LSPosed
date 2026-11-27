@@ -29,7 +29,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 ### ⚡ Connections & Speed
 - **Download Speed Boost** (`Off` / `Fast` / `Ultra`)
 - **Upload Speed Boost**
-  *(Hidden automatically on clients with built-in speed boosters such as Telegraph)*
+  *(Hidden automatically on clients with built-in speed boosters such as Telegraph and Cherrygram)*
 
 ### 📸 Media & Stories
 - **Disable Stories**
@@ -58,22 +58,22 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 
 ---
 
-## 📱 Supported Clients
+## 📱 Supported Clients (19 Active)
 
 | Official & Base | Third-Party Clients |
 |---|---|
-| Telegram (`org.telegram.messenger`) | Nagram (`xyz.nextalone.nagram`) |
-| Telegram Beta (`org.telegram.messenger.beta`) | Nagram XF (`fork.risin42.nagramx`) |
-| Telegram Web (`org.telegram.messenger.web`) | Nekogram (`tw.nekomimi.nekogram`) |
-| Plus Messenger (`org.telegram.plus`) | Cherrygram (`uz.unnarsx.cherrygram`) |
-| iMe (`com.iMe.android`) | Nicegram (`app.nicegram`) |
-| iMe Web (`com.iMe.android.web`) | Telegraph (`ir.ilmili.telegraph`) |
-| Forkgram (`org.forkgram.messenger`) | Momogram (`momo.gram`) |
-| ForkClient Beta (`org.forkclient.messenger.beta`) | Turrit (`org.telegram.group`) |
-| Forkgram Classic (`org.forkgram.classic`) | Mercurygram (`it.belloworld.mercurygram`) |
+| Telegram (`org.telegram.messenger`) | Mercurygram (`it.belloworld.mercurygram`) |
+| Telegram Beta (`org.telegram.messenger.beta`) | Nagram (`xyz.nextalone.nagram`) |
+| Telegram Web (`org.telegram.messenger.web`) | Nagram XF (`fork.risin42.nagramx`) |
+| Plus Messenger (`org.telegram.plus`) | Nekogram (`tw.nekomimi.nekogram`) |
+| iMe (`com.iMe.android`) | Cherrygram (`uz.unnarsx.cherrygram`) |
+| iMe Web (`com.iMe.android.web`) | Nicegram (`app.nicegram`) |
+| Forkgram (`org.forkgram.messenger`) | Telegraph (`ir.ilmili.telegraph`) |
+| ForkClient Beta (`org.forkclient.messenger.beta`) | Momogram (`momo.gram`) |
+| Forkgram Classic (`org.forkgram.classic`) | Turrit (`org.telegram.group`) |
 | X Plus (`com.xplus.messenger`) | |
 
-> Note: Thanks to runtime DEX `AutoMappingResolver` (with root-repackaged & TL-constructor `tgnet` support), official Telegram, Telegraph, Cherrygram, Mercurygram, Nekogram, Nagram, Nicegram, Forkgram, and other obfuscated clients adapt automatically without hardcoded JSON mapping tables.
+> Note: Runtime DEX `AutoMappingResolver` supports fully obfuscated, partially obfuscated, root-repackaged (`tgnet`-obfuscated), and legacy drawer-UI builds automatically — keeping official Telegram, Plus Messenger, Mercurygram, Nagram, Nekogram, Cherrygram, Telegraph, Momogram, Forkgram, Forkgram Classic, Nicegram, iMe, X Plus, and Turrit working across updates without hardcoded JSON mapping tables.
 
 ---
 
