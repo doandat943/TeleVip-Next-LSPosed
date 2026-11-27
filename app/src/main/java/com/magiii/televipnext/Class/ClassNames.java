@@ -80,4 +80,11 @@ public class ClassNames {
     public static final String PROXY_LIST_ACTIVITY = "org.telegram.ui.ProxyListActivity";
     public static final String ACTION_BAR_MENU = "org.telegram.ui.ActionBar.ActionBarMenu";
     public static final String ITEM_OPTIONS = "org.telegram.ui.Components.ItemOptions";
+    public static final String DIALOG_STORIES_CELL = "org.telegram.ui.Stories.DialogStoriesCell";
+    public static final String PROFILE_STORIES_VIEW = "org.telegram.ui.Stories.ProfileStoriesView";
+    public static final String STORIES_LIST = "org.telegram.ui.Stories.StoriesController$StoriesList";
+    public static final String SHARED_MEDIA_LAYOUT = "org.telegram.ui.Components.SharedMediaLayout";
+    public static final String BUTTON_WITH_COUNTER_VIEW = "org.telegram.ui.Stories.recorder.ButtonWithCounterView";
+    public static final String STORIES_UTILITIES = "org.telegram.ui.Stories.StoriesUtilities";
+    public static final String AVATAR_STORY_PARAMS = "org.telegram.ui.Stories.StoriesUtilities$AvatarStoryParams";
    }

@@ -33,6 +33,10 @@ public class Keys {
     public static final String Copied = "Copied";
     public static final String UserOffline = "UserOffline";
     public static final String DisableStories = "DisableStories";
+    public static final String HideStoriesChatList = "HideStoriesChatList";
+    public static final String HideStoriesRings = "HideStoriesRings";
+    public static final String HideStoriesProfile = "HideStoriesProfile";
+    public static final String DisableStoriesPosting = "DisableStoriesPosting";
     public static final String HideUpdateApp = "HideUpdateApp";
     public static final String JoinTeleVip = "JoinTeleVip";
     public static final String Join = "Join";

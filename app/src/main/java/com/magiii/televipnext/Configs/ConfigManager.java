@@ -58,7 +58,10 @@ public class ConfigManager {
 
     // Stories
     public static ConfigItem stories;
-    public static ConfigItem disableStories;
+    public static ConfigItem hideStoriesChatList;
+    public static ConfigItem hideStoriesRings;
+    public static ConfigItem hideStoriesProfile;
+    public static ConfigItem disableStoriesPosting;
 
     // Messages
     public static ConfigItem messages;
@@ -159,8 +162,28 @@ public class ConfigManager {
             stories = new ConfigItem(ConfigItem.HEADER, Keys.StoriesSettings);
             items.add(stories);
 
-            disableStories = new ConfigItem(ConfigItem.SWITCH, Keys.DisableStories, true, ConfigPreferences.getBoolean(Keys.DisableStories), DisableStories::init);
-            items.add(disableStories);
+            if (!ConfigPreferences.contains(Keys.HideStoriesChatList)
+                    && ConfigPreferences.getBoolean(Keys.DisableStories)) {
+                ConfigPreferences.putBoolean(Keys.HideStoriesChatList, true);
+                ConfigPreferences.putBoolean(Keys.HideStoriesRings, true);
+                ConfigPreferences.putBoolean(Keys.HideStoriesProfile, true);
+                ConfigPreferences.putBoolean(Keys.DisableStoriesPosting, true);
+            } else if (!ConfigPreferences.contains(Keys.HideStoriesRings)
+                    && ConfigPreferences.getBoolean(Keys.HideStoriesProfile)) {
+                ConfigPreferences.putBoolean(Keys.HideStoriesRings, true);
+            }
+
+            hideStoriesChatList = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesChatList, ConfigPreferences.getBoolean(Keys.HideStoriesChatList), DisableStories::init);
+            items.add(hideStoriesChatList);
+
+            hideStoriesRings = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesRings, ConfigPreferences.getBoolean(Keys.HideStoriesRings), DisableStories::init);
+            items.add(hideStoriesRings);
+
+            hideStoriesProfile = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesProfile, ConfigPreferences.getBoolean(Keys.HideStoriesProfile), DisableStories::init);
+            items.add(hideStoriesProfile);
+
+            disableStoriesPosting = new ConfigItem(ConfigItem.SWITCH, Keys.DisableStoriesPosting, ConfigPreferences.getBoolean(Keys.DisableStoriesPosting), DisableStories::init);
+            items.add(disableStoriesPosting);
 
             items.add(shadows);
         }
