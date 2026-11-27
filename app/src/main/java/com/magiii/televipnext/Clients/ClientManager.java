@@ -25,7 +25,8 @@ public class ClientManager {
         Cherrygram("uz.unnarsx.cherrygram", true),
         ForkgramClassic("org.forkgram.classic"),
         Turrit("org.telegram.group", com.magiii.televipnext.Clients.Turrit.class),
-        NagramXF("fork.risin42.nagramx");
+        NagramXF("fork.risin42.nagramx"),
+        Mercurygram("it.belloworld.mercurygram");
 
         private final boolean tgnetObfuscated;
         private final String pkg;

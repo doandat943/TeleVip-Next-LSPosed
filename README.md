@@ -70,7 +70,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 | iMe Web (`com.iMe.android.web`) | Telegraph (`ir.ilmili.telegraph`) |
 | Forkgram (`org.forkgram.messenger`) | Momogram (`nekox.messenger.broken`) |
 | ForkClient Beta (`org.forkclient.messenger.beta`) | Turrit (`org.telegram.group`) |
-| Forkgram Classic (`org.forkgram.classic`) | |
+| Forkgram Classic (`org.forkgram.classic`) | Mercurygram (`it.belloworld.mercurygram`) |
 | X Plus (`com.xplus.messenger`) | |
 
 > Note: Thanks to runtime DEX `AutoMappingResolver`, official Telegram, Telegraph, and Cherrygram updates adapt automatically without waiting for hardcoded mapping updates.
