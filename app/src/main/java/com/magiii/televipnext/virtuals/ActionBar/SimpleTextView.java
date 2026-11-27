@@ -1,6 +1,7 @@
 package com.magiii.televipnext.virtuals.ActionBar;
 
 import android.text.Layout;
+import android.text.TextPaint;
 import android.view.View;
 
 import com.magiii.televipnext.obfuscate.ArgsResolver;
@@ -38,6 +39,16 @@ public class SimpleTextView {
 
     public void setMaxLines(int value){
         ReflectHelper.callMethod(simpleTextView, Obfuscate.getMethodName("SimpleTextView", "setMaxLines"), value);
+    }
+
+    public TextPaint getTextPaint(){
+        try {
+            String m = Obfuscate.getMethodName("SimpleTextView", "getTextPaint");
+            Object res = ReflectHelper.callMethod(simpleTextView, m);
+            if (res instanceof TextPaint) return (TextPaint) res;
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     public View getSimpleTextView(){

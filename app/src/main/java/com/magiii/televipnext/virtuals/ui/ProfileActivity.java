@@ -40,6 +40,17 @@ public class ProfileActivity {
     }
 
 
+    public void needLayout(boolean animated){
+        try {
+            if (profileActivity == null) return;
+            String m = Obfuscate.getMethodName("ProfileActivity", "needLayout");
+            if (ReflectHelper.findMethodExactIfExists(profileActivity.getClass(), m, boolean.class) != null) {
+                ReflectHelper.callMethod(profileActivity, m, animated);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     public BaseFragment getBaseFragment(){
         return new BaseFragment(profileActivity);
     }

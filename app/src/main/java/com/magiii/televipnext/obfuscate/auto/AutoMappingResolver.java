@@ -25,7 +25,7 @@ public class AutoMappingResolver {
     private static final String KEY_VERSION_CODE = "versionCode";
     private static final String KEY_SCHEMA_VER = "schemaVersion";
     private static final String KEY_MAPPING_JSON = "mappingJson";
-    private static final int SCHEMA_VERSION = 48;
+    private static final int SCHEMA_VERSION = 49;
 
     private final Map<String, String> classMap = new HashMap<>();
     private final Map<String, String> fieldMap = new HashMap<>();
@@ -1777,10 +1777,18 @@ public class AutoMappingResolver {
         if (simpleTextViewDesc != null) {
             addClass("org.telegram.ui.ActionBar.SimpleTextView", simpleTextViewDesc);
             String getTextM = null;
+            String getPaintM = null;
             for (DexScanner.MethodInfo m : scanner.getMethods(simpleTextViewDesc)) {
-                if (!m.isStatic && "getText".equals(m.name) && "Ljava/lang/CharSequence;".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                if (m.isStatic) continue;
+                if (getTextM == null && "getText".equals(m.name) && "Ljava/lang/CharSequence;".equals(m.returnDesc) && m.paramDescs.length == 0) {
                     getTextM = m.name;
-                    break;
+                }
+                if ("Landroid/text/TextPaint;".equals(m.returnDesc) && m.paramDescs.length == 0) {
+                    if ("getTextPaint".equals(m.name)) {
+                        getPaintM = m.name;
+                    } else if (getPaintM == null || "getPaint".equals(m.name)) {
+                        getPaintM = m.name;
+                    }
                 }
             }
             if (getTextM == null) {
@@ -1792,6 +1800,9 @@ public class AutoMappingResolver {
             addMethod("SimpleTextView", "setTextForce",
                     scanner.findSingleMethod(simpleTextViewDesc, false, "Z", "Ljava/lang/CharSequence;", "Z"));
             addMethod("SimpleTextView", "setMaxLines", "setMaxLines");
+            if (getPaintM != null) {
+                addMethod("SimpleTextView", "getTextPaint", getPaintM);
+            }
         }
 
         String profileDesc = DexScanner.javaToDesc(ClassNames.PROFILE_ACTIVITY);
@@ -1836,13 +1847,17 @@ public class AutoMappingResolver {
             }
             String onlineField = null;
             String updateOnlineMethod = null;
+            String needLayoutMethod = null;
             if (!stvFields.isEmpty()) {
                 for (DexScanner.MethodInfo m : profileMethods) {
-                    if (m.isStatic || !"V".equals(m.returnDesc) || m.paramDescs.length != 0) continue;
+                    if (m.isStatic || !"V".equals(m.returnDesc)) continue;
+                    boolean okSig = m.paramDescs.length == 0
+                            || (m.paramDescs.length == 1 && "Z".equals(m.paramDescs[0]));
+                    if (!okSig) continue;
                     int sz = m.getInsnsSize();
-                    if (sz <= 0 || sz >= 120) continue;
+                    if (sz <= 0 || sz >= 150) continue;
 
-                    List<DexScanner.FieldInfo> reads = scanner.getReadInstanceFieldsInMethod(profileDesc, m.name, new String[0], profileDesc);
+                    List<DexScanner.FieldInfo> reads = scanner.getReadInstanceFieldsInMethod(profileDesc, m.name, m.paramDescs, profileDesc);
                     DexScanner.FieldInfo matchedField = null;
                     for (DexScanner.FieldInfo rf : reads) {
                         for (DexScanner.FieldInfo sf : stvFields) {
@@ -1855,12 +1870,18 @@ public class AutoMappingResolver {
                     }
                     if (matchedField == null) continue;
 
-                    for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(profileDesc, m.name, new String[0], null)) {
+                    for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(profileDesc, m.name, m.paramDescs, null)) {
                         if ("Z".equals(mr.returnDesc) && mr.paramDescs.length == 2
                                 && "Ljava/lang/CharSequence;".equals(mr.paramDescs[0]) && "Z".equals(mr.paramDescs[1])
                                 && scanner.isSubclassOf(matchedField.typeDesc, mr.ownerDesc)) {
                             onlineField = matchedField.name;
                             updateOnlineMethod = m.name;
+                            for (DexScanner.MethodRef mr2 : scanner.getCalledMethodsInMethod(profileDesc, m.name, m.paramDescs, profileDesc)) {
+                                if ("V".equals(mr2.returnDesc) && mr2.paramDescs.length == 1 && "Z".equals(mr2.paramDescs[0])) {
+                                    needLayoutMethod = mr2.name;
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
@@ -1869,14 +1890,35 @@ public class AutoMappingResolver {
                 if (onlineField != null) {
                     addField("ProfileActivity", "onlineTextView", onlineField);
                     addMethod("ProfileActivity", "updateOnlineTextView", updateOnlineMethod);
+                    String nameField = null;
                     for (DexScanner.FieldInfo sf : stvFields) {
-                        if (!onlineField.equals(sf.name)) {
-                            addField("ProfileActivity", "nameTextView", sf.name);
+                        if (!onlineField.equals(sf.name) && "nameTextView".equals(sf.name)) {
+                            nameField = sf.name;
                             break;
                         }
                     }
+                    if (nameField == null && bestUpdateData != null) {
+                        for (DexScanner.FieldInfo sf : stvFields) {
+                            if (!onlineField.equals(sf.name) && bestUpdateData.readsFieldNamed(sf.name)) {
+                                nameField = sf.name;
+                                break;
+                            }
+                        }
+                    }
+                    if (nameField == null) {
+                        for (DexScanner.FieldInfo sf : stvFields) {
+                            if (!onlineField.equals(sf.name)) {
+                                nameField = sf.name;
+                                break;
+                            }
+                        }
+                    }
+                    if (nameField != null) {
+                        addField("ProfileActivity", "nameTextView", nameField);
+                    }
                 }
-            } else {
+            }
+            if (onlineField == null) {
                 String arrDesc = "[" + simpleTextViewDesc;
                 List<String> arrNames = new ArrayList<>();
                 for (DexScanner.FieldInfo f : scanner.getFields(profileDesc)) {
@@ -1885,9 +1927,34 @@ public class AutoMappingResolver {
                     }
                 }
                 if (arrNames.size() == 2) {
-                    addField("ProfileActivity", "nameTextView", arrNames.get(0));
-                    addField("ProfileActivity", "onlineTextView", arrNames.get(1));
+                    if (arrNames.contains("nameTextView") && arrNames.contains("onlineTextView")) {
+                        addField("ProfileActivity", "nameTextView", "nameTextView");
+                        addField("ProfileActivity", "onlineTextView", "onlineTextView");
+                    } else {
+                        addField("ProfileActivity", "nameTextView", arrNames.get(0));
+                        addField("ProfileActivity", "onlineTextView", arrNames.get(1));
+                    }
                 }
+            }
+            if (needLayoutMethod == null && bestUpdateData != null) {
+                int bestSize = 1000;
+                for (DexScanner.MethodRef mr : scanner.getCalledMethodsInMethod(profileDesc, bestUpdateData.name, new String[]{"Z"}, profileDesc)) {
+                    if ("V".equals(mr.returnDesc) && mr.paramDescs.length == 1 && "Z".equals(mr.paramDescs[0])) {
+                        for (DexScanner.MethodInfo pm : profileMethods) {
+                            if (!pm.isStatic && pm.name.equals(mr.name) && pm.paramDescs.length == 1 && "Z".equals(pm.paramDescs[0])) {
+                                int sz = pm.getInsnsSize();
+                                if (sz > bestSize) {
+                                    bestSize = sz;
+                                    needLayoutMethod = pm.name;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (needLayoutMethod != null) {
+                addMethod("ProfileActivity", "needLayout", needLayoutMethod);
             }
         }
     }
