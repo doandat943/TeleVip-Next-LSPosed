@@ -176,9 +176,9 @@ public class HideBottomBarTabs {
                 String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
                 if (bfCreate != null && !"createView".equals(bfCreate)) mtCreateView = bfCreate;
             }
-            Method createViewM = findMethodInHierarchy(mainTabsCls, mtCreateView, Context.class);
+            Method createViewM = ReflectHelper.findMethodInHierarchy(mainTabsCls, mtCreateView, Context.class);
             if (createViewM == null && !"createView".equals(mtCreateView)) {
-                createViewM = findMethodInHierarchy(mainTabsCls, "createView", Context.class);
+                createViewM = ReflectHelper.findMethodInHierarchy(mainTabsCls, "createView", Context.class);
             }
             if (createViewM != null) {
                 HMethod.hookMethod(createViewM, new BaseMethodHook() {
@@ -195,9 +195,9 @@ public class HideBottomBarTabs {
                 String bfResume = Obfuscate.getMethodName("BaseFragment", "onResume");
                 if (bfResume != null && !"onResume".equals(bfResume)) mtOnResume = bfResume;
             }
-            Method onResumeM = findMethodInHierarchy(mainTabsCls, mtOnResume);
+            Method onResumeM = ReflectHelper.findMethodInHierarchy(mainTabsCls, mtOnResume);
             if (onResumeM == null && !"onResume".equals(mtOnResume)) {
-                onResumeM = findMethodInHierarchy(mainTabsCls, "onResume");
+                onResumeM = ReflectHelper.findMethodInHierarchy(mainTabsCls, "onResume");
             }
             if (onResumeM != null) {
                 HMethod.hookMethod(onResumeM, new BaseMethodHook() {
@@ -585,12 +585,12 @@ public class HideBottomBarTabs {
 
             if (!setViewVisibleChecked) {
                 setViewVisibleChecked = true;
-                setViewVisibleMethodObj = findMethodInHierarchy(
+                setViewVisibleMethodObj = ReflectHelper.findMethodInHierarchy(
                         tabsView.getClass(), setViewVisibleMethod, View.class, boolean.class, boolean.class);
             }
             if (!setMaxWidthChecked) {
                 setMaxWidthChecked = true;
-                setMaxWidthMethodObj = findMethodInHierarchy(
+                setMaxWidthMethodObj = ReflectHelper.findMethodInHierarchy(
                         tabsView.getClass(), "setMaxWidth", int.class);
             }
 
@@ -653,7 +653,7 @@ public class HideBottomBarTabs {
                 if (isPositionHidden(curPos)) {
                     if (!selectTabChecked) {
                         selectTabChecked = true;
-                        selectTabMethodObj = findMethodInHierarchy(
+                        selectTabMethodObj = ReflectHelper.findMethodInHierarchy(
                                 mainTabs.getClass(), selectTabMethod, int.class, boolean.class);
                     }
                     if (selectTabMethodObj != null) {
@@ -694,7 +694,7 @@ public class HideBottomBarTabs {
         if (vp == null || getCurrentPositionMethod == null) return POSITION_CHATS;
         if (!getCurrentPositionChecked) {
             getCurrentPositionChecked = true;
-            getCurrentPositionMethodObj = findMethodInHierarchy(vp.getClass(), getCurrentPositionMethod);
+            getCurrentPositionMethodObj = ReflectHelper.findMethodInHierarchy(vp.getClass(), getCurrentPositionMethod);
         }
         if (getCurrentPositionMethodObj == null) return POSITION_CHATS;
         try {
@@ -709,7 +709,7 @@ public class HideBottomBarTabs {
         if (vp == null || scrollToPositionMethod == null) return;
         if (!scrollToPositionChecked) {
             scrollToPositionChecked = true;
-            scrollToPositionMethodObj = findMethodInHierarchy(vp.getClass(), scrollToPositionMethod, int.class);
+            scrollToPositionMethodObj = ReflectHelper.findMethodInHierarchy(vp.getClass(), scrollToPositionMethod, int.class);
         }
         if (scrollToPositionMethodObj == null) return;
         try {
@@ -740,12 +740,12 @@ public class HideBottomBarTabs {
     }
 
     private static boolean hasNoArgMethod(Class<?> cls, String name) {
-        return findMethodInHierarchy(cls, name) != null;
+        return ReflectHelper.findMethodInHierarchy(cls, name) != null;
     }
 
     private static boolean invokeNoArgIfExists(Object target, String name) {
         if (target == null || name == null) return false;
-        Method m = findMethodInHierarchy(target.getClass(), name);
+        Method m = ReflectHelper.findMethodInHierarchy(target.getClass(), name);
         if (m == null) return false;
         try {
             m.invoke(target);
@@ -753,18 +753,5 @@ public class HideBottomBarTabs {
         } catch (Throwable ignored) {
             return false;
         }
-    }
-
-    private static Method findMethodInHierarchy(Class<?> cls, String name, Class<?>... params) {
-        if (cls == null || name == null) return null;
-        for (Class<?> c = cls; c != null && c != Object.class; c = c.getSuperclass()) {
-            try {
-                Method m = c.getDeclaredMethod(name, params);
-                m.setAccessible(true);
-                return m;
-            } catch (NoSuchMethodException ignored) {
-            }
-        }
-        return null;
     }
 }

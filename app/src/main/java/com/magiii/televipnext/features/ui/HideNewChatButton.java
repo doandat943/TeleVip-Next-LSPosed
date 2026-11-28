@@ -112,9 +112,9 @@ public class HideNewChatButton {
                 String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
                 if (bfCreate != null && !"createView".equals(bfCreate)) daCreateView = bfCreate;
             }
-            Method createViewM = findMethodInHierarchy(dialogsCls, daCreateView, Context.class);
+            Method createViewM = ReflectHelper.findMethodInHierarchy(dialogsCls, daCreateView, Context.class);
             if (createViewM == null && !"createView".equals(daCreateView)) {
-                createViewM = findMethodInHierarchy(dialogsCls, "createView", Context.class);
+                createViewM = ReflectHelper.findMethodInHierarchy(dialogsCls, "createView", Context.class);
             }
             if (createViewM != null) {
                 HMethod.hookMethod(createViewM, syncHook);
@@ -125,9 +125,9 @@ public class HideNewChatButton {
                 String bfResume = Obfuscate.getMethodName("BaseFragment", "onResume");
                 if (bfResume != null && !"onResume".equals(bfResume)) daOnResume = bfResume;
             }
-            Method onResumeM = findMethodInHierarchy(dialogsCls, daOnResume);
+            Method onResumeM = ReflectHelper.findMethodInHierarchy(dialogsCls, daOnResume);
             if (onResumeM == null && !"onResume".equals(daOnResume)) {
-                onResumeM = findMethodInHierarchy(dialogsCls, "onResume");
+                onResumeM = ReflectHelper.findMethodInHierarchy(dialogsCls, "onResume");
             }
             if (onResumeM != null) {
                 HMethod.hookMethod(onResumeM, syncHook);
@@ -183,18 +183,5 @@ public class HideNewChatButton {
         if (ReflectHelper.findMethodExactIfExists(fab.getClass(), setButtonVisibleMethod, boolean.class, boolean.class) != null) {
             ReflectHelper.callMethod(fab, setButtonVisibleMethod, visible, false);
         }
-    }
-
-    private static Method findMethodInHierarchy(Class<?> cls, String name, Class<?>... params) {
-        if (cls == null || name == null) return null;
-        for (Class<?> c = cls; c != null && c != Object.class; c = c.getSuperclass()) {
-            try {
-                Method m = c.getDeclaredMethod(name, params);
-                m.setAccessible(true);
-                return m;
-            } catch (NoSuchMethodException ignored) {
-            }
-        }
-        return null;
     }
 }

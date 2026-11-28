@@ -9,7 +9,6 @@ import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
-import com.magiii.televipnext.utils.Utils;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
 
@@ -72,12 +71,7 @@ public class GhostMode {
     }
 
     public static boolean isOnlineRequest(Object object) {
-        Class<?> cls = object.getClass();
-        Class<?> mapped = ClassLoad.getClass(ClassNames.TL_ACCOUNT_UPDATE_STATUS, Utils.classLoader, false);
-        if (mapped != null && cls.equals(mapped)) {
-            return true;
-        }
-        return !ClientManager.isTgnetObfuscated() && cls.getName().contains("TL_account$updateStatus");
+        return ClassLoad.isTlInstance(object, ClassNames.TL_ACCOUNT_UPDATE_STATUS, "TL_account$updateStatus");
     }
 
 }

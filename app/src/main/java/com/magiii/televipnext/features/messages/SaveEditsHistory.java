@@ -471,8 +471,7 @@ public class SaveEditsHistory {
                                 return;
                             }
                             Object req = param.args[0];
-                            Class<?> tlEditCls = ClassLoad.getClass("org.telegram.tgnet.TLRPC$TL_messages_editMessage", Utils.classLoader, false);
-                            if (req.getClass().getName().contains("TL_messages_editMessage") || req.getClass().equals(tlEditCls)) {
+                            if (ClassLoad.isTlInstance(req, "org.telegram.tgnet.TLRPC$TL_messages_editMessage", "TL_messages_editMessage")) {
                                 int msgId = getIntField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "id"));
                                 String newText = getStringField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "message"));
                                 Object peer = getField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "peer"));
@@ -719,18 +718,8 @@ public class SaveEditsHistory {
     }
 
     private static int resolveHistoryIconResId() {
-        Context ctx = ApplicationLoaderHook.getApplicationContext();
-        if (ctx != null) {
-            String pkg = ctx.getPackageName();
-            String[] names = {"msg_log", "msg_info", "msg_edit", "msg_settings"};
-            for (String name : names) {
-                try {
-                    int id = ctx.getResources().getIdentifier(name, "drawable", pkg);
-                    if (id != 0) return id;
-                } catch (Throwable ignored) {}
-            }
-        }
-        return SettingsIconResolver.getIconSettings();
+        int id = SettingsIconResolver.resolveDrawableId("msg_log", "msg_info", "msg_edit", "msg_settings");
+        return id != 0 ? id : SettingsIconResolver.getIconSettings();
     }
 
     private static Object getField(Object obj, String field) {

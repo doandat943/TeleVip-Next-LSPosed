@@ -78,6 +78,25 @@ public final class ReflectHelper {
         return f;
     }
 
+    public static Method findMethodInHierarchy(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+        return findMethodInHierarchy(clazz, methodName, false, parameterTypes);
+    }
+
+    public static Method findMethodInHierarchy(
+            Class<?> clazz, String methodName, boolean onlyStatic, Class<?>... parameterTypes) {
+        if (clazz == null || methodName == null) return null;
+        for (Class<?> cur = clazz; cur != null && cur != Object.class; cur = cur.getSuperclass()) {
+            try {
+                Method m = cur.getDeclaredMethod(methodName, parameterTypes);
+                if (onlyStatic && !Modifier.isStatic(m.getModifiers())) continue;
+                m.setAccessible(true);
+                return m;
+            } catch (NoSuchMethodException ignored) {
+            }
+        }
+        return null;
+    }
+
     public static Method findMethodExactIfExists(Class<?> clazz, String methodName, Object... parameterTypes) {
         if (clazz == null || methodName == null) return null;
         Class<?>[] paramClasses = resolveParameterClasses(clazz.getClassLoader(), parameterTypes);

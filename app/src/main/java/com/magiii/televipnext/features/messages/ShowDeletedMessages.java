@@ -260,20 +260,10 @@ public class ShowDeletedMessages {
                                                 result.add(null);
                                                 continue;
                                             }
-                                            String name = update.getClass().getName();
-                                            Class<?> updateCls = update.getClass();
-                                            boolean updateDeleteChannelMessages;
-                                            boolean updateDeleteMessages;
-
-                                            if (!ClientManager.isTgnetObfuscated()) {
-                                                updateDeleteChannelMessages = name.contains("TL_updateDeleteChannelMessages")
-                                                        || updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES, Utils.classLoader, false));
-                                                updateDeleteMessages = name.contains("TL_updateDeleteMessages")
-                                                        || updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_MESSAGES, Utils.classLoader, false));
-                                            } else {
-                                                updateDeleteChannelMessages = updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES));
-                                                updateDeleteMessages = updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_MESSAGES));
-                                            }
+                                            boolean updateDeleteChannelMessages = ClassLoad.isTlInstance(
+                                                    update, ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES, "TL_updateDeleteChannelMessages");
+                                            boolean updateDeleteMessages = ClassLoad.isTlInstance(
+                                                    update, ClassNames.TL_UPDATE_DELETE_MESSAGES, "TL_updateDeleteMessages");
 
                                             if (updateDeleteChannelMessages || updateDeleteMessages) {
                                                 if (processDeletedMessage(messagesController, update,
@@ -601,20 +591,11 @@ public class ShowDeletedMessages {
     }
 
     private static int resolveDeleteIconResId(ArrayList<Integer> existingIcons) {
-        Context ctx = ApplicationLoaderHook.getApplicationContext();
-        if (ctx != null) {
-            String pkg = ctx.getPackageName();
-            String[] names = {"msg_delete", "msg_clear"};
-            for (String name : names) {
-                try {
-                    int id = ctx.getResources().getIdentifier(name, "drawable", pkg);
-                    if (id != 0) return id;
-                } catch (Throwable ignored) {}
-            }
-        }
+        int id = SettingsIconResolver.resolveDrawableId("msg_delete", "msg_clear");
+        if (id != 0) return id;
         if (existingIcons != null) {
-            for (Integer id : existingIcons) {
-                if (id != null && id >= 0x01000000) return id;
+            for (Integer iconId : existingIcons) {
+                if (iconId != null && iconId >= 0x01000000) return iconId;
             }
         }
         return SettingsIconResolver.getIconSettings();

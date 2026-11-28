@@ -8,7 +8,6 @@ import android.widget.EditText;
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.Clients.ClientManager;
-import com.magiii.televipnext.application.ApplicationLoaderHook;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.language.Keys;
@@ -19,6 +18,7 @@ import com.magiii.televipnext.obfuscate.Obfuscate;
 import com.magiii.televipnext.settings.ui.GlassDialog;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.virtuals.ActionBar.ActionBarMenuItem;
+import com.magiii.televipnext.virtuals.SettingsIconResolver;
 import com.magiii.televipnext.virtuals.ui.ChatActivity;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -47,12 +47,12 @@ public class ChatHook {
                         ActionBarMenuItem headerItem = chatActivity.getHeaderItem();
                         if (headerItem.getActionBarMenuItem() != null) {
 
-                            int drawableResource = resolveDrawableId("msg_go_up");
+                            int drawableResource = SettingsIconResolver.resolveDrawableId("msg_go_up");
 
                             if (!ClientManager.is(ClientManager.Client.iMe) && !ClientManager.is(ClientManager.Client.iMeWeb) && !ClientManager.is(ClientManager.Client.TelegramPlus) && !ClientManager.is(ClientManager.Client.XPlus) && !ClientManager.is(ClientManager.Client.forkgram) && !ClientManager.is(ClientManager.Client.forkgramBeta)) {
                                 headerItem.lazilyAddSubItem(8353847, drawableResource, Translator.get(Keys.ToTheBeginning));
                             }
-                            drawableResource = resolveDrawableId("player_new_order");
+                            drawableResource = SettingsIconResolver.resolveDrawableId("player_new_order");
 
                             headerItem.lazilyAddSubItem(8353848, drawableResource, Translator.get(Keys.ToTheMessage));
 
@@ -112,19 +112,6 @@ public class ChatHook {
         } catch (Throwable t){
             FeatureStateManager.reset();
         }
-    }
-
-    private static int resolveDrawableId(String name) {
-        Class<?> drawableCls = ClassLoad.getClass(ClassNames.DRAWABLE, Utils.classLoader, false);
-        if (drawableCls != null && ReflectHelper.findFieldIfExists(drawableCls, name) != null) {
-            return ReflectHelper.getStaticIntField(drawableCls, name);
-        }
-        Context ctx = ApplicationLoaderHook.getApplicationContext();
-        if (ctx != null) {
-            int id = ctx.getResources().getIdentifier(name, "drawable", ctx.getPackageName());
-            if (id != 0) return id;
-        }
-        return 0;
     }
 
     private static Object resolveOuterChatActivity(Object listener) {

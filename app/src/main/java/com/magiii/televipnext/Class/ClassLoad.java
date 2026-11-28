@@ -74,4 +74,14 @@ public class ClassLoad {
         }
     }
 
+    public static boolean isTlInstance(Object obj, String className, String rawSubstring) {
+        if (obj == null) return false;
+        Class<?> cls = obj.getClass();
+        Class<?> mapped = getClass(className, Utils.classLoader, false);
+        if (mapped != null && cls.equals(mapped)) {
+            return true;
+        }
+        return !ClientManager.isTgnetObfuscated() && rawSubstring != null && cls.getName().contains(rawSubstring);
+    }
+
 }

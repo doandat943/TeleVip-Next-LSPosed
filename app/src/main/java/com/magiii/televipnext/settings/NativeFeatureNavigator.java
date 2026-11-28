@@ -169,7 +169,7 @@ public final class NativeFeatureNavigator {
             Class<?> registryCls = resolveClass(target.targetClassName, target.fallbackClassNames);
             if (registryCls == null) return false;
             Object instance = null;
-            Method getInstance = findMethodInHierarchy(registryCls, "getInstance", true);
+            Method getInstance = ReflectHelper.findMethodInHierarchy(registryCls, "getInstance", true);
             if (getInstance != null) {
                 instance = getInstance.invoke(null);
             }
@@ -180,7 +180,7 @@ public final class NativeFeatureNavigator {
                 }
             }
             if (instance == null) return false;
-            Method handleLink = findMethodInHierarchy(
+            Method handleLink = ReflectHelper.findMethodInHierarchy(
                     instance.getClass(), "handleLink", false, String.class, String.class);
             if (handleLink == null) return false;
             handleLink.invoke(instance, target.nativeScrollKey, null);
@@ -293,7 +293,7 @@ public final class NativeFeatureNavigator {
 
     private static boolean tryMomoSetScrollTo(Object fragment, String key) {
         try {
-            Method m = findMethodInHierarchy(
+            Method m = ReflectHelper.findMethodInHierarchy(
                     fragment.getClass(), "setScrollTo", false, String.class, int.class, boolean.class);
             if (m != null) {
                 m.invoke(fragment, key, 0, true);
@@ -317,7 +317,7 @@ public final class NativeFeatureNavigator {
         try {
             String mapped = Obfuscate.getMethodName("LaunchActivity", "presentFragment3");
             if (mapped != null && baseFragCls != null) {
-                Method m = findMethodInHierarchy(
+                Method m = ReflectHelper.findMethodInHierarchy(
                         actCls, mapped, false, baseFragCls, boolean.class, boolean.class);
                 if (m != null) {
                     Object res = m.invoke(activity, fragment, false, false);
@@ -361,13 +361,13 @@ public final class NativeFeatureNavigator {
         // Fallback 2: method named "presentFragment" taking (BaseFragment) or (BaseFragment, boolean, boolean)
         if (baseFragCls != null) {
             try {
-                Method m3 = findMethodInHierarchy(
+                Method m3 = ReflectHelper.findMethodInHierarchy(
                         actCls, "presentFragment", false, baseFragCls, boolean.class, boolean.class);
                 if (m3 != null) {
                     Object res = m3.invoke(activity, fragment, false, false);
                     return !(res instanceof Boolean) || (Boolean) res;
                 }
-                Method m1 = findMethodInHierarchy(actCls, "presentFragment", false, baseFragCls);
+                Method m1 = ReflectHelper.findMethodInHierarchy(actCls, "presentFragment", false, baseFragCls);
                 if (m1 != null) {
                     Object res = m1.invoke(activity, fragment);
                     return !(res instanceof Boolean) || (Boolean) res;
@@ -390,7 +390,7 @@ public final class NativeFeatureNavigator {
                         f.setAccessible(true);
                         Object nav = f.get(activity);
                         if (nav == null) continue;
-                        Method pm = findMethodInHierarchy(nav.getClass(), "presentFragment", false, baseFragCls);
+                        Method pm = ReflectHelper.findMethodInHierarchy(nav.getClass(), "presentFragment", false, baseFragCls);
                         if (pm != null) {
                             Object res = pm.invoke(nav, fragment);
                             return !(res instanceof Boolean) || (Boolean) res;
@@ -522,13 +522,13 @@ public final class NativeFeatureNavigator {
             Object fragment, String methodName, String key, Runnable onNotFound) throws Throwable {
         if (fragment == null || methodName == null || methodName.isEmpty()) return false;
         Class<?> cls = fragment.getClass();
-        Method m = findMethodInHierarchy(cls, methodName, false, String.class, Runnable.class);
+        Method m = ReflectHelper.findMethodInHierarchy(cls, methodName, false, String.class, Runnable.class);
         if (m != null) {
             m.invoke(fragment, key, onNotFound);
             return true;
         }
         // R8 may reorder parameters to (Runnable, String) (e.g. Nagram 13.2.2 BaseNekoXSettingsActivity#g0)
-        Method swapped = findMethodInHierarchy(cls, methodName, false, Runnable.class, String.class);
+        Method swapped = ReflectHelper.findMethodInHierarchy(cls, methodName, false, Runnable.class, String.class);
         if (swapped != null) {
             swapped.invoke(fragment, onNotFound, key);
             return true;
@@ -774,7 +774,7 @@ public final class NativeFeatureNavigator {
             if (container instanceof ScrollView) {
                 ((ScrollView) container).smoothScrollTo(0, targetY);
             } else {
-                Method smoothScroll = findMethodInHierarchy(
+                Method smoothScroll = ReflectHelper.findMethodInHierarchy(
                         container.getClass(), "smoothScrollTo", false, int.class, int.class);
                 if (smoothScroll != null) {
                     smoothScroll.invoke(container, 0, targetY);
@@ -941,9 +941,9 @@ public final class NativeFeatureNavigator {
             if (localeCls == null) return null;
             String mapped = Obfuscate.getMethodName("LocaleController", "getString");
             Method m = mapped != null
-                    ? findMethodInHierarchy(localeCls, mapped, true, int.class) : null;
+                    ? ReflectHelper.findMethodInHierarchy(localeCls, mapped, true, int.class) : null;
             if (m == null && !"getString".equals(mapped)) {
-                m = findMethodInHierarchy(localeCls, "getString", true, int.class);
+                m = ReflectHelper.findMethodInHierarchy(localeCls, "getString", true, int.class);
             }
             if (m != null && m.getReturnType() == String.class) {
                 Object res = m.invoke(null, resId);
@@ -1145,9 +1145,9 @@ public final class NativeFeatureNavigator {
         if (fragment == null) return null;
         try {
             String mapped = Obfuscate.getMethodName("BaseFragment", "getFragmentView");
-            Method m = mapped != null ? findMethodInHierarchy(fragment.getClass(), mapped, false) : null;
+            Method m = mapped != null ? ReflectHelper.findMethodInHierarchy(fragment.getClass(), mapped, false) : null;
             if (m == null && !"getFragmentView".equals(mapped)) {
-                m = findMethodInHierarchy(fragment.getClass(), "getFragmentView", false);
+                m = ReflectHelper.findMethodInHierarchy(fragment.getClass(), "getFragmentView", false);
             }
             if (m != null && View.class.isAssignableFrom(m.getReturnType())) {
                 Object res = m.invoke(fragment);
@@ -1222,9 +1222,9 @@ public final class NativeFeatureNavigator {
             Object adapter = getRecyclerViewAdapter(rv);
             if (adapter == null) return -1;
             String mapped = Obfuscate.getMethodName("RecyclerView$Adapter", "getItemCount");
-            Method m = mapped != null ? findMethodInHierarchy(adapter.getClass(), mapped, false) : null;
+            Method m = mapped != null ? ReflectHelper.findMethodInHierarchy(adapter.getClass(), mapped, false) : null;
             if (m == null && !"getItemCount".equals(mapped)) {
-                m = findMethodInHierarchy(adapter.getClass(), "getItemCount", false);
+                m = ReflectHelper.findMethodInHierarchy(adapter.getClass(), "getItemCount", false);
             }
             if (m != null && m.getReturnType() == int.class) {
                 return (Integer) m.invoke(adapter);
@@ -1250,9 +1250,9 @@ public final class NativeFeatureNavigator {
 
             String mapped = Obfuscate.getMethodName("LinearLayoutManager", "scrollToPositionWithOffset");
             Method m = mapped != null
-                    ? findMethodInHierarchy(lm.getClass(), mapped, false, int.class, int.class) : null;
+                    ? ReflectHelper.findMethodInHierarchy(lm.getClass(), mapped, false, int.class, int.class) : null;
             if (m == null && !"scrollToPositionWithOffset".equals(mapped)) {
-                m = findMethodInHierarchy(
+                m = ReflectHelper.findMethodInHierarchy(
                         lm.getClass(), "scrollToPositionWithOffset", false, int.class, int.class);
             }
             if (m != null) {
@@ -1267,9 +1267,9 @@ public final class NativeFeatureNavigator {
         try {
             String mapped = Obfuscate.getMethodName("RecyclerView", "scrollToPosition");
             Method m = mapped != null
-                    ? findMethodInHierarchy(rv.getClass(), mapped, false, int.class) : null;
+                    ? ReflectHelper.findMethodInHierarchy(rv.getClass(), mapped, false, int.class) : null;
             if (m == null && !"scrollToPosition".equals(mapped)) {
-                m = findMethodInHierarchy(rv.getClass(), "scrollToPosition", false, int.class);
+                m = ReflectHelper.findMethodInHierarchy(rv.getClass(), "scrollToPosition", false, int.class);
             }
             if (m != null) {
                 m.invoke(rv, pos);
@@ -1325,20 +1325,6 @@ public final class NativeFeatureNavigator {
             Logger.e(t);
             return null;
         }
-    }
-
-    private static Method findMethodInHierarchy(
-            Class<?> cls, String name, boolean onlyStatic, Class<?>... paramTypes) {
-        if (cls == null || name == null) return null;
-        for (Class<?> cur = cls; cur != null && cur != Object.class; cur = cur.getSuperclass()) {
-            try {
-                Method m = cur.getDeclaredMethod(name, paramTypes);
-                if (onlyStatic && !Modifier.isStatic(m.getModifiers())) continue;
-                m.setAccessible(true);
-                return m;
-            } catch (NoSuchMethodException ignored) {}
-        }
-        return null;
     }
 
     private static int dp(Context context, float value) {
