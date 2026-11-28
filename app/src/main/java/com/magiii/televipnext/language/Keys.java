@@ -159,6 +159,9 @@ public class Keys {
     public static final String CreditsSourceCode = "CreditsSourceCode";
     public static final String CreditsSourceCodeRole = "CreditsSourceCodeRole";
     public static final String CreditsCopiedInfo = "CreditsCopiedInfo";
+    public static final String CreditsContributors = "CreditsContributors";
+    public static final String CreditsMember = "CreditsMember";
+    public static final String CreditsSpecialThanks = "CreditsSpecialThanks";
     public static final String ShowTimeSeconds = "ShowTimeSeconds";
     public static final String AlwaysShowProxy = "AlwaysShowProxy";
     public static final String AlwaysShowDownloads = "AlwaysShowDownloads";

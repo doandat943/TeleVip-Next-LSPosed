@@ -253,7 +253,7 @@ public class SettingsActivity {
         brandPill.setBackground(GlassDesign.createGlassPillDrawable(p, dp(20)));
         brandPill.setForeground(GlassDesign.createPillRippleOverlay(p.ripple, dp(20)));
         GlassDesign.attachPressScale(brandPill);
-        brandPill.setOnClickListener(v -> CreditsSheet.show(context, controller));
+        brandPill.setOnClickListener(v -> CreditsSheet.show(context, controller, this::rebuildUi));
 
         ImageView emblemIv = new ImageView(context);
         emblemIv.setImageDrawable(GlassDesign.GlassIcons.brandEmblemDrawable(dp(8)));
@@ -271,6 +271,18 @@ public class SettingsActivity {
         LinearLayout.LayoutParams titleTextLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         brandPill.addView(titleTv, titleTextLp);
+
+        View updateDot = new View(context);
+        GradientDrawable dotBg = new GradientDrawable();
+        dotBg.setShape(GradientDrawable.OVAL);
+        dotBg.setColor(Color.rgb(48, 209, 88));
+        updateDot.setBackground(dotBg);
+        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(dp(7), dp(7));
+        dotLp.leftMargin = dp(6);
+        brandPill.addView(updateDot, dotLp);
+        updateBrandDot(updateDot, UpdateManager.getState());
+        updateListener = (state, release) -> updateBrandDot(updateDot, state);
+        UpdateManager.addListener(updateListener);
 
         ImageView chevronIv = new ImageView(context);
         chevronIv.setImageDrawable(GlassDesign.GlassIcons.chevronRight(p.textMuted));
@@ -924,8 +936,6 @@ public class SettingsActivity {
         boolean isCalendar = Keys.Calendar.equals(key);
         boolean isDownloadSpeed = Keys.DownloadSpeed.equals(key);
         boolean isAlwaysShowProxy = Keys.AlwaysShowProxy.equals(key);
-        boolean isLanguage = Keys.Language.equals(key);
-        boolean isCheckUpdates = Keys.CheckForUpdates.equals(key);
 
         ImageView iconBadge = null;
         LinearLayout.LayoutParams iconLp = null;
@@ -971,7 +981,7 @@ public class SettingsActivity {
             textCol.addView(subTv, subLp);
         }
 
-        boolean hasRightPill = isCalendar || isDownloadSpeed || isAlwaysShowProxy || isLanguage || isCheckUpdates;
+        boolean hasRightPill = isCalendar || isDownloadSpeed || isAlwaysShowProxy;
         LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
 
         if (hasRightPill) {
@@ -989,15 +999,6 @@ public class SettingsActivity {
                 valTv.setText(getCalendarLabel(item.getIntValue()));
             } else if (isDownloadSpeed) {
                 valTv.setText(getDownloadSpeedLabel(item.getIntValue()));
-            } else if (isLanguage) {
-                valTv.setText(Translator.getLanguageDisplayName(Translator.getSelectedLanguage()));
-            } else if (isCheckUpdates) {
-                bindUpdateStatusPill(valTv, pill, p, UpdateManager.getState(), UpdateManager.getLatestRelease());
-                if (updateListener != null) {
-                    UpdateManager.removeListener(updateListener);
-                }
-                updateListener = (state, release) -> bindUpdateStatusPill(valTv, pill, p, state, release);
-                UpdateManager.addListener(updateListener);
             } else {
                 valTv.setText(getProxyDisplayLabel(item.getIntValue()));
             }
@@ -1027,10 +1028,6 @@ public class SettingsActivity {
                             Translator.get(Keys.SpeedFast),
                             Translator.get(Keys.SpeedUltra)
                     }, item, valTv);
-                } else if (isLanguage) {
-                    showLanguagePicker();
-                } else if (isCheckUpdates) {
-                    UpdateManager.onCheckRowClicked(context);
                 } else {
                     showOptionPicker(Translator.get(Keys.AlwaysShowProxy), new String[]{
                             Translator.get(Keys.ProxyDisplayOff),
@@ -1105,56 +1102,15 @@ public class SettingsActivity {
         });
     }
 
-    private void showLanguagePicker() {
-        final String[] codes = Translator.SUPPORTED_LANGS;
-        final String[] labels = new String[codes.length];
-        String selected = Translator.getSelectedLanguage();
-        int currentIdx = 0;
-        for (int i = 0; i < codes.length; i++) {
-            labels[i] = Translator.getLanguagePickerLabel(codes[i]);
-            if (codes[i].equals(selected)) {
-                currentIdx = i;
-            }
-        }
-        GlassDialog.showSingleChoice(context, Translator.get(Keys.Language), labels, currentIdx, which -> {
-            Translator.setSelectedLanguage(codes[which]);
-            rebuildUi();
-        });
-    }
-
     private void restartHostApp(View anchor) {
         RestartTrampolineActivity.restartHost(Utils.getCurrentActivity());
     }
 
-    private void bindUpdateStatusPill(
-            TextView pillTv,
-            GradientDrawable pillBg,
-            GlassDesign.Palette p,
-            UpdateManager.State state,
-            UpdateManager.ReleaseInfo info) {
-        int readyGreen = Color.rgb(48, 209, 88);
-        int readyBg = Color.argb(p.light ? 28 : 40, 48, 209, 88);
-        if (state == UpdateManager.State.READY_TO_INSTALL && info != null) {
-            pillTv.setText(Translator.get(Keys.UpdateInstallAction) + " " + info.tag);
-            pillTv.setTextColor(readyGreen);
-            pillBg.setColor(readyBg);
-        } else if (state == UpdateManager.State.INSTALLED_NEEDS_RESTART) {
-            pillTv.setText(Translator.get(Keys.UpdateRestartAction));
-            pillTv.setTextColor(readyGreen);
-            pillBg.setColor(readyBg);
-        } else if (state == UpdateManager.State.CHECKING) {
-            pillTv.setText(Translator.get(Keys.UpdateChecking));
-            pillTv.setTextColor(p.accentBlue);
-            pillBg.setColor(p.accentSoft);
-        } else if (state == UpdateManager.State.DOWNLOADING) {
-            pillTv.setText(Translator.get(Keys.UpdateDownloading));
-            pillTv.setTextColor(p.accentBlue);
-            pillBg.setColor(p.accentSoft);
-        } else {
-            pillTv.setText(UpdateManager.getCurrentVersionTag());
-            pillTv.setTextColor(p.accentBlue);
-            pillBg.setColor(p.accentSoft);
-        }
+    private void updateBrandDot(View updateDot, UpdateManager.State state) {
+        if (updateDot == null) return;
+        boolean ready = state == UpdateManager.State.READY_TO_INSTALL
+                || state == UpdateManager.State.INSTALLED_NEEDS_RESTART;
+        updateDot.setVisibility(ready ? View.VISIBLE : View.GONE);
     }
 
     private View buildDisabledNativeRow(
@@ -1473,9 +1429,6 @@ public class SettingsActivity {
     }
 
     private String buildSubtitleText(ConfigItem item, boolean omitRestartNote) {
-        if (Keys.CheckForUpdates.equals(item.getKey())) {
-            return Translator.get(Keys.CheckForUpdatesDesc, UpdateManager.getCurrentVersionTag());
-        }
         String desc = Translator.getOrDefault(item.getKey() + "Desc", null);
         if (desc == null || desc.isEmpty()) {
             desc = item.getValue();
@@ -1513,8 +1466,6 @@ public class SettingsActivity {
             return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(42, 196, 155), r, GlassDesign.ICON_UI, Color.WHITE);
         } else if (Keys.StoriesSettings.equals(headerKey)) {
             return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(175, 82, 222), r, GlassDesign.ICON_STORIES, Color.WHITE);
-        } else if (Keys.UpdatesSettings.equals(headerKey)) {
-            return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(48, 209, 88), r, GlassDesign.ICON_UPDATE, Color.WHITE);
         }
         return GlassDesign.GlassIcons.badgeDrawable(Color.rgb(255, 138, 52), r, GlassDesign.ICON_SPARKLES, Color.WHITE);
     }

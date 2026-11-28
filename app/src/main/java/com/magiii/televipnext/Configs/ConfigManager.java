@@ -97,7 +97,6 @@ public class ConfigManager {
     public static ConfigItem hideBottomTabSettingsCalls;
     public static ConfigItem hideBottomTabProfile;
     public static ConfigItem hideNewChatButton;
-    public static ConfigItem language;
     public static ConfigItem hidePinnedMessages;
     public static ConfigItem disableChannelSwipeBack;
     public static ConfigItem disableProfileSwipeBack;
@@ -117,11 +116,6 @@ public class ConfigManager {
     public static ConfigItem disableNumberRounding;
     public static ConfigItem hideUpdateApp;
     public static ConfigItem fixTLError;
-
-    // Updates
-    public static ConfigItem updatesSettings;
-    public static ConfigItem autoUpdateCheck;
-    public static ConfigItem checkForUpdates;
 
     // Button
     public static ConfigItem btnChannel;
@@ -354,9 +348,6 @@ public class ConfigManager {
         customCalendar = bindNative(new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init));
         items.add(customCalendar);
 
-        language = new ConfigItem(ConfigItem.TEXT, Keys.Language);
-        items.add(language);
-
         items.add(shadows);
 
         // Other Features
@@ -379,21 +370,10 @@ public class ConfigManager {
 
         items.add(shadows);
 
-        // Updates
+        // Ensure auto-update check defaults to enabled (controlled in Credits sheet)
         if (!ConfigPreferences.contains(Keys.AutoUpdateCheck)) {
             ConfigPreferences.putBoolean(Keys.AutoUpdateCheck, true);
         }
-        updatesSettings = new ConfigItem(ConfigItem.HEADER, Keys.UpdatesSettings);
-        items.add(updatesSettings);
-
-        autoUpdateCheck = new ConfigItem(ConfigItem.SWITCH, Keys.AutoUpdateCheck,
-                ConfigPreferences.getBoolean(Keys.AutoUpdateCheck), null);
-        items.add(autoUpdateCheck);
-
-        checkForUpdates = new ConfigItem(ConfigItem.TEXT, Keys.CheckForUpdates);
-        items.add(checkForUpdates);
-
-        items.add(shadows);
 
         btnChannel = new ConfigItem(ConfigItem.TEXT, Keys.DeveloperChannel);
         items.add(btnChannel);

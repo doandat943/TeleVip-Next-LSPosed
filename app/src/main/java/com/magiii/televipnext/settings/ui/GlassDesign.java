@@ -56,6 +56,7 @@ public final class GlassDesign {
     public static final int ICON_RESTART = 9;
     public static final int ICON_CODE = 10;
     public static final int ICON_UPDATE = 11;
+    public static final int ICON_LANGUAGE = 12;
 
     private GlassDesign() {}
 
@@ -1039,6 +1040,16 @@ public final class GlassDesign {
                             tray.quadTo(18.8f, 19.5f, 18.8f, 18.2f);
                             tray.lineTo(18.8f, 15.5f);
                             c.drawPath(tray, stroke);
+                            break;
+                        }
+                        case ICON_LANGUAGE: {
+                            stroke.setStrokeWidth(1.9f);
+                            c.drawCircle(12f, 12f, 7.6f, stroke);
+                            RectF meridian = new RectF(8.6f, 4.4f, 15.4f, 19.6f);
+                            c.drawOval(meridian, stroke);
+                            c.drawLine(4.4f, 12f, 19.6f, 12f, stroke);
+                            c.drawLine(5.8f, 8.2f, 18.2f, 8.2f, stroke);
+                            c.drawLine(5.8f, 15.8f, 18.2f, 15.8f, stroke);
                             break;
                         }
                         case ICON_RESTART:
