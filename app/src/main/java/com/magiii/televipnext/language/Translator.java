@@ -16,7 +16,10 @@ import java.util.Map;
 public class Translator {
 
     public static final String LANG_AUTO = "auto";
-    public static final String[] SUPPORTED_LANGS = {LANG_AUTO, "en", "ar", "es", "fa", "vi", "zh"};
+    public static final String[] SUPPORTED_LANGS = {
+            LANG_AUTO, "en",
+            "ar", "es", "fa", "id", "vi", "zh"
+    };
 
     private static final Map<String, JSONObject> langMap = new HashMap<>();
 
@@ -91,6 +94,8 @@ public class Translator {
                 return "Espa\u00f1ol";
             case "fa":
                 return "\u0641\u0627\u0631\u0633\u06cc";
+            case "id":
+                return "Bahasa Indonesia";
             case "vi":
                 return "Ti\u1ebfng Vi\u1ec7t";
             case "zh":

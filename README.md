@@ -51,7 +51,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 - **Show ID & DC in Profile** (with estimated account creation / chat join date)
 - **Disable Number Rounding** (`5.3K` → `5300`)
 - **Custom Calendar** (Gregorian / Hijri / Jalali)
-- **In-App Language Picker & RTL Support** (Auto, English, Tiếng Việt, العربية, فارسی, Español, 中文)
+- **In-App Language Picker & RTL Support** (Auto, English, Bahasa Indonesia, Tiếng Việt, العربية, فارسی, Español, 中文)
 
 ### 🛠️ Other Features
 - **Remove Content Saving Restrictions** (`noforwards`)
