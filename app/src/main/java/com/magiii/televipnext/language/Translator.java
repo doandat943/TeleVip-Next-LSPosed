@@ -22,7 +22,7 @@ public class Translator {
             "fa", "fi", "fil", "fr", "he", "hi", "hu", "id",
             "it", "ja", "kk", "ko", "ml", "ms", "my", "nl",
             "pl", "pt", "ro", "ru", "sk", "sr", "sv", "sw",
-            "ta", "te", "th", "tr", "uk", "vi", "zh"
+            "ta", "te", "th", "tr", "uk", "ur", "vi", "zh"
     };
 
     private static final Map<String, JSONObject> langMap = new HashMap<>();
@@ -166,6 +166,8 @@ public class Translator {
                 return "T\u00fcrk\u00e7e";
             case "uk":
                 return "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430";
+            case "ur":
+                return "\u0627\u0631\u062f\u0648";
             case "vi":
                 return "Ti\u1ebfng Vi\u1ec7t";
             case "zh":
