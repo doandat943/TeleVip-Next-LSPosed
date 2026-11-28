@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.magiii.televipnext.xposed.XposedCompat;
@@ -90,10 +91,12 @@ public class SettingsHook {
                         @SuppressWarnings("unchecked")
                         protected void afterMethod(final MethodHookParam param) {
                             ArrayList<Object> arrayList = null;
+                            Object adapter = null;
                             for (Object arg : param.args) {
-                                if (arg instanceof ArrayList) {
+                                if (arg instanceof ArrayList && arrayList == null) {
                                     arrayList = (ArrayList<Object>) arg;
-                                    break;
+                                } else if (arg != null && !SettingsActivityClass.isInstance(arg) && adapter == null) {
+                                    adapter = arg;
                                 }
                             }
                             if (arrayList != null) {
@@ -135,33 +138,34 @@ public class SettingsHook {
                                     }
                                 }
 
-                                boolean inserted = false;
+                                int targetIdx = -1;
                                 for (int i = 0; i < arrayList.size(); i++) {
                                     UItem item = new UItem(arrayList.get(i));
-
                                     if (item.getText() != null && item.getSubtext() != null) {
-                                        arrayList.add(i, uItem);
-                                        Object shadowItem = createShadowItem(arrayList, UItemClass);
-                                        if (shadowItem != null) {
-                                            arrayList.add(i + 1, shadowItem);
-                                        }
-                                        inserted = true;
+                                        targetIdx = i;
                                         break;
                                     }
                                 }
-                                if (!inserted) {
+                                if (targetIdx < 0) {
                                     for (int i = 0; i < arrayList.size(); i++) {
                                         UItem item = new UItem(arrayList.get(i));
                                         if (item.getText() != null) {
-                                            arrayList.add(i, uItem);
-                                            Object shadowItem = createShadowItem(arrayList, UItemClass);
-                                            if (shadowItem != null) {
-                                                arrayList.add(i + 1, shadowItem);
-                                            }
+                                            targetIdx = i;
                                             break;
                                         }
                                     }
                                 }
+                                if (targetIdx < 0) return;
+
+                                int insertPos = snapToCardStart(arrayList, UItemClass, adapter, targetIdx);
+                                arrayList.add(insertPos, uItem);
+                                Object shadowItem = createShadowItem(arrayList, UItemClass);
+                                int insertedCount = 1;
+                                if (shadowItem != null) {
+                                    arrayList.add(insertPos + 1, shadowItem);
+                                    insertedCount = 2;
+                                }
+                                adjustAdapterSections(adapter, insertPos, insertedCount);
                             }
                         }
                     });
@@ -285,6 +289,7 @@ public class SettingsHook {
             if (item.getText() == null && item.getSubtext() == null) {
                 try {
                     int vt = viewTypeField.getInt(raw);
+                    if (vt <= 0) continue;
                     Integer prev = counts.get(vt);
                     counts.put(vt, prev == null ? 1 : prev + 1);
                 } catch (Throwable ignored) {}
@@ -301,6 +306,135 @@ public class SettingsHook {
             }
         }
         return bestVt;
+    }
+
+    private static final class SectionListInfo {
+        final ArrayList<Object> list;
+        final Class<?> secClass;
+        final Field startField;
+        final Field endField;
+
+        SectionListInfo(ArrayList<Object> list, Class<?> secClass, Field startField, Field endField) {
+            this.list = list;
+            this.secClass = secClass;
+            this.startField = startField;
+            this.endField = endField;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<SectionListInfo> findSectionLists(Object adapter) {
+        List<SectionListInfo> result = new ArrayList<>();
+        if (adapter == null) return result;
+        try {
+            for (Class<?> c = adapter.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+                for (Field f : c.getDeclaredFields()) {
+                    if (Modifier.isStatic(f.getModifiers())) continue;
+                    if (!ArrayList.class.isAssignableFrom(f.getType())) continue;
+                    f.setAccessible(true);
+                    Object val = f.get(adapter);
+                    if (!(val instanceof ArrayList<?>)) continue;
+                    ArrayList<?> rawList = (ArrayList<?>) val;
+                    if (rawList.isEmpty()) continue;
+
+                    Object sample = null;
+                    for (Object elem : rawList) {
+                        if (elem != null) {
+                            sample = elem;
+                            break;
+                        }
+                    }
+                    if (sample == null) continue;
+                    Class<?> secClass = sample.getClass();
+                    if (secClass.getSuperclass() != Object.class) continue;
+
+                    List<Field> intFields = new ArrayList<>(2);
+                    boolean hasOtherFields = false;
+                    for (Field sf : secClass.getDeclaredFields()) {
+                        if (Modifier.isStatic(sf.getModifiers())) continue;
+                        if (sf.getType() == int.class) {
+                            sf.setAccessible(true);
+                            intFields.add(sf);
+                        } else {
+                            hasOtherFields = true;
+                            break;
+                        }
+                    }
+                    if (!hasOtherFields && intFields.size() == 2) {
+                        result.add(new SectionListInfo((ArrayList<Object>) rawList, secClass, intFields.get(0), intFields.get(1)));
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return result;
+    }
+
+    private static int snapToCardStart(
+            ArrayList<Object> arrayList, Class<?> uItemClass, Object adapter, int targetIdx) {
+        int insertPos = targetIdx;
+        try {
+            for (SectionListInfo info : findSectionLists(adapter)) {
+                for (Object sec : info.list) {
+                    if (sec == null || !info.secClass.isInstance(sec)) continue;
+                    int start = info.startField.getInt(sec);
+                    int end = info.endField.getInt(sec);
+                    if (start >= 0 && start <= insertPos && (end < 0 || insertPos <= end)) {
+                        insertPos = Math.min(insertPos, start);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        while (insertPos > 0) {
+            Object prevRaw = arrayList.get(insertPos - 1);
+            if (prevRaw == null || (uItemClass != null && !uItemClass.isInstance(prevRaw))) {
+                break;
+            }
+            UItem prev = new UItem(prevRaw);
+            if (prev.getText() == null && prev.getSubtext() == null) {
+                break;
+            }
+            insertPos--;
+        }
+        return insertPos;
+    }
+
+    private static void adjustAdapterSections(Object adapter, int insertPos, int insertedCount) {
+        if (adapter == null || insertedCount <= 0) return;
+        try {
+            for (SectionListInfo info : findSectionLists(adapter)) {
+                boolean hasSectionStartingAtInsertPos = false;
+                int newSecIdx = -1;
+                for (int i = 0; i < info.list.size(); i++) {
+                    Object sec = info.list.get(i);
+                    if (sec == null || !info.secClass.isInstance(sec)) continue;
+                    int oldStart = info.startField.getInt(sec);
+                    int oldEnd = info.endField.getInt(sec);
+                    if (oldStart == insertPos && !hasSectionStartingAtInsertPos) {
+                        hasSectionStartingAtInsertPos = true;
+                        newSecIdx = i;
+                    }
+                    if (oldStart >= insertPos) {
+                        info.startField.setInt(sec, oldStart + insertedCount);
+                        if (oldEnd >= 0) {
+                            info.endField.setInt(sec, oldEnd + insertedCount);
+                        }
+                    } else if (oldEnd >= insertPos) {
+                        info.endField.setInt(sec, oldEnd + insertedCount);
+                    }
+                }
+                if (hasSectionStartingAtInsertPos && newSecIdx >= 0) {
+                    Constructor<?> ctor = info.secClass.getDeclaredConstructor();
+                    ctor.setAccessible(true);
+                    Object newSec = ctor.newInstance();
+                    info.startField.setInt(newSec, insertPos);
+                    info.endField.setInt(newSec, insertPos);
+                    info.list.add(newSecIdx, newSec);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private static void setShadowId(Class<?> uItemClass, Object shadow, String idFieldName) {

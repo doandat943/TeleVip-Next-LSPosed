@@ -1,16 +1,35 @@
 package com.magiii.televipnext.features.otherFeatures;
 
+import android.content.Context;
+import android.view.View;
+
 import com.magiii.televipnext.language.Keys;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class ShowProfileIdDcTest {
+
+    public static class DummySimpleTextView extends View {
+        public DummySimpleTextView(Context context) {
+            super(context);
+        }
+
+        public CharSequence getText() {
+            return "";
+        }
+
+        public boolean k(CharSequence text) {
+            return true;
+        }
+    }
 
     @Test
     public void formatTitleId_matchesNagramXfStyleWithoutMinus100() {
@@ -72,5 +91,14 @@ public class ShowProfileIdDcTest {
         assertEquals("online", ShowProfileIdDc.stripNativeIdDcText("online, ID: 6298774840"));
         assertNull(ShowProfileIdDc.stripNativeIdDcText("online"));
         assertNull(ShowProfileIdDc.stripNativeIdDcText("Uploaded May 28"));
+    }
+
+    @Test
+    public void findCharSeqAccessors_ignoresInheritedViewContentDescription() {
+        Method[] accessors = ShowProfileIdDc.findCharSeqAccessors(DummySimpleTextView.class);
+        assertNotNull(accessors[0]);
+        assertNotNull(accessors[1]);
+        assertEquals("getText", accessors[0].getName());
+        assertEquals("k", accessors[1].getName());
     }
 }

@@ -380,23 +380,40 @@ public class ShowProfileIdDc {
         }
     }
 
-    private static Method[] findCharSeqAccessors(Class<?> cls) {
+    static Method[] findCharSeqAccessors(Class<?> cls) {
         return CHAR_SEQ_ACCESSOR_CACHE.computeIfAbsent(cls, c -> {
             Method getter = null;
             Method setter = null;
-            for (Method m : c.getMethods()) {
-                if (java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
-                Class<?>[] params = m.getParameterTypes();
-                if (getter == null && params.length == 0 && m.getReturnType() == CharSequence.class) {
-                    getter = m;
-                    getter.setAccessible(true);
-                } else if (setter == null && params.length == 1 && params[0] == CharSequence.class
-                        && (m.getReturnType() == boolean.class || m.getReturnType() == void.class)) {
-                    setter = m;
-                    setter.setAccessible(true);
+            if (TextView.class.isAssignableFrom(c)) {
+                try {
+                    getter = TextView.class.getMethod("getText");
+                    setter = TextView.class.getMethod("setText", CharSequence.class);
+                } catch (NoSuchMethodException ignored) {
                 }
-                if (getter != null && setter != null) break;
+                return new Method[]{getter, setter};
             }
+            for (Class<?> cur = c; cur != null && cur != View.class && cur != Object.class; cur = cur.getSuperclass()) {
+                for (Method m : cur.getDeclaredMethods()) {
+                    int mod = m.getModifiers();
+                    if (java.lang.reflect.Modifier.isStatic(mod) || m.isBridge() || m.isSynthetic()) continue;
+                    Class<?>[] params = m.getParameterTypes();
+                    Class<?> ret = m.getReturnType();
+                    if (params.length == 0 && ret == CharSequence.class) {
+                        if (getter == null || "getText".equals(m.getName())) {
+                            getter = m;
+                        }
+                    } else if (params.length == 1 && params[0] == CharSequence.class
+                            && (ret == boolean.class || ret == void.class)) {
+                        if (setter == null
+                                || "setText".equals(m.getName())
+                                || (!"setText".equals(setter.getName()) && ret == boolean.class && setter.getReturnType() != boolean.class)) {
+                            setter = m;
+                        }
+                    }
+                }
+            }
+            if (getter != null) getter.setAccessible(true);
+            if (setter != null) setter.setAccessible(true);
             return new Method[]{getter, setter};
         });
     }
