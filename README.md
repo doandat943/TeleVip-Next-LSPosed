@@ -29,7 +29,7 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 ### ⚡ Connections & Speed
 - **Download Speed Boost** (`Off` / `Fast` / `Ultra`)
 - **Upload Speed Boost**
-  *(Hidden automatically on clients with built-in speed boosters such as Telegraph and Cherrygram)*
+  *(Features already natively built into your client are automatically shown disabled; double-tap them in TeleVip Next settings to jump directly to the client's native option)*
 
 ### 📸 Media & Stories
 - **Disable Stories**
@@ -40,11 +40,15 @@ A dual-API Xposed module (native **libxposed API 101–102** with **Legacy API 9
 
 ### 🎨 UI & Customization
 - **Hide Pinned Messages** banner
+- **Hide Bottom Bar Tabs** (Contacts, Calls/Settings, Profile)
+- **Hide New Chat Button (+)**
+- **Hide Sponsored Ads**
 - **Disable Channel Swipe Back** & **Disable Profile Swipe Back**
 - **Hide Proxy Sponsor** channel
 - **Always Show Proxy** button (`Off` / `In Menu` / `Top Bar`)
+- **Always Show Downloads** button in main toolbar
 - **Show Time Seconds** in chat & profile timestamps
-- **Show User ID** in profiles
+- **Show ID & DC in Profile** (with estimated account creation / chat join date)
 - **Disable Number Rounding** (`5.3K` → `5300`)
 - **Custom Calendar** (Gregorian / Hijri / Jalali)
 - **In-App Language Picker & RTL Support** (Auto, English, Tiếng Việt, العربية, فارسی, Español, 中文)
