@@ -20,7 +20,7 @@ public class Translator {
             LANG_AUTO, "en",
             "ar", "az", "bg", "bn", "cs", "de", "el", "es",
             "fa", "fi", "fil", "fr", "he", "hi", "hu", "id",
-            "vi", "zh"
+            "it", "vi", "zh"
     };
 
     private static final Map<String, JSONObject> langMap = new HashMap<>();
@@ -122,6 +122,8 @@ public class Translator {
                 return "Magyar";
             case "id":
                 return "Bahasa Indonesia";
+            case "it":
+                return "Italiano";
             case "vi":
                 return "Ti\u1ebfng Vi\u1ec7t";
             case "zh":
