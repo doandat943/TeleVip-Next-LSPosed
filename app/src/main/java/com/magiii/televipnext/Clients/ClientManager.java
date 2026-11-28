@@ -1,5 +1,7 @@
 package com.magiii.televipnext.Clients;
 
+import android.content.Context;
+
 import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.utils.Utils;
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -7,48 +9,52 @@ import com.magiii.televipnext.xposed.ReflectHelper;
 public class ClientManager {
 
     public enum Client {
-        Telegram("org.telegram.messenger"),
-        TelegramWeb("org.telegram.messenger.web"),
-        TelegramPlus("org.telegram.plus"),
-        Nagram("xyz.nextalone.nagram", com.magiii.televipnext.Clients.Nagram.class),
-        Nicegram("app.nicegram", com.magiii.televipnext.Clients.Nicegram.class),
-        TelegramBeta("org.telegram.messenger.beta"),
-        XPlus("com.xplus.messenger"),
-        iMe("com.iMe.android"),
-        iMeWeb("com.iMe.android.web"),
-        forkgram("org.forkgram.messenger"),
-        forkgramBeta("org.forkclient.messenger.beta"),
-        Telegraph("ir.ilmili.telegraph", com.magiii.televipnext.Clients.Telegraph.class),
-        Momogram("momo.gram", com.magiii.televipnext.Clients.Momogram.class),
-        Nekogram("tw.nekomimi.nekogram", true),
-        Cherrygram("uz.unnarsx.cherrygram", true),
-        ForkgramClassic("org.forkgram.classic"),
-        Turrit("org.telegram.group", com.magiii.televipnext.Clients.Turrit.class),
-        NagramXF("fork.risin42.nagramx"),
-        Mercurygram("it.belloworld.mercurygram"),
-        ExteraGram("com.exteragram.messenger"),
-        NagramX("nu.gpu.nagram"),
-        Octogram("it.octogram.android");
+        Telegram("org.telegram.messenger", "Telegram"),
+        TelegramWeb("org.telegram.messenger.web", "Telegram"),
+        TelegramPlus("org.telegram.plus", "Plus Messenger"),
+        Nagram("xyz.nextalone.nagram", "Nagram", com.magiii.televipnext.Clients.Nagram.class),
+        Nicegram("app.nicegram", "Nicegram", com.magiii.televipnext.Clients.Nicegram.class),
+        TelegramBeta("org.telegram.messenger.beta", "Telegram"),
+        XPlus("com.xplus.messenger", "XPlus"),
+        iMe("com.iMe.android", "iMe"),
+        iMeWeb("com.iMe.android.web", "iMe"),
+        forkgram("org.forkgram.messenger", "Forkgram"),
+        forkgramBeta("org.forkclient.messenger.beta", "Forkgram"),
+        Telegraph("ir.ilmili.telegraph", "Telegraph", com.magiii.televipnext.Clients.Telegraph.class),
+        Momogram("momo.gram", "Momogram", com.magiii.televipnext.Clients.Momogram.class),
+        Nekogram("tw.nekomimi.nekogram", "Nekogram", true),
+        Cherrygram("uz.unnarsx.cherrygram", "Cherrygram", true),
+        ForkgramClassic("org.forkgram.classic", "Forkgram Classic"),
+        Turrit("org.telegram.group", "Turrit", com.magiii.televipnext.Clients.Turrit.class),
+        NagramXF("fork.risin42.nagramx", "Nagram X Fork"),
+        Mercurygram("it.belloworld.mercurygram", "Mercurygram"),
+        ExteraGram("com.exteragram.messenger", "exteraGram"),
+        NagramX("nu.gpu.nagram", "Nagram X"),
+        Octogram("it.octogram.android", "OctoGram");
 
         private final boolean tgnetObfuscated;
         private final String pkg;
+        private final String displayName;
         private final Class<?> resolverClass;
 
-        Client(String pkg, boolean tgnetObfuscated) {
+        Client(String pkg, String displayName, boolean tgnetObfuscated) {
             this.tgnetObfuscated = tgnetObfuscated;
             this.pkg = pkg;
-            resolverClass = null;
+            this.displayName = displayName;
+            this.resolverClass = null;
         }
 
-        Client(String pkg) {
+        Client(String pkg, String displayName) {
             this.tgnetObfuscated = false;
             this.pkg = pkg;
-            resolverClass = null;
+            this.displayName = displayName;
+            this.resolverClass = null;
         }
 
-        Client(String pkg, Class<?> resolverClass) {
+        Client(String pkg, String displayName, Class<?> resolverClass) {
             this.tgnetObfuscated = false;
             this.pkg = pkg;
+            this.displayName = displayName;
             this.resolverClass = resolverClass;
         }
 
@@ -60,10 +66,34 @@ public class ClientManager {
             return resolverClass;
         }
 
+        public String getDisplayName() {
+            return displayName;
+        }
+
         public boolean hasPackage(String pkg) {
 
             return this.pkg.equals(pkg);
         }
+    }
+
+    public static String getCurrentDisplayName(Context context) {
+        Client current = getCurrent();
+        if (current != null && current.getDisplayName() != null && !current.getDisplayName().isEmpty()) {
+            return current.getDisplayName();
+        }
+        if (context != null) {
+            try {
+                CharSequence label = context.getApplicationInfo().loadLabel(context.getPackageManager());
+                if (label != null) {
+                    String s = label.toString().trim();
+                    if (!s.isEmpty()) {
+                        return s;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return "Telegram";
     }
 
     public static boolean is(Client client) {

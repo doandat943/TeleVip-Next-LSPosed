@@ -1,6 +1,5 @@
 package com.magiii.televipnext.virtuals.messenger;
 
-import com.magiii.televipnext.obfuscate.ArgsResolver;
 import com.magiii.televipnext.obfuscate.Obfuscate;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
@@ -11,20 +10,28 @@ public class FileLoadOperation {
 
     public FileLoadOperation(Object fileOperation){ this.fileOperation = fileOperation; }
 
+    private void setIntFieldIfPresent(String mappedKey, int v) {
+        if (fileOperation == null) return;
+        String fieldName = Obfuscate.getFieldName("FileLoadOperation", mappedKey);
+        if (ReflectHelper.findFieldIfExists(fileOperation.getClass(), fieldName) != null) {
+            ReflectHelper.setIntField(fileOperation, fieldName, v);
+        }
+    }
+
     public void setDownloadChunkSizeBig(int v){
-        ReflectHelper.setIntField(fileOperation, Obfuscate.getFieldName("FileLoadOperation", "downloadChunkSizeBig"), v);
+        setIntFieldIfPresent("downloadChunkSizeBig", v);
     }
 
     public void setMaxDownloadRequests(int v){
-        ReflectHelper.setIntField(fileOperation, Obfuscate.getFieldName("FileLoadOperation", "maxDownloadRequests"), v);
+        setIntFieldIfPresent("maxDownloadRequests", v);
     }
 
     public void setMaxDownloadRequestsBig(int v){
-        ReflectHelper.setIntField(fileOperation, Obfuscate.getFieldName("FileLoadOperation", "maxDownloadRequestsBig"), v);
+        setIntFieldIfPresent("maxDownloadRequestsBig", v);
     }
 
     public void setMaxCdnParts(int v){
-        ReflectHelper.setIntField(fileOperation, Obfuscate.getFieldName("FileLoadOperation", "maxCdnParts"), v);
+        setIntFieldIfPresent("maxCdnParts", v);
     }
 
 }

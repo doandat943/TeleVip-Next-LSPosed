@@ -2,6 +2,7 @@ package com.magiii.televipnext.features.connections;
 
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
+import com.magiii.televipnext.Configs.ConfigManager;
 import com.magiii.televipnext.Configs.ConfigPreferences;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
@@ -22,6 +23,9 @@ public class DownloadSpeed {
      * Returns the selected download boost mode (0=Off, 1=Fast, 2=Ultra).
      */
     public static int getMode() {
+        if (ConfigManager.downloadSpeed == null || ConfigManager.downloadSpeed.isNativeBuiltIn()) {
+            return MODE_OFF;
+        }
         int mode = ConfigPreferences.getInt(Keys.DownloadSpeed + "Int");
         if (mode < MODE_OFF) return MODE_OFF;
         if (mode > MODE_ULTRA) return MODE_ULTRA;

@@ -10,6 +10,9 @@ import com.magiii.televipnext.utils.Utils;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 public class FeatureInitializer {
 
     public static void init() {
@@ -35,7 +38,8 @@ public class FeatureInitializer {
 
                                 String name = clazz.getClass().getName();
 
-                                if (name.contains("ChatActivity") && !FeatureStateManager.isChatEnabled()) {
+                                if ((name.contains("ChatActivity") || isInnerOfChatActivity(clazz.getClass()))
+                                        && !FeatureStateManager.isChatEnabled()) {
                                     FeatureStateManager.saveChat(name);
                                     ChatHook.init(name);
                                 }
@@ -49,5 +53,17 @@ public class FeatureInitializer {
         } catch (Throwable t) {
             Logger.e(t);
         }
+    }
+
+    private static boolean isInnerOfChatActivity(Class<?> listenerCls) {
+        if (listenerCls == null) return false;
+        Class<?> chatCls = ClassLoad.getClass(ClassNames.CHAT_ACTIVITY, Utils.classLoader, false);
+        if (chatCls == null) return false;
+        for (Field f : listenerCls.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) && f.getType() == chatCls) {
+                return true;
+            }
+        }
+        return false;
     }
 }

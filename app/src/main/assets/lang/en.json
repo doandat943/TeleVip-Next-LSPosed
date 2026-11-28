@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "Account created approximately on %s.",
   "ProfileJoinedChatHint": "You joined %1$s on %2$s.",
   "ProfileCreatedChatSelfHint": "You created %1$s on %2$s.",
-  "ProfileCreatedChatHint": "%1$s was created on %2$s."
+  "ProfileCreatedChatHint": "%1$s was created on %2$s.",
+  "AlwaysShowDownloads": "Always Show Downloads",
+  "AlwaysShowDownloadsDesc": "Always keep the downloads icon visible in the chat list top bar",
+  "NativeBuiltInBadge": "Built-in",
+  "NativeBuiltInHint": "Built into %s · Tap twice to open",
+  "NativeBuiltInHintNoJump": "Already built into %s",
+  "NativeTapAgainHint": "Tap again to open in %s",
+  "NativeOpenFailed": "Open %1$s settings manually: %2$s"
 }

@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "该账号大约创建于 %s。",
   "ProfileJoinedChatHint": "您于 %2$s 加入了 %1$s。",
   "ProfileCreatedChatSelfHint": "您于 %2$s 创建了 %1$s。",
-  "ProfileCreatedChatHint": "%1$s 创建于 %2$s。"
+  "ProfileCreatedChatHint": "%1$s 创建于 %2$s。",
+  "AlwaysShowDownloads": "始终显示下载图标",
+  "AlwaysShowDownloadsDesc": "始终在聊天列表顶部栏显示下载图标",
+  "NativeBuiltInBadge": "已内置",
+  "NativeBuiltInHint": "%s 已内置 · 双击打开",
+  "NativeBuiltInHintNoJump": "%s 已内置此功能",
+  "NativeTapAgainHint": "再次点击以在 %s 中打开",
+  "NativeOpenFailed": "请手动打开 %1$s 设置：%2$s"
 }

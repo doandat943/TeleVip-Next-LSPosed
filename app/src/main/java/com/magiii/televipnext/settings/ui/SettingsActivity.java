@@ -6,6 +6,9 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Choreographer;
@@ -24,8 +27,10 @@ import android.widget.TextView;
 import com.magiii.televipnext.Audio;
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
+import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.Configs.ConfigItem;
 import com.magiii.televipnext.Configs.ConfigManager;
+import com.magiii.televipnext.Configs.NativeFeatureTarget;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.features.messages.ShowDeletedMessages;
 import com.magiii.televipnext.hooks.HMethod;
@@ -33,6 +38,7 @@ import com.magiii.televipnext.language.Keys;
 import com.magiii.televipnext.language.Translator;
 import com.magiii.televipnext.logging.Logger;
 import com.magiii.televipnext.obfuscate.Obfuscate;
+import com.magiii.televipnext.settings.NativeFeatureNavigator;
 import com.magiii.televipnext.settings.controller.SettingsController;
 import com.magiii.televipnext.ui.RestartTrampolineActivity;
 import com.magiii.televipnext.updater.UpdateManager;
@@ -56,7 +62,9 @@ public class SettingsActivity {
     private final Context context;
 
     private static final int TAB_COUNT = 4;
+    private static final long NATIVE_DOUBLE_TAP_WINDOW_MS = 2000L;
 
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private FrameLayout rootView;
     private SettingsController controller;
     private int currentTab = TAB_PRIVACY;
@@ -69,6 +77,18 @@ public class SettingsActivity {
     private int lastHeaderPadTop = 0;
     private int lastNavPadBottom = 0;
     private UpdateManager.Listener updateListener;
+
+    private GlassDesign.Palette currentPalette;
+    private String cachedClientName;
+    private String armedNativeKey;
+    private long armedNativeTimestampMs;
+    private TextView armedChipTextView;
+    private ImageView armedChipIconView;
+    private GradientDrawable armedChipBg;
+    private String armedDefaultLabel;
+    private Runnable disarmNativeRunnable;
+    private TextView floatingToastView;
+    private Runnable hideToastRunnable;
 
     public SettingsActivity(Context context) {
         this.context = context;
@@ -83,6 +103,7 @@ public class SettingsActivity {
 
             @Override
             public void onViewDetachedFromWindow(View v) {
+                clearTransientFeedback();
                 if (updateListener != null) {
                     UpdateManager.removeListener(updateListener);
                     updateListener = null;
@@ -116,6 +137,7 @@ public class SettingsActivity {
 
     private void rebuildUi(boolean light) {
         if (rootView == null) return;
+        clearTransientFeedback();
         if (updateListener != null) {
             UpdateManager.removeListener(updateListener);
             updateListener = null;
@@ -125,12 +147,15 @@ public class SettingsActivity {
         rootView.removeAllViews();
         tabBar = null;
         tabPager = null;
+        floatingToastView = null;
         for (int i = 0; i < TAB_COUNT; i++) {
             tabScrollViews[i] = null;
             tabContainers[i] = null;
         }
 
         final GlassDesign.Palette p = GlassDesign.Palette.of(light);
+        currentPalette = p;
+        cachedClientName = ClientManager.getCurrentDisplayName(context);
         rootView.setBackground(GlassDesign.createAuroraBackground(p));
 
         try {
@@ -167,6 +192,16 @@ public class SettingsActivity {
             LinearLayout floatingHeader = buildFloatingHeader(p, statusH);
             rootView.addView(floatingHeader, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+
+            // 3. Floating Liquid Glass Toast overlay (for native-feature double-tap hints)
+            floatingToastView = buildFloatingToastView();
+            FrameLayout.LayoutParams toastLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            toastLp.leftMargin = dp(20);
+            toastLp.rightMargin = dp(20);
+            toastLp.bottomMargin = navH + dp(22);
+            rootView.addView(floatingToastView, toastLp);
 
             floatingHeader.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
                 int h = b - t;
@@ -428,6 +463,9 @@ public class SettingsActivity {
     }
 
     private View buildSwitchItemContainer(ConfigItem item, GlassDesign.Palette p) {
+        if (item.isNativeBuiltIn()) {
+            return buildDisabledNativeRow(item, item.getNativeTarget(), p, false, false, true);
+        }
         LinearLayout wrapper = new LinearLayout(context);
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
@@ -497,17 +535,23 @@ public class SettingsActivity {
 
     private View buildExpandableItemContainer(ConfigItem parentItem, GlassDesign.Palette p) {
         List<ConfigItem> children = parentItem.getChildren();
-        int initialEnabled = 0;
-        int switchCount = 0;
-        if (children != null) {
-            for (ConfigItem c : children) {
-                if (c.getType() == ConfigItem.SWITCH) {
-                    switchCount++;
-                    if (c.isEnable()) initialEnabled++;
-                }
-            }
+
+        // Case 1: Full-native expandable with a single unified destination -> render as one disabled native row
+        NativeFeatureTarget unifiedTarget = parentItem.isNativeBuiltIn()
+                ? parentItem.getNativeTarget()
+                : parentItem.getUnifiedNativeChildrenTarget();
+        if (unifiedTarget != null) {
+            return buildDisabledNativeRow(parentItem, unifiedTarget, p, false, false, true);
         }
-        final int totalSwitchChildren = switchCount;
+
+        // Case 2: All switch children are native, but jump to heterogeneous destinations -> muted expandable parent
+        if (parentItem.isAllSwitchChildrenNative()) {
+            return buildHeterogeneousNativeExpandableContainer(parentItem, p);
+        }
+
+        // Case 3: Active expandable (zero or partial native children)
+        final int totalSwitchChildren = parentItem.getActiveSwitchChildCount();
+        final int initialEnabled = parentItem.getEnabledActiveSwitchChildCount();
         parentItem.setEnable(initialEnabled > 0);
 
         LinearLayout wrapper = new LinearLayout(context);
@@ -576,6 +620,12 @@ public class SettingsActivity {
         if (children != null) {
             for (int i = 0; i < children.size(); i++) {
                 final ConfigItem child = children.get(i);
+                if (child.isNativeBuiltIn()) {
+                    childrenContainer.addView(buildDisabledNativeRow(
+                            child, child.getNativeTarget(), p, false, true, child.getType() == ConfigItem.SWITCH));
+                    continue;
+                }
+
                 childrenContainer.addView(createHairlineDivider(p, dp(32)));
 
                 LinearLayout childRow = new LinearLayout(context);
@@ -648,7 +698,7 @@ public class SettingsActivity {
 
                     int count = 0;
                     for (ConfigItem c : children) {
-                        if (c.getType() == ConfigItem.SWITCH && c.isEnable()) count++;
+                        if (c.getType() == ConfigItem.SWITCH && !c.isNativeBuiltIn() && c.isEnable()) count++;
                     }
                     parentItem.setEnable(count > 0);
                     parentSw.setChecked(count > 0, true);
@@ -668,7 +718,7 @@ public class SettingsActivity {
             if (children != null) {
                 for (int i = 0; i < children.size(); i++) {
                     ConfigItem c = children.get(i);
-                    if (c.getType() != ConfigItem.SWITCH) continue;
+                    if (c.getType() != ConfigItem.SWITCH || c.isNativeBuiltIn()) continue;
                     c.setEnable(next);
                     c.run();
                     if (childSwitches[i] != null) childSwitches[i].setChecked(next, true);
@@ -680,6 +730,156 @@ public class SettingsActivity {
         parentRow.setOnClickListener(v -> {
             boolean show = childrenContainer.getVisibility() != View.VISIBLE;
             childrenContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+        });
+
+        return wrapper;
+    }
+
+    private View buildHeterogeneousNativeExpandableContainer(ConfigItem parentItem, GlassDesign.Palette p) {
+        List<ConfigItem> children = parentItem.getChildren();
+
+        LinearLayout wrapper = new LinearLayout(context);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.addView(createHairlineDivider(p));
+
+        LinearLayout childrenContainer = new LinearLayout(context);
+        childrenContainer.setOrientation(LinearLayout.VERTICAL);
+        childrenContainer.setVisibility(View.GONE);
+
+        LinearLayout parentRow = new LinearLayout(context);
+        parentRow.setOrientation(LinearLayout.HORIZONTAL);
+        parentRow.setGravity(Gravity.CENTER_VERTICAL);
+        parentRow.setPadding(dp(16), dp(14), dp(16), dp(14));
+        parentRow.setMinimumHeight(dp(56));
+        parentRow.setBackground(GlassDesign.createRowRipple(p.ripple));
+
+        LinearLayout textCol = new LinearLayout(context);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+
+        TextView titleTv = new TextView(context);
+        titleTv.setText(Translator.get(parentItem.getKey()));
+        titleTv.setTextColor(p.textDisabled);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f);
+        titleTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        textCol.addView(titleTv);
+
+        String subtitle = buildSubtitleText(parentItem, true);
+        if (subtitle != null && !subtitle.isEmpty()) {
+            TextView subTv = new TextView(context);
+            subTv.setText(subtitle);
+            subTv.setTextColor(p.textDisabledSub);
+            subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+            subTv.setLineSpacing(dp(2f), 1.0f);
+            subTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+            LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            subLp.topMargin = dp(2.5f);
+            textCol.addView(subTv, subLp);
+        }
+
+        TextView nativeNoteTv = new TextView(context);
+        nativeNoteTv.setText(Translator.get(Keys.NativeBuiltInHintNoJump, getClientDisplayName()));
+        nativeNoteTv.setTextColor(p.nativeChipText);
+        nativeNoteTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        nativeNoteTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        nativeNoteTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        nativeNoteTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        LinearLayout.LayoutParams noteLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        noteLp.topMargin = dp(4f);
+        textCol.addView(nativeNoteTv, noteLp);
+
+        LinearLayout endGroup = new LinearLayout(context);
+        endGroup.setOrientation(LinearLayout.HORIZONTAL);
+        endGroup.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView builtInPill = buildMutedBuiltInPill(p);
+        ImageView chevronIv = new ImageView(context);
+        chevronIv.setImageDrawable(GlassDesign.GlassIcons.chevronDown(p.textMuted));
+        LinearLayout.LayoutParams chevLp = new LinearLayout.LayoutParams(dp(16), dp(16));
+        if (isRtl) {
+            chevLp.rightMargin = dp(6);
+            endGroup.addView(chevronIv, chevLp);
+            endGroup.addView(builtInPill);
+        } else {
+            chevLp.leftMargin = dp(6);
+            endGroup.addView(builtInPill);
+            endGroup.addView(chevronIv, chevLp);
+        }
+
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams endLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        if (isRtl) {
+            endLp.rightMargin = dp(12);
+            parentRow.addView(endGroup, endLp);
+            parentRow.addView(textCol, textLp);
+        } else {
+            textLp.rightMargin = dp(12);
+            parentRow.addView(textCol, textLp);
+            parentRow.addView(endGroup, endLp);
+        }
+
+        wrapper.addView(parentRow);
+        wrapper.addView(childrenContainer);
+
+        if (children != null) {
+            for (ConfigItem child : children) {
+                if (child == null) continue;
+                if (child.isNativeBuiltIn()) {
+                    childrenContainer.addView(buildDisabledNativeRow(
+                            child, child.getNativeTarget(), p, false, true, child.getType() == ConfigItem.SWITCH));
+                } else if (child.getType() == ConfigItem.TEXT) {
+                    childrenContainer.addView(createHairlineDivider(p, dp(32)));
+                    LinearLayout childRow = new LinearLayout(context);
+                    childRow.setOrientation(LinearLayout.HORIZONTAL);
+                    childRow.setGravity(Gravity.CENTER_VERTICAL);
+                    childRow.setPadding(isRtl ? dp(16) : dp(32), dp(13), isRtl ? dp(32) : dp(16), dp(13));
+                    childRow.setMinimumHeight(dp(50));
+                    childRow.setBackground(GlassDesign.createRowRipple(p.ripple));
+
+                    LinearLayout cTextCol = new LinearLayout(context);
+                    cTextCol.setOrientation(LinearLayout.VERTICAL);
+                    cTextCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+
+                    TextView childTitle = new TextView(context);
+                    childTitle.setText(Translator.get(child.getKey()));
+                    childTitle.setTextColor(Color.rgb(255, 69, 58));
+                    childTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f);
+                    childTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                    childTitle.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+                    childTitle.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+                    cTextCol.addView(childTitle);
+
+                    String childSub = buildSubtitleText(child);
+                    if (childSub != null && !childSub.isEmpty()) {
+                        TextView cSubTv = new TextView(context);
+                        cSubTv.setText(childSub);
+                        cSubTv.setTextColor(p.textSecondary);
+                        cSubTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+                        cSubTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+                        cSubTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+                        LinearLayout.LayoutParams cSubLp = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                        cSubLp.topMargin = dp(2f);
+                        cTextCol.addView(cSubTv, cSubLp);
+                    }
+
+                    childRow.addView(cTextCol, new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                    childRow.setOnClickListener(v -> showClearDeletedConfirm());
+                    childrenContainer.addView(childRow);
+                }
+            }
+        }
+
+        parentRow.setOnClickListener(v -> {
+            boolean show = childrenContainer.getVisibility() != View.VISIBLE;
+            childrenContainer.setVisibility(show ? View.VISIBLE : View.GONE);
+            chevronIv.animate().rotation(show ? 180f : 0f).setDuration(180).start();
         });
 
         return wrapper;
@@ -701,6 +901,9 @@ public class SettingsActivity {
     }
 
     private View buildTextItemContainer(ConfigItem item, GlassDesign.Palette p, boolean hideTopDivider) {
+        if (item.isNativeBuiltIn()) {
+            return buildDisabledNativeRow(item, item.getNativeTarget(), p, hideTopDivider, false, false);
+        }
         LinearLayout wrapper = new LinearLayout(context);
         wrapper.setOrientation(LinearLayout.VERTICAL);
 
@@ -954,7 +1157,322 @@ public class SettingsActivity {
         }
     }
 
+    private View buildDisabledNativeRow(
+            ConfigItem item,
+            NativeFeatureTarget target,
+            GlassDesign.Palette p,
+            boolean hideTopDivider,
+            boolean isChild,
+            boolean useDisabledSwitch) {
+        LinearLayout wrapper = new LinearLayout(context);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+
+        if (!hideTopDivider) {
+            wrapper.addView(createHairlineDivider(p, isChild ? dp(32) : dp(16)));
+        }
+
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        if (isChild) {
+            row.setPadding(isRtl ? dp(16) : dp(32), dp(12), isRtl ? dp(32) : dp(16), dp(12));
+            row.setMinimumHeight(dp(50));
+        } else {
+            row.setPadding(dp(16), dp(14), dp(16), dp(14));
+            row.setMinimumHeight(dp(56));
+        }
+        row.setBackground(GlassDesign.createRowRipple(p.ripple));
+
+        LinearLayout textCol = new LinearLayout(context);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+
+        TextView titleTv = new TextView(context);
+        titleTv.setText(Translator.get(item.getKey()));
+        titleTv.setTextColor(p.textDisabled);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isChild ? 15.5f : 16f);
+        titleTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        textCol.addView(titleTv);
+
+        String subtitle = buildSubtitleText(item, true);
+        if (subtitle != null && !subtitle.isEmpty()) {
+            TextView subTv = new TextView(context);
+            subTv.setText(subtitle);
+            subTv.setTextColor(p.textDisabledSub);
+            subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isChild ? 12.5f : 13f);
+            subTv.setLineSpacing(dp(2f), 1.0f);
+            subTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+            LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            subLp.topMargin = dp(2f);
+            textCol.addView(subTv, subLp);
+        }
+
+        final boolean jumpable = target != null && target.isJumpable();
+        final String clientName = getClientDisplayName();
+        final String defaultChipLabel = jumpable
+                ? Translator.get(Keys.NativeBuiltInHint, clientName)
+                : Translator.get(Keys.NativeBuiltInHintNoJump, clientName);
+
+        LinearLayout chipBox = new LinearLayout(context);
+        chipBox.setOrientation(LinearLayout.HORIZONTAL);
+        chipBox.setGravity(Gravity.CENTER_VERTICAL);
+        chipBox.setPadding(dp(8), dp(3.5f), dp(8), dp(3.5f));
+        GradientDrawable chipBg = new GradientDrawable();
+        chipBg.setCornerRadius(dp(9));
+        if (jumpable) {
+            chipBg.setColor(p.nativeChipBg);
+            chipBg.setStroke(Math.max(1, dp(0.75f)), p.nativeChipBorder);
+        } else {
+            chipBg.setColor(p.nativeMutedPillBg);
+        }
+        chipBox.setBackground(chipBg);
+
+        TextView chipTv = new TextView(context);
+        chipTv.setText(defaultChipLabel);
+        chipTv.setTextColor(jumpable ? p.nativeChipText : p.textMuted);
+        chipTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+        chipTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        chipTv.setGravity(isRtl ? Gravity.RIGHT : Gravity.LEFT);
+        chipTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+
+        ImageView chipIcon = null;
+        if (jumpable) {
+            chipIcon = new ImageView(context);
+            chipIcon.setImageDrawable(GlassDesign.GlassIcons.openInClientIcon(p.nativeChipText, isRtl));
+            LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(12), dp(12));
+            if (isRtl) {
+                iconLp.leftMargin = dp(5);
+                chipBox.addView(chipTv);
+                chipBox.addView(chipIcon, iconLp);
+            } else {
+                iconLp.rightMargin = dp(5);
+                chipBox.addView(chipIcon, iconLp);
+                chipBox.addView(chipTv);
+            }
+        } else {
+            chipBox.addView(chipTv);
+        }
+
+        LinearLayout.LayoutParams chipLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        chipLp.topMargin = dp(6f);
+        chipLp.gravity = isRtl ? Gravity.RIGHT : Gravity.LEFT;
+        textCol.addView(chipBox, chipLp);
+
+        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        if (useDisabledSwitch) {
+            GlassDesign.PillSwitchView sw = new GlassDesign.PillSwitchView(context, false, p);
+            sw.setDisabled(true);
+            LinearLayout.LayoutParams swLp = new LinearLayout.LayoutParams(dp(48), dp(28));
+            if (isRtl) {
+                swLp.rightMargin = dp(14);
+                row.addView(sw, swLp);
+                row.addView(textCol, textLp);
+            } else {
+                textLp.rightMargin = dp(14);
+                row.addView(textCol, textLp);
+                row.addView(sw, swLp);
+            }
+        } else {
+            TextView builtInPill = buildMutedBuiltInPill(p);
+            LinearLayout.LayoutParams pillLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            if (isRtl) {
+                pillLp.rightMargin = dp(12);
+                row.addView(builtInPill, pillLp);
+                row.addView(textCol, textLp);
+            } else {
+                textLp.rightMargin = dp(12);
+                row.addView(textCol, textLp);
+                row.addView(builtInPill, pillLp);
+            }
+        }
+
+        final ImageView finalChipIcon = chipIcon;
+        row.setOnClickListener(v -> onNativeItemTapped(
+                item.getKey(), target, chipBox, chipTv, finalChipIcon, chipBg, defaultChipLabel));
+
+        wrapper.addView(row);
+        return wrapper;
+    }
+
+    private TextView buildMutedBuiltInPill(GlassDesign.Palette p) {
+        TextView pillTv = new TextView(context);
+        pillTv.setText(Translator.get(Keys.NativeBuiltInBadge));
+        pillTv.setTextColor(p.textMuted);
+        pillTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        pillTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        pillTv.setSingleLine(true);
+        GradientDrawable pill = new GradientDrawable();
+        pill.setColor(p.nativeMutedPillBg);
+        pill.setCornerRadius(dp(10));
+        pillTv.setBackground(pill);
+        pillTv.setPadding(dp(10), dp(4), dp(10), dp(4));
+        return pillTv;
+    }
+
+    private TextView buildFloatingToastView() {
+        TextView tv = new TextView(context);
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        tv.setGravity(Gravity.CENTER);
+        tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        tv.setPadding(dp(16), dp(9), dp(16), dp(9));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.argb(236, 20, 27, 38));
+        bg.setCornerRadius(dp(20));
+        bg.setStroke(Math.max(1, dp(0.75f)), Color.argb(44, 255, 255, 255));
+        tv.setBackground(bg);
+        tv.setElevation(dp(6));
+        tv.setAlpha(0f);
+        tv.setVisibility(View.GONE);
+        return tv;
+    }
+
+    private void onNativeItemTapped(
+            String itemKey,
+            NativeFeatureTarget target,
+            View chipContainer,
+            TextView chipTv,
+            ImageView chipIcon,
+            GradientDrawable chipBg,
+            String defaultLabel) {
+        String clientName = getClientDisplayName();
+        if (target == null || !target.isJumpable()) {
+            showFloatingToast(Translator.get(Keys.NativeBuiltInHintNoJump, clientName), 1800L);
+            return;
+        }
+
+        long now = SystemClock.uptimeMillis();
+        if (itemKey != null && itemKey.equals(armedNativeKey)
+                && (now - armedNativeTimestampMs) <= NATIVE_DOUBLE_TAP_WINDOW_MS) {
+            disarmActiveNativeRow();
+            hideFloatingToastImmediate();
+            Activity act = Utils.getCurrentActivity();
+            if (controller != null) {
+                controller.hide();
+            }
+            NativeFeatureNavigator.navigate(act, target, clientName);
+            return;
+        }
+
+        disarmActiveNativeRow();
+        armedNativeKey = itemKey;
+        armedNativeTimestampMs = now;
+        armedChipTextView = chipTv;
+        armedChipIconView = chipIcon;
+        armedChipBg = chipBg;
+        armedDefaultLabel = defaultLabel;
+
+        String tapAgainMsg = Translator.get(Keys.NativeTapAgainHint, clientName);
+        if (currentPalette != null) {
+            if (chipTv != null) {
+                chipTv.setText(tapAgainMsg);
+                chipTv.setTextColor(currentPalette.accentBlue);
+            }
+            if (chipIcon != null) {
+                chipIcon.setColorFilter(currentPalette.accentBlue);
+            }
+            if (chipBg != null) {
+                chipBg.setColor(currentPalette.nativeChipArmedBg);
+            }
+        }
+        if (chipContainer != null) {
+            chipContainer.animate().cancel();
+            chipContainer.animate().scaleX(1.03f).scaleY(1.03f).setDuration(90)
+                    .withEndAction(() -> chipContainer.animate().scaleX(1f).scaleY(1f).setDuration(120).start())
+                    .start();
+        }
+        showFloatingToast(tapAgainMsg, NATIVE_DOUBLE_TAP_WINDOW_MS - 100L);
+
+        disarmNativeRunnable = this::disarmActiveNativeRow;
+        uiHandler.postDelayed(disarmNativeRunnable, NATIVE_DOUBLE_TAP_WINDOW_MS);
+    }
+
+    private void disarmActiveNativeRow() {
+        if (disarmNativeRunnable != null) {
+            uiHandler.removeCallbacks(disarmNativeRunnable);
+            disarmNativeRunnable = null;
+        }
+        if (currentPalette != null) {
+            if (armedChipTextView != null) {
+                if (armedDefaultLabel != null) {
+                    armedChipTextView.setText(armedDefaultLabel);
+                }
+                armedChipTextView.setTextColor(currentPalette.nativeChipText);
+            }
+            if (armedChipIconView != null) {
+                armedChipIconView.clearColorFilter();
+            }
+            if (armedChipBg != null) {
+                armedChipBg.setColor(currentPalette.nativeChipBg);
+            }
+        }
+        armedNativeKey = null;
+        armedNativeTimestampMs = 0L;
+        armedChipTextView = null;
+        armedChipIconView = null;
+        armedChipBg = null;
+        armedDefaultLabel = null;
+    }
+
+    private void showFloatingToast(String text, long durationMs) {
+        if (floatingToastView == null || TextUtils.isEmpty(text)) return;
+        if (hideToastRunnable != null) {
+            uiHandler.removeCallbacks(hideToastRunnable);
+            hideToastRunnable = null;
+        }
+        floatingToastView.setText(text);
+        floatingToastView.setVisibility(View.VISIBLE);
+        floatingToastView.bringToFront();
+        floatingToastView.animate().cancel();
+        floatingToastView.animate().alpha(1f).setDuration(150).start();
+        hideToastRunnable = () -> {
+            if (floatingToastView != null) {
+                floatingToastView.animate().alpha(0f).setDuration(220)
+                        .withEndAction(() -> {
+                            if (floatingToastView != null) {
+                                floatingToastView.setVisibility(View.GONE);
+                            }
+                        }).start();
+            }
+        };
+        uiHandler.postDelayed(hideToastRunnable, durationMs);
+    }
+
+    private void hideFloatingToastImmediate() {
+        if (hideToastRunnable != null) {
+            uiHandler.removeCallbacks(hideToastRunnable);
+            hideToastRunnable = null;
+        }
+        if (floatingToastView != null) {
+            floatingToastView.animate().cancel();
+            floatingToastView.setAlpha(0f);
+            floatingToastView.setVisibility(View.GONE);
+        }
+    }
+
+    private void clearTransientFeedback() {
+        disarmActiveNativeRow();
+        hideFloatingToastImmediate();
+    }
+
+    private String getClientDisplayName() {
+        if (cachedClientName == null || cachedClientName.isEmpty()) {
+            cachedClientName = ClientManager.getCurrentDisplayName(context);
+        }
+        return cachedClientName;
+    }
+
     private String buildSubtitleText(ConfigItem item) {
+        return buildSubtitleText(item, false);
+    }
+
+    private String buildSubtitleText(ConfigItem item, boolean omitRestartNote) {
         if (Keys.CheckForUpdates.equals(item.getKey())) {
             return Translator.get(Keys.CheckForUpdatesDesc, UpdateManager.getCurrentVersionTag());
         }
@@ -962,7 +1480,7 @@ public class SettingsActivity {
         if (desc == null || desc.isEmpty()) {
             desc = item.getValue();
         }
-        if (item.isRestartRequired()) {
+        if (!omitRestartNote && item.isRestartRequired()) {
             String restartNote = Translator.get(Keys.RestartRequired);
             if (desc != null && !desc.isEmpty()) {
                 return desc + "\n" + restartNote;

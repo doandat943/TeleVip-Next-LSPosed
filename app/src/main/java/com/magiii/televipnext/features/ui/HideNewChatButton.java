@@ -107,10 +107,28 @@ public class HideNewChatButton {
                 }
             };
 
-            if (ReflectHelper.findMethodExactIfExists(dialogsCls, "createView", Context.class) != null) {
-                HMethod.hookMethod(dialogsCls, "createView", Context.class, syncHook);
+            String daCreateView = Obfuscate.getMethodName("DialogsActivity", "createView");
+            if (daCreateView == null || "createView".equals(daCreateView)) {
+                String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
+                if (bfCreate != null && !"createView".equals(bfCreate)) daCreateView = bfCreate;
             }
-            Method onResumeM = findMethodInHierarchy(dialogsCls, "onResume");
+            Method createViewM = findMethodInHierarchy(dialogsCls, daCreateView, Context.class);
+            if (createViewM == null && !"createView".equals(daCreateView)) {
+                createViewM = findMethodInHierarchy(dialogsCls, "createView", Context.class);
+            }
+            if (createViewM != null) {
+                HMethod.hookMethod(createViewM, syncHook);
+            }
+
+            String daOnResume = Obfuscate.getMethodName("DialogsActivity", "onResume");
+            if (daOnResume == null || "onResume".equals(daOnResume)) {
+                String bfResume = Obfuscate.getMethodName("BaseFragment", "onResume");
+                if (bfResume != null && !"onResume".equals(bfResume)) daOnResume = bfResume;
+            }
+            Method onResumeM = findMethodInHierarchy(dialogsCls, daOnResume);
+            if (onResumeM == null && !"onResume".equals(daOnResume)) {
+                onResumeM = findMethodInHierarchy(dialogsCls, "onResume");
+            }
             if (onResumeM != null) {
                 HMethod.hookMethod(onResumeM, syncHook);
             }

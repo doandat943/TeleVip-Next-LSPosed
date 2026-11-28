@@ -44,6 +44,10 @@ public class FileUploadOperation {
     }
 
     public int[] getUploadRequestsPerConnection() {
-        return (int[]) ReflectHelper.getObjectField(fileOperation, Obfuscate.getFieldName("FileUploadOperation", "uploadRequestsPerConnection"));
+        String fieldName = Obfuscate.getFieldName("FileUploadOperation", "uploadRequestsPerConnection");
+        if (ReflectHelper.findFieldIfExists(fileOperation.getClass(), fieldName) == null) {
+            return null;
+        }
+        return (int[]) ReflectHelper.getObjectField(fileOperation, fieldName);
     }
 }

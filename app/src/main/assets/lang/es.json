@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "Cuenta creada aproximadamente el %s.",
   "ProfileJoinedChatHint": "Te uniste a %1$s el %2$s.",
   "ProfileCreatedChatSelfHint": "Creaste %1$s el %2$s.",
-  "ProfileCreatedChatHint": "%1$s se creó el %2$s."
+  "ProfileCreatedChatHint": "%1$s se creó el %2$s.",
+  "AlwaysShowDownloads": "Mostrar siempre Descargas",
+  "AlwaysShowDownloadsDesc": "Mantener siempre visible el icono de descargas en la barra superior de la lista de chats",
+  "NativeBuiltInBadge": "Integrado",
+  "NativeBuiltInHint": "Integrado en %s · Toca dos veces para abrir",
+  "NativeBuiltInHintNoJump": "Ya está integrado en %s",
+  "NativeTapAgainHint": "Toca de nuevo para abrir en %s",
+  "NativeOpenFailed": "Abre manualmente los ajustes de %1$s: %2$s"
 }

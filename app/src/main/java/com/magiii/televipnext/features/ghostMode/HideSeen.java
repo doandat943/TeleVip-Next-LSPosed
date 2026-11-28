@@ -90,62 +90,41 @@ public class HideSeen {
     }
 
     public static boolean isTLMessagesReadHistoryRequest(Object object) {
-        if (!ClientManager.isTgnetObfuscated()) {
-            return object.getClass().getName().contains("TL_messages_readHistory");
-        } else {
-            return object.getClass().getName().equals(Obfuscate.getClassName(ClassNames.TL_MESSAGES_READ_HISTORY));
+        Class<?> cls = object.getClass();
+        if (cls.equals(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_HISTORY, Utils.classLoader, false))) {
+            return true;
         }
+        return !ClientManager.isTgnetObfuscated() && cls.getName().contains("TL_messages_readHistory");
     }
 
     public static boolean isTLChannelsReadHistoryRequest(Object object) {
-        if (!ClientManager.isTgnetObfuscated()) {
-            return object.getClass().getName().contains("TL_channels_readHistory");
-        } else {
-            return object.getClass().getName().equals(Obfuscate.getClassName(ClassNames.TL_CHANNELS_READ_HISTORY));
+        Class<?> cls = object.getClass();
+        if (cls.equals(ClassLoad.getClass(ClassNames.TL_CHANNELS_READ_HISTORY, Utils.classLoader, false))) {
+            return true;
         }
+        return !ClientManager.isTgnetObfuscated() && cls.getName().contains("TL_channels_readHistory");
     }
 
     public static boolean isReadMessageRequest(Object object) {
         boolean privateHide = ConfigManager.hideSeenPrivateChat.isEnable();
         boolean channelHide = ConfigManager.hideSeenChannel.isEnable();
 
-        boolean readHistory;
-        boolean readDiscussion;
-        boolean encryptedHistory;
-        boolean readMessageContents;
-        boolean channelReadMessageContents;
-        boolean channelReadHistory;
+        Class<?> objectClass = object.getClass();
+        String className = objectClass.getName();
+        boolean unObf = !ClientManager.isTgnetObfuscated();
 
-        if (!ClientManager.isTgnetObfuscated()) {
-            String className = object.getClass().getName();
-
-            readHistory = className.contains("TL_messages_readHistory");
-            readDiscussion = className.contains("TL_messages_readDiscussion");
-            encryptedHistory = className.contains("TL_messages_readEncryptedHistory");
-            readMessageContents = className.contains("TL_messages_readMessageContents");
-            channelReadMessageContents = className.contains("TL_channels_readMessageContents");
-            channelReadHistory = className.contains("TL_channels_readHistory");
-        } else {
-            Class<?> objectClass = object.getClass();
-
-            readHistory = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_MESSAGES_READ_HISTORY)));
-
-            readDiscussion = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_MESSAGES_READ_DISCUSSION)));
-
-            encryptedHistory = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_MESSAGES_READ_ENCRYPTED_HISTORY)));
-
-            readMessageContents = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_MESSAGES_READ_MESSAGE_CONTENTS)));
-
-            channelReadMessageContents = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_CHANNELS_READ_MESSAGE_CONTENTS)));
-
-            channelReadHistory = objectClass.equals(ClassLoad.getClass(
-                    Obfuscate.getClassName(ClassNames.TL_CHANNELS_READ_HISTORY)));
-        }
+        boolean readHistory = objectClass.equals(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_HISTORY, Utils.classLoader, false))
+                || (unObf && className.contains("TL_messages_readHistory"));
+        boolean readDiscussion = objectClass.equals(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_DISCUSSION, Utils.classLoader, false))
+                || (unObf && className.contains("TL_messages_readDiscussion"));
+        boolean encryptedHistory = objectClass.equals(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_ENCRYPTED_HISTORY, Utils.classLoader, false))
+                || (unObf && className.contains("TL_messages_readEncryptedHistory"));
+        boolean readMessageContents = objectClass.equals(ClassLoad.getClass(ClassNames.TL_MESSAGES_READ_MESSAGE_CONTENTS, Utils.classLoader, false))
+                || (unObf && className.contains("TL_messages_readMessageContents"));
+        boolean channelReadMessageContents = objectClass.equals(ClassLoad.getClass(ClassNames.TL_CHANNELS_READ_MESSAGE_CONTENTS, Utils.classLoader, false))
+                || (unObf && className.contains("TL_channels_readMessageContents"));
+        boolean channelReadHistory = objectClass.equals(ClassLoad.getClass(ClassNames.TL_CHANNELS_READ_HISTORY, Utils.classLoader, false))
+                || (unObf && className.contains("TL_channels_readHistory"));
 
         if (!(readHistory || readDiscussion ||
                 (privateHide && encryptedHistory) ||
@@ -160,17 +139,12 @@ public class HideSeen {
         }
 
         if (readHistory || readDiscussion) {
-            String objectName;
-            if (!ClientManager.isTgnetObfuscated()){
-                objectName = object.getClass().getSimpleName();
-            } else {
-                if (readHistory)
-                    objectName = "TLRPC$TL_messages_readHistory";
-                else
-                    objectName = "TLRPC$TL_messages_readDiscussion";
+            String objectName = readHistory ? "TLRPC$TL_messages_readHistory" : "TLRPC$TL_messages_readDiscussion";
+            String peerField = Obfuscate.getFieldName(objectName, "peer");
+            if (ReflectHelper.findFieldIfExists(objectClass, peerField) == null && ReflectHelper.findFieldIfExists(objectClass, "peer") != null) {
+                peerField = "peer";
             }
-            TLRPC.InputPeer inputPeer = new TLRPC.InputPeer(
-                    ReflectHelper.getObjectField(object, Obfuscate.getFieldName(objectName,"peer")));
+            TLRPC.InputPeer inputPeer = new TLRPC.InputPeer(ReflectHelper.getObjectField(object, peerField));
 
             boolean isChannelOrGroup =
                     inputPeer.getChannel_id() > 0 ||
@@ -255,13 +229,9 @@ public class HideSeen {
         try {
             if (messageId <= 0 || peer == null || peer.getInputPeer() == null) return;
             Object req;
-            boolean inputPeerChannel;
-
-            if (ClientManager.isTgnetObfuscated()) {
-                inputPeerChannel = peer.getInputPeer().getClass().getName().equals(Obfuscate.getClassName(ClassNames.TL_INPUT_PEER_CHANNEL));
-            } else {
-                inputPeerChannel = peer.getInputPeer().getClass().getName().contains("TL_inputPeerChannel");
-            }
+            Class<?> ipCls = peer.getInputPeer().getClass();
+            boolean inputPeerChannel = ipCls.equals(ClassLoad.getClass(ClassNames.TL_INPUT_PEER_CHANNEL, Utils.classLoader, false))
+                    || (!ClientManager.isTgnetObfuscated() && ipCls.getName().contains("TL_inputPeerChannel"));
 
             if (inputPeerChannel) {
                 TLRPC.TL_channels_readHistory request;

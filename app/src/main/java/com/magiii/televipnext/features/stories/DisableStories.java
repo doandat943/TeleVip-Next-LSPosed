@@ -322,7 +322,15 @@ public class DisableStories {
         }
 
         if (hasBottomButton) {
-            Method createViewM = ReflectHelper.findMethodExactIfExists(paClass, "createView", Context.class);
+            String paCreate = Obfuscate.getMethodName("ProfileActivity", "createView");
+            if (paCreate == null || "createView".equals(paCreate)) {
+                String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
+                if (bfCreate != null && !"createView".equals(bfCreate)) paCreate = bfCreate;
+            }
+            Method createViewM = ReflectHelper.findMethodExactIfExists(paClass, paCreate, Context.class);
+            if (createViewM == null && !"createView".equals(paCreate)) {
+                createViewM = ReflectHelper.findMethodExactIfExists(paClass, "createView", Context.class);
+            }
             hookMethodOnce(createViewM, hooked, new BaseMethodHook() {
                 @Override
                 protected void afterMethod(MethodHookParam param) {
@@ -514,7 +522,15 @@ public class DisableStories {
             };
             hookMethodOnce(fabVisM, hooked, hideFabAfter);
 
-            Method createViewM = ReflectHelper.findMethodExactIfExists(daClass, "createView", Context.class);
+            String daCreate = Obfuscate.getMethodName("DialogsActivity", "createView");
+            if (daCreate == null || "createView".equals(daCreate)) {
+                String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
+                if (bfCreate != null && !"createView".equals(bfCreate)) daCreate = bfCreate;
+            }
+            Method createViewM = ReflectHelper.findMethodExactIfExists(daClass, daCreate, Context.class);
+            if (createViewM == null && !"createView".equals(daCreate)) {
+                createViewM = ReflectHelper.findMethodExactIfExists(daClass, "createView", Context.class);
+            }
             hookMethodOnce(createViewM, hooked, hideFabAfter);
         }
     }
@@ -570,7 +586,7 @@ public class DisableStories {
             String drawMethod = Obfuscate.getMethodName("StoriesUtilities", "drawAvatarWithStory");
             for (Method m : suClass.getDeclaredMethods()) {
                 if (!m.getName().equals(drawMethod) || !Modifier.isStatic(m.getModifiers())
-                        || m.getReturnType() != void.class || m.getParameterCount() != 5) {
+                        || m.getReturnType() != void.class || m.getParameterCount() < 5) {
                     continue;
                 }
                 Class<?>[] p = m.getParameterTypes();

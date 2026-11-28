@@ -2,6 +2,7 @@ package com.magiii.televipnext.Configs;
 
 import com.magiii.televipnext.Clients.ClientManager;
 import com.magiii.televipnext.Clients.Telegraph;
+import com.magiii.televipnext.features.ui.AlwaysShowDownloads;
 import com.magiii.televipnext.features.ui.AlwaysShowProxy;
 import com.magiii.televipnext.features.ui.DisableChannelSwipeBack;
 import com.magiii.televipnext.features.ui.DisableNumberRounding;
@@ -106,6 +107,7 @@ public class ConfigManager {
     public static ConfigItem customCalendar;
     public static ConfigItem showTimeSeconds;
     public static ConfigItem alwaysShowProxy;
+    public static ConfigItem alwaysShowDownloads;
 
     // Other Features
     public static ConfigItem otherFeatures;
@@ -139,31 +141,28 @@ public class ConfigManager {
 
         List<ConfigItem> childrenHideSeen = new ArrayList<>();
 
-        hideSeenPrivateChat = new ConfigItem(ConfigItem.SWITCH, Keys.HideSeenPrivateChat, ConfigPreferences.getBoolean(Keys.HideSeenPrivateChat), GhostMode::init);
+        hideSeenPrivateChat = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideSeenPrivateChat, ConfigPreferences.getBoolean(Keys.HideSeenPrivateChat), GhostMode::init));
         childrenHideSeen.add(hideSeenPrivateChat);
 
-        hideSeenChannel = new ConfigItem(ConfigItem.SWITCH, Keys.HideSeenChannel, ConfigPreferences.getBoolean(Keys.HideSeenChannel), GhostMode::init);
+        hideSeenChannel = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideSeenChannel, ConfigPreferences.getBoolean(Keys.HideSeenChannel), GhostMode::init));
         childrenHideSeen.add(hideSeenChannel);
 
-        hideSeen = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.HideSeen, childrenHideSeen);
+        hideSeen = bindNative(new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.HideSeen, childrenHideSeen));
         items.add(hideSeen);
 
-        markReadAfterSend = new ConfigItem(ConfigItem.SWITCH, Keys.MarkReadAfterSend, ConfigPreferences.getBoolean(Keys.MarkReadAfterSend), GhostMode::init);
+        markReadAfterSend = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.MarkReadAfterSend, ConfigPreferences.getBoolean(Keys.MarkReadAfterSend), GhostMode::init));
         items.add(markReadAfterSend);
 
-        hideTyping = new ConfigItem(ConfigItem.SWITCH, Keys.HideTyping, ConfigPreferences.getBoolean(Keys.HideTyping), GhostMode::init);
+        hideTyping = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideTyping, ConfigPreferences.getBoolean(Keys.HideTyping), GhostMode::init));
         items.add(hideTyping);
 
-        hideStoryView = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoryView, ConfigPreferences.getBoolean(Keys.HideStoryView), GhostMode::init);
+        hideStoryView = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideStoryView, ConfigPreferences.getBoolean(Keys.HideStoryView), GhostMode::init));
         items.add(hideStoryView);
 
-        // Cherrygram already ships native phone number spoiler hiding
-        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
-            hidePhone = new ConfigItem(ConfigItem.SWITCH, Keys.HidePhone, true, ConfigPreferences.getBoolean(Keys.HidePhone), HidePhone::init);
-            items.add(hidePhone);
-        }
+        hidePhone = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HidePhone, true, ConfigPreferences.getBoolean(Keys.HidePhone), HidePhone::init));
+        items.add(hidePhone);
 
-        hideOnline = new ConfigItem(ConfigItem.SWITCH, Keys.HideOnline, true, ConfigPreferences.getBoolean(Keys.HideOnline), GhostMode::init);
+        hideOnline = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideOnline, true, ConfigPreferences.getBoolean(Keys.HideOnline), GhostMode::init));
         items.add(hideOnline);
 
         onlineInfo = new ConfigItem(ConfigItem.INFO, Keys.OfflineVisibilityInfo);
@@ -172,109 +171,115 @@ public class ConfigManager {
         shadows = new ConfigItem(ConfigItem.DIVIDER);
         items.add(shadows);
 
-        // Stories (Cherrygram already ships native Hide Stories)
-        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
-            stories = new ConfigItem(ConfigItem.HEADER, Keys.StoriesSettings);
-            items.add(stories);
+        // Stories
+        stories = new ConfigItem(ConfigItem.HEADER, Keys.StoriesSettings);
+        items.add(stories);
 
-            if (!ConfigPreferences.contains(Keys.HideStoriesChatList)
-                    && ConfigPreferences.getBoolean(Keys.DisableStories)) {
-                ConfigPreferences.putBoolean(Keys.HideStoriesChatList, true);
-                ConfigPreferences.putBoolean(Keys.HideStoriesRings, true);
-                ConfigPreferences.putBoolean(Keys.HideStoriesProfile, true);
-                ConfigPreferences.putBoolean(Keys.DisableStoriesPosting, true);
-            } else if (!ConfigPreferences.contains(Keys.HideStoriesRings)
-                    && ConfigPreferences.getBoolean(Keys.HideStoriesProfile)) {
+        if (!isNativeKey(Keys.HideStoriesChatList)
+                && !ConfigPreferences.contains(Keys.HideStoriesChatList)
+                && ConfigPreferences.getBoolean(Keys.DisableStories)) {
+            ConfigPreferences.putBoolean(Keys.HideStoriesChatList, true);
+            if (!isNativeKey(Keys.HideStoriesRings)) {
                 ConfigPreferences.putBoolean(Keys.HideStoriesRings, true);
             }
-
-            hideStoriesChatList = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesChatList, ConfigPreferences.getBoolean(Keys.HideStoriesChatList), DisableStories::init);
-            items.add(hideStoriesChatList);
-
-            hideStoriesRings = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesRings, ConfigPreferences.getBoolean(Keys.HideStoriesRings), DisableStories::init);
-            items.add(hideStoriesRings);
-
-            hideStoriesProfile = new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesProfile, ConfigPreferences.getBoolean(Keys.HideStoriesProfile), DisableStories::init);
-            items.add(hideStoriesProfile);
-
-            disableStoriesPosting = new ConfigItem(ConfigItem.SWITCH, Keys.DisableStoriesPosting, ConfigPreferences.getBoolean(Keys.DisableStoriesPosting), DisableStories::init);
-            items.add(disableStoriesPosting);
-
-            items.add(shadows);
+            if (!isNativeKey(Keys.HideStoriesProfile)) {
+                ConfigPreferences.putBoolean(Keys.HideStoriesProfile, true);
+            }
+            if (!isNativeKey(Keys.DisableStoriesPosting)) {
+                ConfigPreferences.putBoolean(Keys.DisableStoriesPosting, true);
+            }
+        } else if (!isNativeKey(Keys.HideStoriesRings)
+                && !ConfigPreferences.contains(Keys.HideStoriesRings)
+                && ConfigPreferences.getBoolean(Keys.HideStoriesProfile)) {
+            ConfigPreferences.putBoolean(Keys.HideStoriesRings, true);
         }
+
+        hideStoriesChatList = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesChatList, ConfigPreferences.getBoolean(Keys.HideStoriesChatList), DisableStories::init));
+        items.add(hideStoriesChatList);
+
+        hideStoriesRings = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesRings, ConfigPreferences.getBoolean(Keys.HideStoriesRings), DisableStories::init));
+        items.add(hideStoriesRings);
+
+        hideStoriesProfile = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideStoriesProfile, ConfigPreferences.getBoolean(Keys.HideStoriesProfile), DisableStories::init));
+        items.add(hideStoriesProfile);
+
+        disableStoriesPosting = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.DisableStoriesPosting, ConfigPreferences.getBoolean(Keys.DisableStoriesPosting), DisableStories::init));
+        items.add(disableStoriesPosting);
+
+        items.add(shadows);
 
         // Messages
         messages = new ConfigItem(ConfigItem.HEADER, Keys.MessagesSettings);
         items.add(messages);
 
-        if (!ConfigPreferences.contains(Keys.ShowDeletedPrivate)
+        if (!isNativeKey(Keys.ShowDeletedPrivate)
+                && !ConfigPreferences.contains(Keys.ShowDeletedPrivate)
                 && ConfigPreferences.getBoolean(Keys.ShowDeletedMessages)) {
             ConfigPreferences.putBoolean(Keys.ShowDeletedPrivate, true);
-            ConfigPreferences.putBoolean(Keys.ShowDeletedGroups, true);
-            ConfigPreferences.putBoolean(Keys.ShowDeletedChannels, false);
+            if (!isNativeKey(Keys.ShowDeletedGroups)) {
+                ConfigPreferences.putBoolean(Keys.ShowDeletedGroups, true);
+            }
+            if (!isNativeKey(Keys.ShowDeletedChannels)) {
+                ConfigPreferences.putBoolean(Keys.ShowDeletedChannels, false);
+            }
         }
 
         List<ConfigItem> childrenDeleted = new ArrayList<>();
-        showDeletedPrivate = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedPrivate, ConfigPreferences.getBoolean(Keys.ShowDeletedPrivate), ShowDeletedMessages::init);
+        showDeletedPrivate = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedPrivate, ConfigPreferences.getBoolean(Keys.ShowDeletedPrivate), ShowDeletedMessages::init));
         childrenDeleted.add(showDeletedPrivate);
 
-        showDeletedGroups = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedGroups, ConfigPreferences.getBoolean(Keys.ShowDeletedGroups), ShowDeletedMessages::init);
+        showDeletedGroups = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedGroups, ConfigPreferences.getBoolean(Keys.ShowDeletedGroups), ShowDeletedMessages::init));
         childrenDeleted.add(showDeletedGroups);
 
-        showDeletedChannels = new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedChannels, ConfigPreferences.getBoolean(Keys.ShowDeletedChannels), ShowDeletedMessages::init);
+        showDeletedChannels = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowDeletedChannels, ConfigPreferences.getBoolean(Keys.ShowDeletedChannels), ShowDeletedMessages::init));
         childrenDeleted.add(showDeletedChannels);
 
-        clearDeletedMessages = new ConfigItem(ConfigItem.TEXT, Keys.ClearDeletedMessages);
+        clearDeletedMessages = bindNative(new ConfigItem(ConfigItem.TEXT, Keys.ClearDeletedMessages));
         childrenDeleted.add(clearDeletedMessages);
 
-        showDeletedMessages = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.ShowDeletedMessages, childrenDeleted);
+        showDeletedMessages = bindNative(new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.ShowDeletedMessages, childrenDeleted));
         items.add(showDeletedMessages);
 
-        if (!ClientManager.is(ClientManager.Client.NagramXF)) {
-            showMessageId = new ConfigItem(ConfigItem.SWITCH, Keys.ShowMessageID, ConfigPreferences.getBoolean(Keys.ShowMessageID), MessageTimeModifier::init);
-            items.add(showMessageId);
-        }
+        showMessageId = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowMessageID, ConfigPreferences.getBoolean(Keys.ShowMessageID), MessageTimeModifier::init));
+        items.add(showMessageId);
 
-        saveEditsHistory = new ConfigItem(ConfigItem.SWITCH, Keys.SaveEditsHistory, ConfigPreferences.getBoolean(Keys.SaveEditsHistory), SaveEditsHistory::init);
+        saveEditsHistory = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.SaveEditsHistory, ConfigPreferences.getBoolean(Keys.SaveEditsHistory), SaveEditsHistory::init));
         items.add(saveEditsHistory);
 
         items.add(shadows);
 
-        // Connections (Telegraph and Cherrygram already ship native Download & Upload speed boosters)
-        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
-            if (!ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
-                    && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
-                ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
-            }
-
-            connections = new ConfigItem(ConfigItem.HEADER, Keys.ConnectionsSettings);
-            items.add(connections);
-
-            downloadSpeed = new ConfigItem(ConfigItem.TEXT, Keys.DownloadSpeed, false, DownloadSpeed::init);
-            items.add(downloadSpeed);
-
-            uploadSpeed = new ConfigItem(ConfigItem.SWITCH, Keys.UploadSpeed, ConfigPreferences.getBoolean(Keys.UploadSpeed), UploadSpeed::init);
-            items.add(uploadSpeed);
-
-            items.add(shadows);
+        // Connections
+        if (!isNativeKey(Keys.DownloadSpeed)
+                && !ConfigPreferences.contains(Keys.DownloadSpeed + "Int")
+                && ConfigPreferences.getBoolean(Keys.DownloadSpeed)) {
+            ConfigPreferences.putInt(Keys.DownloadSpeed + "Int", DownloadSpeed.MODE_FAST);
         }
+
+        connections = new ConfigItem(ConfigItem.HEADER, Keys.ConnectionsSettings);
+        items.add(connections);
+
+        downloadSpeed = bindNative(new ConfigItem(ConfigItem.TEXT, Keys.DownloadSpeed, false, DownloadSpeed::init));
+        items.add(downloadSpeed);
+
+        uploadSpeed = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.UploadSpeed, ConfigPreferences.getBoolean(Keys.UploadSpeed), UploadSpeed::init));
+        items.add(uploadSpeed);
+
+        items.add(shadows);
 
         // Media
         media = new ConfigItem(ConfigItem.HEADER, Keys.MediaSettings);
         items.add(media);
 
-        if (!ClientManager.is(ClientManager.Client.Nekogram)) {
-            secretMediaSave = new ConfigItem(ConfigItem.SWITCH, Keys.SecretMediaSave, ConfigPreferences.getBoolean(Keys.SecretMediaSave), SecretMediaSave::init);
-            items.add(secretMediaSave);
-        }
+        secretMediaSave = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.SecretMediaSave, ConfigPreferences.getBoolean(Keys.SecretMediaSave), SecretMediaSave::init));
+        items.add(secretMediaSave);
 
-        preventMedia = new ConfigItem(ConfigItem.SWITCH, Keys.PreventMedia, ConfigPreferences.getBoolean(Keys.PreventMedia), PreventMedia::init);
+        preventMedia = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.PreventMedia, ConfigPreferences.getBoolean(Keys.PreventMedia), PreventMedia::init));
         items.add(preventMedia);
 
-        enableSavingStories = new ConfigItem(ConfigItem.SWITCH, Keys.EnableSavingStories, ConfigPreferences.getBoolean(Keys.EnableSavingStories), EnableSavingStories::init);
+        enableSavingStories = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.EnableSavingStories, ConfigPreferences.getBoolean(Keys.EnableSavingStories), EnableSavingStories::init));
         items.add(enableSavingStories);
 
-        enableVoiceMessageSaving = new ConfigItem(ConfigItem.SWITCH, Keys.EnableVoiceMessageSaving, ConfigPreferences.getBoolean(Keys.EnableVoiceMessageSaving), VoiceToMusicHook::init);
+        enableVoiceMessageSaving = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.EnableVoiceMessageSaving, ConfigPreferences.getBoolean(Keys.EnableVoiceMessageSaving), VoiceToMusicHook::init));
         items.add(enableVoiceMessageSaving);
 
         items.add(shadows);
@@ -283,68 +288,71 @@ public class ConfigManager {
         ui = new ConfigItem(ConfigItem.HEADER, Keys.UiSettings);
         items.add(ui);
 
-        if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
+        hideBottomBarTabs = null;
+        hideBottomTabContacts = null;
+        hideBottomTabSettingsCalls = null;
+        hideBottomTabProfile = null;
+        if (HideBottomBarTabs.isSupported() || hasNativeHideBottomBarTabs()) {
             List<ConfigItem> childrenBottomTabs = new ArrayList<>();
-            hideBottomTabContacts = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabContacts,
-                    ConfigPreferences.getBoolean(Keys.HideBottomTabContacts), HideBottomBarTabs::init);
+            hideBottomTabContacts = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabContacts,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabContacts), HideBottomBarTabs::init));
             childrenBottomTabs.add(hideBottomTabContacts);
 
-            hideBottomTabSettingsCalls = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabSettingsCalls,
-                    ConfigPreferences.getBoolean(Keys.HideBottomTabSettingsCalls), HideBottomBarTabs::init);
+            hideBottomTabSettingsCalls = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabSettingsCalls,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabSettingsCalls), HideBottomBarTabs::init));
             childrenBottomTabs.add(hideBottomTabSettingsCalls);
 
-            hideBottomTabProfile = new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabProfile,
-                    ConfigPreferences.getBoolean(Keys.HideBottomTabProfile), HideBottomBarTabs::init);
+            hideBottomTabProfile = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideBottomTabProfile,
+                    ConfigPreferences.getBoolean(Keys.HideBottomTabProfile), HideBottomBarTabs::init));
             childrenBottomTabs.add(hideBottomTabProfile);
 
-            hideBottomBarTabs = new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.HideBottomBarTabs, childrenBottomTabs);
+            hideBottomBarTabs = bindNative(new ConfigItem(ConfigItem.EXPANDABLE_SWITCH, Keys.HideBottomBarTabs, childrenBottomTabs));
             items.add(hideBottomBarTabs);
         }
 
-        hideNewChatButton = new ConfigItem(ConfigItem.SWITCH, Keys.HideNewChatButton,
-                ConfigPreferences.getBoolean(Keys.HideNewChatButton), HideNewChatButton::init);
+        hideNewChatButton = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideNewChatButton,
+                ConfigPreferences.getBoolean(Keys.HideNewChatButton), HideNewChatButton::init));
         items.add(hideNewChatButton);
 
-        hidePinnedMessages = new ConfigItem(ConfigItem.SWITCH, Keys.HidePinnedMessages, ConfigPreferences.getBoolean(Keys.HidePinnedMessages), HidePinnedMessages::init);
+        hidePinnedMessages = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HidePinnedMessages, ConfigPreferences.getBoolean(Keys.HidePinnedMessages), HidePinnedMessages::init));
         items.add(hidePinnedMessages);
 
-        disableChannelSwipeBack = new ConfigItem(ConfigItem.SWITCH, Keys.DisableChannelSwipeBack, ConfigPreferences.getBoolean(Keys.DisableChannelSwipeBack), DisableChannelSwipeBack::init);
+        disableChannelSwipeBack = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.DisableChannelSwipeBack, ConfigPreferences.getBoolean(Keys.DisableChannelSwipeBack), DisableChannelSwipeBack::init));
         items.add(disableChannelSwipeBack);
 
-        disableProfileSwipeBack = new ConfigItem(ConfigItem.SWITCH, Keys.DisableProfileSwipeBack, ConfigPreferences.getBoolean(Keys.DisableProfileSwipeBack), DisableProfileSwipeBack::init);
+        disableProfileSwipeBack = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.DisableProfileSwipeBack, ConfigPreferences.getBoolean(Keys.DisableProfileSwipeBack), DisableProfileSwipeBack::init));
         items.add(disableProfileSwipeBack);
 
-        hideProxySponsor = new ConfigItem(ConfigItem.SWITCH, Keys.HideProxySponsor, true, ConfigPreferences.getBoolean(Keys.HideProxySponsor), HideProxySponsor::init);
+        hideProxySponsor = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideProxySponsor, true, ConfigPreferences.getBoolean(Keys.HideProxySponsor), HideProxySponsor::init));
         items.add(hideProxySponsor);
 
-        hideSponsoredAds = new ConfigItem(ConfigItem.SWITCH, Keys.HideSponsoredAds,
-                ConfigPreferences.getBoolean(Keys.HideSponsoredAds), HideSponsoredAds::init);
+        hideSponsoredAds = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideSponsoredAds,
+                ConfigPreferences.getBoolean(Keys.HideSponsoredAds), HideSponsoredAds::init));
         items.add(hideSponsoredAds);
 
-        if (!hasNativeFullProfileIdDc()) {
-            showUserID = new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), ShowProfileIdDc::init);
-            items.add(showUserID);
+        showUserID = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowUserID, ConfigPreferences.getBoolean(Keys.ShowUserID), ShowProfileIdDc::init));
+        items.add(showUserID);
+
+        showTimeSeconds = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init));
+        items.add(showTimeSeconds);
+
+        disableNumberRounding = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init));
+        items.add(disableNumberRounding);
+
+        if (!isNativeKey(Keys.AlwaysShowProxy)
+                && !ConfigPreferences.contains(Keys.AlwaysShowProxy + "Int")
+                && ConfigPreferences.getBoolean(Keys.AlwaysShowProxy)) {
+            ConfigPreferences.putInt(Keys.AlwaysShowProxy + "Int", AlwaysShowProxy.MODE_TOP_BAR);
         }
-        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
-            showTimeSeconds = new ConfigItem(ConfigItem.SWITCH, Keys.ShowTimeSeconds, ConfigPreferences.getBoolean(Keys.ShowTimeSeconds), MessageTimeModifier::init);
-            items.add(showTimeSeconds);
-        }
-        if (!ClientManager.is(ClientManager.Client.Cherrygram)) {
-            disableNumberRounding = new ConfigItem(ConfigItem.SWITCH, Keys.DisableNumberRounding, "5.3K -> 5300", ConfigPreferences.getBoolean(Keys.DisableNumberRounding), DisableNumberRounding::init);
-            items.add(disableNumberRounding);
-        }
-        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
-            if (!ConfigPreferences.contains(Keys.AlwaysShowProxy + "Int")
-                    && ConfigPreferences.getBoolean(Keys.AlwaysShowProxy)) {
-                ConfigPreferences.putInt(Keys.AlwaysShowProxy + "Int", AlwaysShowProxy.MODE_TOP_BAR);
-            }
-            alwaysShowProxy = new ConfigItem(ConfigItem.TEXT, Keys.AlwaysShowProxy, false, AlwaysShowProxy::init);
-            items.add(alwaysShowProxy);
-        }
-        if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram) && !ClientManager.is(ClientManager.Client.Cherrygram)) {
-            customCalendar = new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init);
-            items.add(customCalendar);
-        }
+        alwaysShowProxy = bindNative(new ConfigItem(ConfigItem.TEXT, Keys.AlwaysShowProxy, false, AlwaysShowProxy::init));
+        items.add(alwaysShowProxy);
+
+        alwaysShowDownloads = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.AlwaysShowDownloads,
+                ConfigPreferences.getBoolean(Keys.AlwaysShowDownloads), AlwaysShowDownloads::init));
+        items.add(alwaysShowDownloads);
+
+        customCalendar = bindNative(new ConfigItem(ConfigItem.TEXT, Keys.Calendar, true, HijriDate::init));
+        items.add(customCalendar);
 
         language = new ConfigItem(ConfigItem.TEXT, Keys.Language);
         items.add(language);
@@ -355,17 +363,17 @@ public class ConfigManager {
         otherFeatures = new ConfigItem(ConfigItem.HEADER, Keys.OtherFeaturesSettings);
         items.add(otherFeatures);
 
-        removesContentSaving = new ConfigItem(ConfigItem.SWITCH, Keys.RemovesContentSaving, ConfigPreferences.getBoolean(Keys.RemovesContentSaving), RemovesContentSaving::init);
+        removesContentSaving = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.RemovesContentSaving, ConfigPreferences.getBoolean(Keys.RemovesContentSaving), RemovesContentSaving::init));
         items.add(removesContentSaving);
 
-        sayWhereCopyCameFrom = new ConfigItem(ConfigItem.SWITCH, Keys.SayWhereCopyCameFrom, ConfigPreferences.getBoolean(Keys.SayWhereCopyCameFrom), null);
+        sayWhereCopyCameFrom = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.SayWhereCopyCameFrom, ConfigPreferences.getBoolean(Keys.SayWhereCopyCameFrom), null));
         items.add(sayWhereCopyCameFrom);
 
-        telegramPremium = new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init);
+        telegramPremium = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.TelegramPremium, ConfigPreferences.getBoolean(Keys.TelegramPremium), TelePremium::init));
         items.add(telegramPremium);
 
-        hideUpdateApp = new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init);
-        fixTLError = new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init);
+        hideUpdateApp = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.HideUpdateApp, true, ConfigPreferences.getBoolean(Keys.HideUpdateApp), HideUpdateApp::init));
+        fixTLError = bindNative(new ConfigItem(ConfigItem.SWITCH, Keys.FixTLError, ConfigPreferences.getBoolean(Keys.FixTLError), FixTLError::init));
         items.add(hideUpdateApp);
         items.add(fixTLError);
 
@@ -401,6 +409,26 @@ public class ConfigManager {
 
     }
 
+    private static ConfigItem bindNative(ConfigItem item) {
+        if (item == null || item.getKey() == null) return item;
+        NativeFeatureTarget target = NativeFeatureRegistry.resolve(ClientManager.getCurrent(), item.getKey());
+        if (target != null) {
+            item.setNativeTarget(target);
+        }
+        return item;
+    }
+
+    private static boolean isNativeKey(String key) {
+        return NativeFeatureRegistry.resolve(ClientManager.getCurrent(), key) != null;
+    }
+
+    private static boolean hasNativeHideBottomBarTabs() {
+        return isNativeKey(Keys.HideBottomBarTabs)
+                || isNativeKey(Keys.HideBottomTabContacts)
+                || isNativeKey(Keys.HideBottomTabSettingsCalls)
+                || isNativeKey(Keys.HideBottomTabProfile);
+    }
+
     public static List<ConfigItem> getItems() {
         return items;
     }
@@ -408,11 +436,12 @@ public class ConfigManager {
     public static void readFeature() {
         try {
             for (ConfigItem item : items) {
-                if (item == null) continue;
+                if (item == null || item.isNativeBuiltIn()) continue;
                 if (item.getType() == ConfigItem.EXPANDABLE_SWITCH) {
                     if (item.getChildren() != null) {
                         for (ConfigItem child : item.getChildren()) {
-                            if (child != null && child.getType() == ConfigItem.SWITCH && child.isEnable()) {
+                            if (child != null && !child.isNativeBuiltIn()
+                                    && child.getType() == ConfigItem.SWITCH && child.isEnable()) {
                                 child.run();
                             }
                         }
@@ -430,33 +459,36 @@ public class ConfigManager {
                 CopyNameHook.init();
                 EditOnlineTextView.init();
             }
-            if (!ClientManager.is(ClientManager.Client.Telegraph) && !ClientManager.is(ClientManager.Client.Nekogram)) {
+            if (alwaysShowProxy != null && !alwaysShowProxy.isNativeBuiltIn()) {
                 AlwaysShowProxy.init();
             }
-            if (!hasNativeFullProfileIdDc()) {
+            if (alwaysShowDownloads != null && !alwaysShowDownloads.isNativeBuiltIn()) {
+                AlwaysShowDownloads.init();
+            }
+            if (showUserID != null && !showUserID.isNativeBuiltIn()) {
                 ShowProfileIdDc.init();
             }
-            if (!ClientManager.is(ClientManager.Client.Cherrygram) && HideBottomBarTabs.isSupported()) {
+            if (hideBottomBarTabs != null && !hideBottomBarTabs.isNativeBuiltIn()
+                    && !hideBottomBarTabs.isAllSwitchChildrenNative() && HideBottomBarTabs.isSupported()) {
                 HideBottomBarTabs.init();
             }
-            HideNewChatButton.init();
-            HideSponsoredAds.init();
+            if (hideNewChatButton != null && !hideNewChatButton.isNativeBuiltIn()) {
+                HideNewChatButton.init();
+            }
+            if (hideSponsoredAds != null && !hideSponsoredAds.isNativeBuiltIn()) {
+                HideSponsoredAds.init();
+            }
             AlwaysSaveMedia.init();
-            ShowDeletedMessages.initMenuHooks();
+            if (showDeletedMessages != null && !showDeletedMessages.isNativeBuiltIn()
+                    && !showDeletedMessages.isAllSwitchChildrenNative()) {
+                ShowDeletedMessages.initMenuHooks();
+            }
 
             if (ClientManager.is(ClientManager.Client.Telegraph)) Telegraph.removeAd();
 
         } catch (Throwable e) {
             Logger.e(e);
         }
-    }
-
-    private static boolean hasNativeFullProfileIdDc() {
-        return ClientManager.is(ClientManager.Client.Cherrygram)
-                || ClientManager.is(ClientManager.Client.NagramXF)
-                || ClientManager.is(ClientManager.Client.ExteraGram)
-                || ClientManager.is(ClientManager.Client.NagramX)
-                || ClientManager.is(ClientManager.Client.Octogram);
     }
 
     public static boolean isShowDeletedAnyEnabled() {

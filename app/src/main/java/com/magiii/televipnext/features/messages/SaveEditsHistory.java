@@ -459,7 +459,8 @@ public class SaveEditsHistory {
 
             Class<?> cmClass = ClassLoad.getClass(ClassNames.CONNECTIONS_MANAGER);
             if (cmClass != null) {
-                XposedCompat.hookAllMethods(cmClass, "sendRequestInternal", new BaseMethodHook() {
+                String sendReqInternal = Obfuscate.getMethodName("ConnectionsManager", "sendRequestInternal");
+                XposedCompat.hookAllMethods(cmClass, sendReqInternal, new BaseMethodHook() {
                     @Override
                     protected void beforeMethod(MethodHookParam param) {
                         try {
@@ -470,12 +471,13 @@ public class SaveEditsHistory {
                                 return;
                             }
                             Object req = param.args[0];
-                            if (req.getClass().getName().contains("TL_messages_editMessage")) {
-                                int msgId = getIntField(req, "id");
-                                String newText = getStringField(req, "message");
-                                Object peer = getField(req, "peer");
+                            Class<?> tlEditCls = ClassLoad.getClass("org.telegram.tgnet.TLRPC$TL_messages_editMessage", Utils.classLoader, false);
+                            if (req.getClass().getName().contains("TL_messages_editMessage") || req.getClass().equals(tlEditCls)) {
+                                int msgId = getIntField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "id"));
+                                String newText = getStringField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "message"));
+                                Object peer = getField(req, Obfuscate.getFieldName("TLRPC$TL_messages_editMessage", "peer"));
                                 long dialogId = resolveInputPeerDialogId(peer);
-                                boolean isChannel = peer != null && getLongField(peer, "channel_id") != 0L;
+                                boolean isChannel = peer != null && getLongField(peer, Obfuscate.getFieldName("TLRPC$InputPeer", "channel_id")) != 0L;
                                 if (msgId > 0 && dialogId != 0L) {
                                     capturePreviousMessageVersion(dialogId, msgId, newText, isChannel, true);
                                 }

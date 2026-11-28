@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "تم إنشاء الحساب تقريبًا في %s.",
   "ProfileJoinedChatHint": "انضممت إلى %1$s في %2$s.",
   "ProfileCreatedChatSelfHint": "أنشأت %1$s في %2$s.",
-  "ProfileCreatedChatHint": "تم إنشاء %1$s في %2$s."
+  "ProfileCreatedChatHint": "تم إنشاء %1$s في %2$s.",
+  "AlwaysShowDownloads": "إظهار أيقونة التنزيلات دائماً",
+  "AlwaysShowDownloadsDesc": "إبقاء أيقونة التنزيلات ظاهرة دائماً في الشريط العلوي لقائمة المحادثات",
+  "NativeBuiltInBadge": "مدمج",
+  "NativeBuiltInHint": "مدمج في %s · انقر مرتين للفتح",
+  "NativeBuiltInHintNoJump": "مدمج بالفعل في %s",
+  "NativeTapAgainHint": "انقر مرة أخرى للفتح في %s",
+  "NativeOpenFailed": "افتح إعدادات %1$s يدوياً: %2$s"
 }

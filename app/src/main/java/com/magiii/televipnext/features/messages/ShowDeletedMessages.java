@@ -261,15 +261,18 @@ public class ShowDeletedMessages {
                                                 continue;
                                             }
                                             String name = update.getClass().getName();
+                                            Class<?> updateCls = update.getClass();
                                             boolean updateDeleteChannelMessages;
                                             boolean updateDeleteMessages;
 
                                             if (!ClientManager.isTgnetObfuscated()) {
-                                                updateDeleteChannelMessages = name.contains("TL_updateDeleteChannelMessages");
-                                                updateDeleteMessages = name.contains("TL_updateDeleteMessages");
+                                                updateDeleteChannelMessages = name.contains("TL_updateDeleteChannelMessages")
+                                                        || updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES, Utils.classLoader, false));
+                                                updateDeleteMessages = name.contains("TL_updateDeleteMessages")
+                                                        || updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_MESSAGES, Utils.classLoader, false));
                                             } else {
-                                                updateDeleteChannelMessages = update.getClass().equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES));
-                                                updateDeleteMessages = update.getClass().equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_MESSAGES));
+                                                updateDeleteChannelMessages = updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_CHANNEL_MESSAGES));
+                                                updateDeleteMessages = updateCls.equals(ClassLoad.getClass(ClassNames.TL_UPDATE_DELETE_MESSAGES));
                                             }
 
                                             if (updateDeleteChannelMessages || updateDeleteMessages) {

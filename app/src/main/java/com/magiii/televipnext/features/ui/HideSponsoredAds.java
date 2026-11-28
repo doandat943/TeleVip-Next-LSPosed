@@ -93,12 +93,6 @@ public class HideSponsoredAds {
     }
 
     private static boolean isSponsoredRequest(Object req) {
-        if (!ClientManager.isTgnetObfuscated()) {
-            String name = req.getClass().getName();
-            return name.contains("TL_messages_getSponsoredMessages")
-                    || name.contains("TL_channels_getSponsoredMessages")
-                    || name.contains("TL_contacts_getSponsoredPeers");
-        }
         if (!tlClassesResolved) {
             tlClassesResolved = true;
             tlGetSponsoredMessagesCls = ClassLoad.getClass(
@@ -107,6 +101,15 @@ public class HideSponsoredAds {
                     ClassNames.TL_CONTACTS_GET_SPONSORED_PEERS, Utils.classLoader, false);
         }
         Class<?> cls = req.getClass();
-        return cls.equals(tlGetSponsoredMessagesCls) || cls.equals(tlGetSponsoredPeersCls);
+        if (cls.equals(tlGetSponsoredMessagesCls) || cls.equals(tlGetSponsoredPeersCls)) {
+            return true;
+        }
+        if (!ClientManager.isTgnetObfuscated()) {
+            String name = cls.getName();
+            return name.contains("TL_messages_getSponsoredMessages")
+                    || name.contains("TL_channels_getSponsoredMessages")
+                    || name.contains("TL_contacts_getSponsoredPeers");
+        }
+        return false;
     }
 }

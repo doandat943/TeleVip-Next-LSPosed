@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "Tài khoản được tạo vào khoảng %s.",
   "ProfileJoinedChatHint": "Bạn đã tham gia %1$s vào %2$s.",
   "ProfileCreatedChatSelfHint": "Bạn đã tạo %1$s vào %2$s.",
-  "ProfileCreatedChatHint": "%1$s được tạo vào %2$s."
+  "ProfileCreatedChatHint": "%1$s được tạo vào %2$s.",
+  "AlwaysShowDownloads": "Luôn hiện nút Tải xuống",
+  "AlwaysShowDownloadsDesc": "Luôn hiển thị biểu tượng tải xuống trên thanh trên cùng của danh sách chat",
+  "NativeBuiltInBadge": "Có sẵn",
+  "NativeBuiltInHint": "Đã có sẵn trong %s · Chạm 2 lần để mở",
+  "NativeBuiltInHintNoJump": "Đã có sẵn trong %s",
+  "NativeTapAgainHint": "Chạm lần nữa để mở trong %s",
+  "NativeOpenFailed": "Mở thủ công trong cài đặt %1$s: %2$s"
 }

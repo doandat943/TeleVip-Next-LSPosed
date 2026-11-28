@@ -82,14 +82,23 @@ public final class GlassDesign {
         public final int textPrimary;
         public final int textSecondary;
         public final int textMuted;
+        public final int textDisabled;
+        public final int textDisabledSub;
         public final int accentBlue;
         public final int accentSoft;
+        public final int nativeChipBg;
+        public final int nativeChipBorder;
+        public final int nativeChipText;
+        public final int nativeChipArmedBg;
+        public final int nativeMutedPillBg;
         public final int divider;
         public final int ripple;
 
         public final int switchOnStart;
         public final int switchOnEnd;
         public final int switchOff;
+        public final int switchDisabledTrack;
+        public final int switchDisabledThumb;
 
         private Palette(boolean light) {
             this.light = light;
@@ -116,14 +125,23 @@ public final class GlassDesign {
                 textPrimary = Color.rgb(18, 24, 34);
                 textSecondary = Color.rgb(100, 112, 128);
                 textMuted = Color.rgb(130, 140, 155);
+                textDisabled = Color.argb(122, 18, 24, 34);
+                textDisabledSub = Color.argb(128, 100, 112, 128);
                 accentBlue = Color.rgb(28, 128, 232);
                 accentSoft = Color.argb(26, 28, 128, 232);
+                nativeChipBg = Color.argb(20, 28, 128, 232);
+                nativeChipBorder = Color.argb(34, 28, 128, 232);
+                nativeChipText = Color.rgb(40, 116, 200);
+                nativeChipArmedBg = Color.argb(44, 28, 128, 232);
+                nativeMutedPillBg = Color.argb(20, 120, 130, 145);
                 divider = Color.argb(18, 15, 25, 45);
                 ripple = Color.argb(20, 0, 0, 0);
 
                 switchOnStart = Color.rgb(42, 148, 245);
                 switchOnEnd = Color.rgb(74, 174, 255);
                 switchOff = Color.argb(56, 120, 130, 145);
+                switchDisabledTrack = Color.argb(30, 120, 130, 145);
+                switchDisabledThumb = Color.argb(170, 255, 255, 255);
             } else {
                 baseBg = Color.rgb(14, 21, 31);
                 glowTopLeft = Color.argb(165, 21, 56, 74);
@@ -147,14 +165,23 @@ public final class GlassDesign {
                 textPrimary = Color.rgb(242, 246, 252);
                 textSecondary = Color.rgb(154, 167, 184);
                 textMuted = Color.rgb(122, 135, 152);
+                textDisabled = Color.argb(122, 242, 246, 252);
+                textDisabledSub = Color.argb(128, 154, 167, 184);
                 accentBlue = Color.rgb(88, 178, 255);
                 accentSoft = Color.argb(36, 88, 178, 255);
+                nativeChipBg = Color.argb(30, 88, 178, 255);
+                nativeChipBorder = Color.argb(46, 88, 178, 255);
+                nativeChipText = Color.rgb(122, 190, 252);
+                nativeChipArmedBg = Color.argb(66, 88, 178, 255);
+                nativeMutedPillBg = Color.argb(30, 160, 175, 195);
                 divider = Color.argb(22, 255, 255, 255);
                 ripple = Color.argb(28, 255, 255, 255);
 
                 switchOnStart = Color.rgb(54, 156, 246);
                 switchOnEnd = Color.rgb(92, 184, 255);
                 switchOff = Color.argb(66, 160, 175, 195);
+                switchDisabledTrack = Color.argb(34, 160, 175, 195);
+                switchDisabledThumb = Color.argb(125, 230, 238, 248);
             }
         }
 
@@ -547,6 +574,7 @@ public final class GlassDesign {
      */
     public static final class PillSwitchView extends View {
         private boolean checked;
+        private boolean disabled;
         private float progress;
         private final Palette palette;
         private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -566,11 +594,26 @@ public final class GlassDesign {
         }
 
         public boolean isChecked() {
-            return checked;
+            return !disabled && checked;
+        }
+
+        public boolean isDisabled() {
+            return disabled;
+        }
+
+        public void setDisabled(boolean disabled) {
+            this.disabled = disabled;
+            if (disabled) {
+                if (anim != null) anim.cancel();
+                this.checked = false;
+                this.progress = 0f;
+                setClickable(false);
+            }
+            invalidate();
         }
 
         public void setChecked(boolean value, boolean animate) {
-            if (this.checked == value) return;
+            if (disabled || this.checked == value) return;
             this.checked = value;
             float target = value ? 1f : 0f;
             if (anim != null) anim.cancel();
@@ -596,19 +639,29 @@ public final class GlassDesign {
             if (w <= 0 || h <= 0) return;
 
             trackRect.set(0, 0, w, h);
-            int midOn = (int) colorEval.evaluate(0.5f, palette.switchOnStart, palette.switchOnEnd);
-            int color = (int) colorEval.evaluate(progress, palette.switchOff, midOn);
-            trackPaint.setColor(color);
             float r = h / 2f;
-            canvas.drawRoundRect(trackRect, r, r, trackPaint);
-
             float pad = h * 0.11f;
             float thumbR = (h - pad * 2f) / 2f;
             float startX = pad + thumbR;
-            float endX = w - pad - thumbR;
-            float cx = startX + (endX - startX) * progress;
             float cy = h / 2f;
 
+            if (disabled) {
+                trackPaint.setColor(palette.switchDisabledTrack);
+                canvas.drawRoundRect(trackRect, r, r, trackPaint);
+                thumbPaint.setColor(palette.switchDisabledThumb);
+                canvas.drawCircle(startX, cy, thumbR, thumbPaint);
+                return;
+            }
+
+            int midOn = (int) colorEval.evaluate(0.5f, palette.switchOnStart, palette.switchOnEnd);
+            int color = (int) colorEval.evaluate(progress, palette.switchOff, midOn);
+            trackPaint.setColor(color);
+            canvas.drawRoundRect(trackRect, r, r, trackPaint);
+
+            float endX = w - pad - thumbR;
+            float cx = startX + (endX - startX) * progress;
+
+            thumbPaint.setColor(Color.WHITE);
             canvas.drawCircle(cx, cy + h * 0.03f, thumbR, shadowPaint);
             canvas.drawCircle(cx, cy, thumbR, thumbPaint);
         }
@@ -731,6 +784,46 @@ public final class GlassDesign {
                     p.lineTo(15.2f, 12.0f);
                     p.lineTo(9.2f, 18.0f);
                     c.drawPath(p, stroke);
+                }
+            };
+        }
+
+        public static Drawable chevronDown(int color) {
+            return new VectorDrawable24(color, false) {
+                @Override
+                protected void draw24(Canvas c, Paint fill, Paint stroke) {
+                    stroke.setStrokeWidth(2.2f);
+                    Path p = new Path();
+                    p.moveTo(6.0f, 9.2f);
+                    p.lineTo(12.0f, 15.2f);
+                    p.lineTo(18.0f, 9.2f);
+                    c.drawPath(p, stroke);
+                }
+            };
+        }
+
+        public static Drawable openInClientIcon(int color, boolean rtl) {
+            return new VectorDrawable24(color, true, rtl) {
+                @Override
+                protected void draw24(Canvas c, Paint fill, Paint stroke) {
+                    stroke.setStrokeWidth(2.1f);
+                    Path box = new Path();
+                    box.moveTo(10.5f, 5.5f);
+                    box.lineTo(6.4f, 5.5f);
+                    box.quadTo(4.5f, 5.5f, 4.5f, 7.4f);
+                    box.lineTo(4.5f, 17.6f);
+                    box.quadTo(4.5f, 19.5f, 6.4f, 19.5f);
+                    box.lineTo(16.6f, 19.5f);
+                    box.quadTo(18.5f, 19.5f, 18.5f, 17.6f);
+                    box.lineTo(18.5f, 13.5f);
+                    c.drawPath(box, stroke);
+
+                    c.drawLine(11.2f, 12.8f, 19.2f, 4.8f, stroke);
+                    Path arrow = new Path();
+                    arrow.moveTo(14.0f, 4.8f);
+                    arrow.lineTo(19.2f, 4.8f);
+                    arrow.lineTo(19.2f, 10.0f);
+                    c.drawPath(arrow, stroke);
                 }
             };
         }

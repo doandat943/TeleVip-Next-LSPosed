@@ -8,6 +8,7 @@ import android.widget.EditText;
 import com.magiii.televipnext.Class.ClassLoad;
 import com.magiii.televipnext.Class.ClassNames;
 import com.magiii.televipnext.Clients.ClientManager;
+import com.magiii.televipnext.application.ApplicationLoaderHook;
 import com.magiii.televipnext.base.BaseMethodHook;
 import com.magiii.televipnext.hooks.HMethod;
 import com.magiii.televipnext.language.Keys;
@@ -22,6 +23,9 @@ import com.magiii.televipnext.virtuals.ui.ChatActivity;
 
 import com.magiii.televipnext.xposed.ReflectHelper;
 import com.magiii.televipnext.xposed.XposedCompat;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 public class ChatHook {
 
@@ -43,12 +47,12 @@ public class ChatHook {
                         ActionBarMenuItem headerItem = chatActivity.getHeaderItem();
                         if (headerItem.getActionBarMenuItem() != null) {
 
-                            int drawableResource = ReflectHelper.getStaticIntField(ClassLoad.getClass(ClassNames.DRAWABLE), "msg_go_up");
+                            int drawableResource = resolveDrawableId("msg_go_up");
 
                             if (!ClientManager.is(ClientManager.Client.iMe) && !ClientManager.is(ClientManager.Client.iMeWeb) && !ClientManager.is(ClientManager.Client.TelegramPlus) && !ClientManager.is(ClientManager.Client.XPlus) && !ClientManager.is(ClientManager.Client.forkgram) && !ClientManager.is(ClientManager.Client.forkgramBeta)) {
                                 headerItem.lazilyAddSubItem(8353847, drawableResource, Translator.get(Keys.ToTheBeginning));
                             }
-                            drawableResource = ReflectHelper.getStaticIntField(ClassLoad.getClass(ClassNames.DRAWABLE), "player_new_order");
+                            drawableResource = resolveDrawableId("player_new_order");
 
                             headerItem.lazilyAddSubItem(8353848, drawableResource, Translator.get(Keys.ToTheMessage));
 
@@ -60,13 +64,18 @@ public class ChatHook {
                 }
             }));
 
-            XposedCompat.findAndHookMethod(clazz, "onItemClick", int.class, new BaseMethodHook() {
+            String onItemClickName = Obfuscate.getMethodName("ActionBar$ActionBarMenuOnItemClick", "onItemClick");
+            if (ReflectHelper.findMethodExactIfExists(clazz, onItemClickName, int.class) == null) {
+                onItemClickName = "onItemClick";
+            }
+            XposedCompat.findAndHookMethod(clazz, onItemClickName, int.class, new BaseMethodHook() {
                 @Override
                 protected void afterMethod(MethodHookParam param) {
                     try {
                         int id = (int) param.args[0];
 
-                        final Object thisClass = ReflectHelper.getObjectField(param.thisObject, Obfuscate.getFieldName("ChatActivity", "this$0"));
+                        Object thisClass = resolveOuterChatActivity(param.thisObject);
+                        if (thisClass == null) return;
                         ChatActivity chat = new ChatActivity(thisClass);
 
                         if (id == 8353847) {
@@ -103,5 +112,38 @@ public class ChatHook {
         } catch (Throwable t){
             FeatureStateManager.reset();
         }
+    }
+
+    private static int resolveDrawableId(String name) {
+        Class<?> drawableCls = ClassLoad.getClass(ClassNames.DRAWABLE, Utils.classLoader, false);
+        if (drawableCls != null && ReflectHelper.findFieldIfExists(drawableCls, name) != null) {
+            return ReflectHelper.getStaticIntField(drawableCls, name);
+        }
+        Context ctx = ApplicationLoaderHook.getApplicationContext();
+        if (ctx != null) {
+            int id = ctx.getResources().getIdentifier(name, "drawable", ctx.getPackageName());
+            if (id != 0) return id;
+        }
+        return 0;
+    }
+
+    private static Object resolveOuterChatActivity(Object listener) {
+        if (listener == null) return null;
+        String mapped = Obfuscate.getFieldName("ChatActivity", "this$0");
+        if (mapped != null && ReflectHelper.findFieldIfExists(listener.getClass(), mapped) != null) {
+            return ReflectHelper.getObjectField(listener, mapped);
+        }
+        Class<?> chatCls = ClassLoad.getClass(ClassNames.CHAT_ACTIVITY, Utils.classLoader, false);
+        if (chatCls != null) {
+            for (Field f : listener.getClass().getDeclaredFields()) {
+                if (!Modifier.isStatic(f.getModifiers()) && f.getType() == chatCls) {
+                    try {
+                        f.setAccessible(true);
+                        return f.get(listener);
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }
+        return null;
     }
 }

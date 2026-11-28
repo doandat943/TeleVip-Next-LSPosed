@@ -133,23 +133,31 @@ public class AlwaysShowProxy {
                         });
             }
 
-            HMethod.hookMethod(dialogsCls, "createView", Context.class, new BaseMethodHook() {
-                @Override
-                protected void beforeMethod(MethodHookParam param) {
-                    CREATED_DIALOGS.remove(param.thisObject);
-                    ENTRIES.remove(param.thisObject);
-                }
-
-                @Override
-                protected void afterMethod(MethodHookParam param) {
-                    CREATED_DIALOGS.put(param.thisObject, Boolean.TRUE);
-                    ACTIVE_DIALOGS.put(param.thisObject, Boolean.TRUE);
-                    if (isEnabled()) {
-                        ensureProxyButton(param.thisObject, (Context) param.args[0]);
-                        syncVisibility(param.thisObject);
+            String createViewName = Obfuscate.getMethodName("DialogsActivity", "createView");
+            Method createViewMethod = ReflectHelper.findMethodExactIfExists(dialogsCls, createViewName, Context.class);
+            if (createViewMethod == null && !"createView".equals(createViewName)) {
+                createViewMethod = ReflectHelper.findMethodExactIfExists(dialogsCls, "createView", Context.class);
+            }
+            if (createViewMethod != null) {
+                createViewMethod.setAccessible(true);
+                HMethod.hookMethod(createViewMethod, new BaseMethodHook() {
+                    @Override
+                    protected void beforeMethod(MethodHookParam param) {
+                        CREATED_DIALOGS.remove(param.thisObject);
+                        ENTRIES.remove(param.thisObject);
                     }
-                }
-            });
+
+                    @Override
+                    protected void afterMethod(MethodHookParam param) {
+                        CREATED_DIALOGS.put(param.thisObject, Boolean.TRUE);
+                        ACTIVE_DIALOGS.put(param.thisObject, Boolean.TRUE);
+                        if (isEnabled()) {
+                            ensureProxyButton(param.thisObject, (Context) param.args[0]);
+                            syncVisibility(param.thisObject);
+                        }
+                    }
+                });
+            }
 
             if (hasMethodNamed(dialogsCls, updateProxyMethod)) {
                 XposedCompat.hookAllMethods(dialogsCls, updateProxyMethod, new BaseMethodHook() {
@@ -397,13 +405,48 @@ public class AlwaysShowProxy {
         return ReflectHelper.findMethodExactIfExists(cls, name) != null;
     }
 
+    private static ViewGroup ensureActionBarAndMenu(Object dialogsActivity, Context[] ctxOut) {
+        Object actionBar = getActionBar(dialogsActivity);
+        if (actionBar == null) return null;
+        return obtainActionBarMenu(actionBar);
+    }
+
+    private static Object getActionBar(Object fragment) {
+        if (fragment == null) return null;
+        String mapped = Obfuscate.getFieldName("BaseFragment", "actionBar");
+        for (String name : new String[]{mapped, "actionBar"}) {
+            if (name != null && ReflectHelper.findFieldIfExists(fragment.getClass(), name) != null) {
+                Object ab = ReflectHelper.getObjectField(fragment, name);
+                if (ab != null) return ab;
+            }
+        }
+        Class<?> abCls = ClassLoad.getClass("org.telegram.ui.ActionBar.ActionBar", Utils.classLoader, false);
+        for (Class<?> c = fragment.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Field f : c.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers())) continue;
+                boolean match = abCls != null
+                        ? abCls.isAssignableFrom(f.getType())
+                        : (ViewGroup.class.isAssignableFrom(f.getType())
+                           && f.getType().getSimpleName().toLowerCase().contains("actionbar"));
+                if (match) {
+                    try {
+                        f.setAccessible(true);
+                        Object ab = f.get(fragment);
+                        if (ab != null) return ab;
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }
+        return null;
+    }
+
     private static void ensureProxyButton(Object dialogsActivity, Context context) {
         if (dialogsActivity == null) return;
 
         Object nativeDrawable = ReflectHelper.getObjectField(dialogsActivity, proxyDrawableField);
         if (nativeDrawable == null) return;
 
-        Object actionBar = ReflectHelper.getObjectField(dialogsActivity, "actionBar");
+        Object actionBar = getActionBar(dialogsActivity);
         if (actionBar == null) return;
 
         ViewGroup actionBarMenu = obtainActionBarMenu(actionBar);
@@ -672,7 +715,10 @@ public class AlwaysShowProxy {
             Class<?> proxyListCls = ClassLoad.getClass(ClassNames.PROXY_LIST_ACTIVITY, Utils.classLoader, false);
             if (proxyListCls == null) return;
             Object fragment = ReflectHelper.newInstance(proxyListCls);
-            ReflectHelper.callMethod(dialogsActivity, "presentFragment", fragment);
+            String presentMethod = Obfuscate.getMethodName("BaseFragment", "presentFragment");
+            ReflectHelper.callMethod(dialogsActivity,
+                    (presentMethod != null && !presentMethod.isEmpty()) ? presentMethod : "presentFragment",
+                    fragment);
         } catch (Throwable t) {
             Logger.e(t);
         }
@@ -728,7 +774,7 @@ public class AlwaysShowProxy {
 
     private static boolean isSearchFieldVisible(Object dialogsActivity) {
         try {
-            Object actionBar = ReflectHelper.getObjectField(dialogsActivity, "actionBar");
+            Object actionBar = getActionBar(dialogsActivity);
             if (actionBar != null && ReflectHelper.findFieldIfExists(actionBar.getClass(), "isSearchFieldVisible") != null) {
                 return ReflectHelper.getBooleanField(actionBar, "isSearchFieldVisible");
             }

@@ -171,21 +171,43 @@ public class HideBottomBarTabs {
 
             resolveSymbols();
 
-            HMethod.hookMethod(mainTabsCls, "createView", Context.class, new BaseMethodHook() {
-                @Override
-                protected void afterMethod(MethodHookParam param) {
-                    registerInstance(param.thisObject);
-                    applyToInstance(param.thisObject, false);
-                }
-            });
+            String mtCreateView = Obfuscate.getMethodName("MainTabsActivity", "createView");
+            if (mtCreateView == null || "createView".equals(mtCreateView)) {
+                String bfCreate = Obfuscate.getMethodName("BaseFragment", "createView");
+                if (bfCreate != null && !"createView".equals(bfCreate)) mtCreateView = bfCreate;
+            }
+            Method createViewM = findMethodInHierarchy(mainTabsCls, mtCreateView, Context.class);
+            if (createViewM == null && !"createView".equals(mtCreateView)) {
+                createViewM = findMethodInHierarchy(mainTabsCls, "createView", Context.class);
+            }
+            if (createViewM != null) {
+                HMethod.hookMethod(createViewM, new BaseMethodHook() {
+                    @Override
+                    protected void afterMethod(MethodHookParam param) {
+                        registerInstance(param.thisObject);
+                        applyToInstance(param.thisObject, false);
+                    }
+                });
+            }
 
-            HMethod.hookMethod(mainTabsCls, "onResume", new BaseMethodHook() {
-                @Override
-                protected void afterMethod(MethodHookParam param) {
-                    registerInstance(param.thisObject);
-                    applyToInstance(param.thisObject, false);
-                }
-            });
+            String mtOnResume = Obfuscate.getMethodName("MainTabsActivity", "onResume");
+            if (mtOnResume == null || "onResume".equals(mtOnResume)) {
+                String bfResume = Obfuscate.getMethodName("BaseFragment", "onResume");
+                if (bfResume != null && !"onResume".equals(bfResume)) mtOnResume = bfResume;
+            }
+            Method onResumeM = findMethodInHierarchy(mainTabsCls, mtOnResume);
+            if (onResumeM == null && !"onResume".equals(mtOnResume)) {
+                onResumeM = findMethodInHierarchy(mainTabsCls, "onResume");
+            }
+            if (onResumeM != null) {
+                HMethod.hookMethod(onResumeM, new BaseMethodHook() {
+                    @Override
+                    protected void afterMethod(MethodHookParam param) {
+                        registerInstance(param.thisObject);
+                        applyToInstance(param.thisObject, false);
+                    }
+                });
+            }
 
             if (ReflectHelper.findMethodExactIfExists(mainTabsCls, checkUiCallTabVisibleMethod, boolean.class, boolean.class) != null) {
                 HMethod.hookMethod(mainTabsCls, checkUiCallTabVisibleMethod, boolean.class, boolean.class, new BaseMethodHook() {

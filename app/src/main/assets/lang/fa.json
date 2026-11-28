@@ -236,5 +236,12 @@
   "ProfileCreatedOtherHint": "این حساب تقریباً در تاریخ %s ساخته شده است.",
   "ProfileJoinedChatHint": "شما در تاریخ %2$s به %1$s پیوستید.",
   "ProfileCreatedChatSelfHint": "شما %1$s را در تاریخ %2$s ساخته‌اید.",
-  "ProfileCreatedChatHint": "%1$s در تاریخ %2$s ساخته شده است."
+  "ProfileCreatedChatHint": "%1$s در تاریخ %2$s ساخته شده است.",
+  "AlwaysShowDownloads": "نمایش همیشگی آیکون دانلودها",
+  "AlwaysShowDownloadsDesc": "آیکون دانلودها را همیشه در نوار بالای لیست گفتگوها نمایش بده",
+  "NativeBuiltInBadge": "داخلی",
+  "NativeBuiltInHint": "در %s موجود است · دو بار لمس برای باز کردن",
+  "NativeBuiltInHintNoJump": "از پیش در %s موجود است",
+  "NativeTapAgainHint": "دوباره لمس کنید تا در %s باز شود",
+  "NativeOpenFailed": "تنظیمات %1$s را دستی باز کنید: %2$s"
 }

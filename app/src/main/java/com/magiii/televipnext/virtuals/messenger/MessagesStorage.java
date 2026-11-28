@@ -36,7 +36,7 @@ public class MessagesStorage {
 
         // Fallback for R8-inlined getDatabase() (e.g. Momogram): scan instance fields for SQLiteDatabase
         try {
-            Class<?> dbCls = ReflectHelper.findClassIfExists("org.telegram.SQLite.SQLiteDatabase", Utils.classLoader);
+            Class<?> dbCls = ClassLoad.getClass("org.telegram.SQLite.SQLiteDatabase", Utils.classLoader, false);
             if (dbCls != null) {
                 for (Class<?> c = messagesStorage.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
                     for (Field f : c.getDeclaredFields()) {

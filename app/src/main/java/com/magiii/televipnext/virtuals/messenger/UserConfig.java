@@ -21,6 +21,15 @@ public class UserConfig {
     }
 
     public long getClientUserId(){
+        if (userConfig != null) {
+            try {
+                String mapped = Obfuscate.getMethodName("UserConfig", "getClientUserId");
+                if (mapped != null && ReflectHelper.findMethodExactIfExists(userConfig.getClass(), mapped) != null) {
+                    Object res = ReflectHelper.callMethod(userConfig, mapped);
+                    if (res instanceof Long) return (Long) res;
+                }
+            } catch (Throwable ignored) {}
+        }
         return ReflectHelper.getLongField(userConfig, Obfuscate.getFieldName("UserConfig" , "clientUserId"));
     }
 

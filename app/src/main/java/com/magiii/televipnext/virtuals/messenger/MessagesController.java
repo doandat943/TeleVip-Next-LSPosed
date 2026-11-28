@@ -49,7 +49,11 @@ public class MessagesController {
     }
 
     public void removePromoDialog() {
-        ReflectHelper.callMethod(messagesController, Obfuscate.getMethodName("MessagesController", "removePromoDialog"));
+        if (messagesController == null) return;
+        String methodName = Obfuscate.getMethodName("MessagesController", "removePromoDialog");
+        if (ReflectHelper.findMethodExactIfExists(messagesController.getClass(), methodName) != null) {
+            ReflectHelper.callMethod(messagesController, methodName);
+        }
     }
 
     public static Object getInputChannel(TLRPC.InputPeer peer) {
