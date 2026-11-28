@@ -24,7 +24,6 @@ import android.view.ViewOutlineProvider;
 import android.view.Window;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -63,6 +62,125 @@ public final class CreditsSheet {
 
     private CreditsSheet() {}
 
+    static final class SheetScaffold {
+        final Dialog dialog;
+        final FrameLayout scrim;
+        final LinearLayout sheet;
+        final LinearLayout content;
+
+        SheetScaffold(Dialog dialog, FrameLayout scrim, LinearLayout sheet, LinearLayout content) {
+            this.dialog = dialog;
+            this.scrim = scrim;
+            this.sheet = sheet;
+            this.content = content;
+        }
+
+        void present(Activity activity, boolean light) {
+            dialog.setContentView(scrim);
+            GlassDesign.configureEdgeToEdgeSheetDialog(dialog, light);
+            sheet.setTranslationY(dp(activity, 44));
+            sheet.setAlpha(0f);
+            dialog.show();
+            GlassDesign.applySheetSystemBarAppearance(dialog, light);
+            sheet.animate()
+                    .translationY(0f)
+                    .alpha(1f)
+                    .setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator(2.2f))
+                    .start();
+        }
+    }
+
+    static SheetScaffold createSheetScaffold(
+            Activity activity,
+            GlassDesign.Palette p,
+            Typeface mediumTf,
+            String title,
+            float maxHeightRatio,
+            int maxHeightDp) {
+        Dialog dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        FrameLayout scrim = new FrameLayout(activity);
+        scrim.setLayoutDirection(Translator.isRtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        scrim.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        scrim.setOnClickListener(v -> dialog.dismiss());
+
+        int screenH = activity.getResources().getDisplayMetrics().heightPixels;
+        int maxSheetH = Math.min((int) (screenH * maxHeightRatio), dp(activity, maxHeightDp));
+        float topRadius = dp(activity, 28);
+
+        LinearLayout sheet = new LinearLayout(activity) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                int mode = MeasureSpec.getMode(heightMeasureSpec);
+                int size = MeasureSpec.getSize(heightMeasureSpec);
+                int capped = (mode == MeasureSpec.UNSPECIFIED) ? maxSheetH : Math.min(size, maxSheetH);
+                super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(capped, MeasureSpec.AT_MOST));
+            }
+        };
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        sheet.setClickable(true);
+        sheet.setBackground(GlassDesign.createAuroraBackground(p));
+        sheet.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight() + Math.round(topRadius), topRadius);
+            }
+        });
+        sheet.setClipToOutline(true);
+        scrim.addView(sheet, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+
+        View handle = new View(activity);
+        GradientDrawable handleBg = new GradientDrawable();
+        handleBg.setColor(p.light ? Color.argb(42, 15, 23, 42) : Color.argb(56, 255, 255, 255));
+        handleBg.setCornerRadius(dp(activity, 2));
+        handle.setBackground(handleBg);
+        LinearLayout.LayoutParams handleLp = new LinearLayout.LayoutParams(dp(activity, 36), dp(activity, 4));
+        handleLp.gravity = Gravity.CENTER_HORIZONTAL;
+        handleLp.topMargin = dp(activity, 10);
+        handleLp.bottomMargin = dp(activity, 10);
+        sheet.addView(handle, handleLp);
+
+        LinearLayout topBar = new LinearLayout(activity);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams topBarLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        topBarLp.setMargins(dp(activity, 14), 0, dp(activity, 14), dp(activity, 10));
+        sheet.addView(topBar, topBarLp);
+
+        topBar.addView(new View(activity), new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
+
+        TextView titleTv = new TextView(activity);
+        titleTv.setText(title);
+        titleTv.setTextColor(p.textPrimary);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f);
+        titleTv.setTypeface(mediumTf);
+        titleTv.setGravity(Gravity.CENTER);
+        titleTv.setSingleLine(true);
+        topBar.addView(titleTv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        ImageView closeBtn = GlassDesign.createCloseCircleButton(activity, p, dialog::dismiss);
+        topBar.addView(closeBtn, new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
+
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
+        sheet.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        LinearLayout content = new LinearLayout(activity);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(activity, 14), dp(activity, 2), dp(activity, 14), getNavBarHeight(activity) + dp(activity, 22));
+        scroll.addView(content, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        return new SheetScaffold(dialog, scrim, sheet, content);
+    }
+
     public static void show(Context ctx, SettingsController controller) {
         show(ctx, controller, null);
     }
@@ -79,51 +197,25 @@ public final class CreditsSheet {
             Handler mainHandler = new Handler(Looper.getMainLooper());
             Runnable[] hideToastHolder = new Runnable[1];
             UpdateManager.Listener[] updateListenerHolder = new UpdateManager.Listener[1];
+            ContributorsRepository.Listener[] contribListenerHolder = new ContributorsRepository.Listener[1];
 
-            Dialog dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            SheetScaffold scaffold = createSheetScaffold(
+                    activity, p, mediumTf, Translator.get(Keys.CreditsTitle), 0.86f, 720);
+            Dialog dialog = scaffold.dialog;
             dialog.setOnDismissListener(d -> {
                 if (updateListenerHolder[0] != null) {
                     UpdateManager.removeListener(updateListenerHolder[0]);
                     updateListenerHolder[0] = null;
+                }
+                if (contribListenerHolder[0] != null) {
+                    ContributorsRepository.removeListener(contribListenerHolder[0]);
+                    contribListenerHolder[0] = null;
                 }
                 if (hideToastHolder[0] != null) {
                     mainHandler.removeCallbacks(hideToastHolder[0]);
                     hideToastHolder[0] = null;
                 }
             });
-
-            FrameLayout scrim = new FrameLayout(activity);
-            scrim.setLayoutDirection(Translator.isRtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-            scrim.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            scrim.setOnClickListener(v -> dialog.dismiss());
-
-            int screenH = activity.getResources().getDisplayMetrics().heightPixels;
-            int maxSheetH = Math.min((int) (screenH * 0.86f), dp(activity, 720));
-            float topRadius = dp(activity, 28);
-
-            LinearLayout sheet = new LinearLayout(activity) {
-                @Override
-                protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-                    int mode = MeasureSpec.getMode(heightMeasureSpec);
-                    int size = MeasureSpec.getSize(heightMeasureSpec);
-                    int capped = (mode == MeasureSpec.UNSPECIFIED) ? maxSheetH : Math.min(size, maxSheetH);
-                    super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(capped, MeasureSpec.AT_MOST));
-                }
-            };
-            sheet.setOrientation(LinearLayout.VERTICAL);
-            sheet.setClickable(true);
-            sheet.setBackground(GlassDesign.createAuroraBackground(p));
-            sheet.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight() + Math.round(topRadius), topRadius);
-                }
-            });
-            sheet.setClipToOutline(true);
-            scrim.addView(sheet, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
 
             // Floating toast overlay
             TextView toastView = new TextView(activity);
@@ -142,56 +234,9 @@ public final class CreditsSheet {
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                     Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
             toastLp.bottomMargin = getNavBarHeight(activity) + dp(activity, 20);
-            scrim.addView(toastView, toastLp);
+            scaffold.scrim.addView(toastView, toastLp);
 
-            // 1. Grab handle
-            View handle = new View(activity);
-            GradientDrawable handleBg = new GradientDrawable();
-            handleBg.setColor(light ? Color.argb(42, 15, 23, 42) : Color.argb(56, 255, 255, 255));
-            handleBg.setCornerRadius(dp(activity, 2));
-            handle.setBackground(handleBg);
-            LinearLayout.LayoutParams handleLp = new LinearLayout.LayoutParams(dp(activity, 36), dp(activity, 4));
-            handleLp.gravity = Gravity.CENTER_HORIZONTAL;
-            handleLp.topMargin = dp(activity, 10);
-            handleLp.bottomMargin = dp(activity, 10);
-            sheet.addView(handle, handleLp);
-
-            // 2. Top bar: [32dp spacer]  [Credits title]  [Close pill]
-            LinearLayout topBar = new LinearLayout(activity);
-            topBar.setOrientation(LinearLayout.HORIZONTAL);
-            topBar.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams topBarLp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            topBarLp.setMargins(dp(activity, 14), 0, dp(activity, 14), dp(activity, 10));
-            sheet.addView(topBar, topBarLp);
-
-            topBar.addView(new View(activity), new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
-
-            TextView sheetTitleTv = new TextView(activity);
-            sheetTitleTv.setText(Translator.get(Keys.CreditsTitle));
-            sheetTitleTv.setTextColor(p.textPrimary);
-            sheetTitleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f);
-            sheetTitleTv.setTypeface(mediumTf);
-            sheetTitleTv.setGravity(Gravity.CENTER);
-            sheetTitleTv.setSingleLine(true);
-            topBar.addView(sheetTitleTv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-            ImageView closeBtn = GlassDesign.createCloseCircleButton(activity, p, dialog::dismiss);
-            topBar.addView(closeBtn, new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
-
-            // 3. Scrollable content
-            ScrollView scroll = new ScrollView(activity);
-            scroll.setVerticalScrollBarEnabled(false);
-            scroll.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
-            sheet.addView(scroll, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-            LinearLayout content = new LinearLayout(activity);
-            content.setOrientation(LinearLayout.VERTICAL);
-            content.setPadding(dp(activity, 14), dp(activity, 2), dp(activity, 14), getNavBarHeight(activity) + dp(activity, 22));
-            scroll.addView(content, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
+            LinearLayout content = scaffold.content;
             JSONObject json = loadCreditsData();
             String appName = json.optString("name", "TeleVip Next");
             String tagline = resolveLocalized(json, "taglineKey", "tagline", Translator.get(Keys.CreditsTagline));
@@ -214,9 +259,14 @@ public final class CreditsSheet {
             content.addView(languageCard, langLp);
 
             // 3d. Data-driven Credits & Links sections + compact Contributors entry row
-            List<JSONObject> contributorGroups = collectContributorGroups(json.optJSONArray("contributors"));
+            List<JSONObject> specialThanks = collectSpecialThanks(json.optJSONArray("specialThanks"));
             JSONArray sections = json.optJSONArray("sections");
+            final FrameLayout contribSlot = new FrameLayout(activity);
+            LinearLayout.LayoutParams contribSlotLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            contribSlotLp.topMargin = dp(activity, 12);
             boolean insertedContributors = false;
+
             if (sections != null) {
                 for (int i = 0; i < sections.length(); i++) {
                     JSONObject sec = sections.optJSONObject(i);
@@ -227,39 +277,31 @@ public final class CreditsSheet {
                     lp.topMargin = dp(activity, 12);
                     content.addView(card, lp);
 
-                    if (i == 0 && !contributorGroups.isEmpty()) {
-                        View contribCard = buildContributorsEntryCard(
-                                activity, p, mediumTf, boldTf, contributorGroups, dialog, controller);
-                        LinearLayout.LayoutParams cLp = new LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                        cLp.topMargin = dp(activity, 12);
-                        content.addView(contribCard, cLp);
+                    if (i == 0) {
+                        content.addView(contribSlot, contribSlotLp);
                         insertedContributors = true;
                     }
                 }
             }
-            if (!insertedContributors && !contributorGroups.isEmpty()) {
-                View contribCard = buildContributorsEntryCard(
-                        activity, p, mediumTf, boldTf, contributorGroups, dialog, controller);
-                LinearLayout.LayoutParams cLp = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                cLp.topMargin = dp(activity, 12);
-                content.addView(contribCard, cLp);
+            if (!insertedContributors) {
+                content.addView(contribSlot, contribSlotLp);
             }
 
-            dialog.setContentView(scrim);
-            GlassDesign.configureEdgeToEdgeSheetDialog(dialog, light);
+            populateContributorsEntrySlot(
+                    contribSlot, activity, p, mediumTf, boldTf,
+                    ContributorsRepository.getCached(), specialThanks,
+                    ContributorsRepository.isLoading(), dialog, controller);
+            contribListenerHolder[0] = (contributors, loading) -> {
+                if (dialog.isShowing()) {
+                    populateContributorsEntrySlot(
+                            contribSlot, activity, p, mediumTf, boldTf,
+                            contributors, specialThanks, loading, dialog, controller);
+                }
+            };
+            ContributorsRepository.addListener(contribListenerHolder[0]);
+            ContributorsRepository.refreshIfNeeded();
 
-            sheet.setTranslationY(dp(activity, 44));
-            sheet.setAlpha(0f);
-            dialog.show();
-            GlassDesign.applySheetSystemBarAppearance(dialog, light);
-            sheet.animate()
-                    .translationY(0f)
-                    .alpha(1f)
-                    .setDuration(220)
-                    .setInterpolator(new DecelerateInterpolator(2.2f))
-                    .start();
+            scaffold.present(activity, light);
         } catch (Throwable t) {
             Logger.e(t);
         }
@@ -721,18 +763,32 @@ public final class CreditsSheet {
         }
     }
 
-    private static List<JSONObject> collectContributorGroups(JSONArray arr) {
+    private static List<JSONObject> collectSpecialThanks(JSONArray arr) {
         List<JSONObject> out = new ArrayList<>();
         if (arr == null) return out;
         for (int i = 0; i < arr.length(); i++) {
-            JSONObject group = arr.optJSONObject(i);
-            if (group == null) continue;
-            JSONArray items = group.optJSONArray("items");
-            if (items != null && items.length() > 0) {
-                out.add(group);
+            JSONObject item = arr.optJSONObject(i);
+            if (item != null) {
+                out.add(item);
             }
         }
         return out;
+    }
+
+    private static void populateContributorsEntrySlot(
+            FrameLayout slot,
+            Activity activity,
+            GlassDesign.Palette p,
+            Typeface mediumTf,
+            Typeface boldTf,
+            List<ContributorsRepository.Contributor> ghContributors,
+            List<JSONObject> specialThanks,
+            boolean loading,
+            Dialog parentDialog,
+            SettingsController controller) {
+        slot.removeAllViews();
+        slot.addView(buildContributorsEntryCard(
+                activity, p, mediumTf, boldTf, ghContributors, specialThanks, loading, parentDialog, controller));
     }
 
     private static View buildContributorsEntryCard(
@@ -740,7 +796,9 @@ public final class CreditsSheet {
             GlassDesign.Palette p,
             Typeface mediumTf,
             Typeface boldTf,
-            List<JSONObject> groups,
+            List<ContributorsRepository.Contributor> ghContributors,
+            List<JSONObject> specialThanks,
+            boolean loading,
             Dialog parentDialog,
             SettingsController controller) {
 
@@ -754,59 +812,58 @@ public final class CreditsSheet {
         card.setForeground(GlassDesign.createPillRippleOverlay(p.ripple, dp(activity, 22)));
         card.setClipToOutline(true);
 
-        List<JSONObject> previewItems = new ArrayList<>();
-        StringBuilder subtitleSb = new StringBuilder();
-        int totalCount = 0;
-        for (JSONObject group : groups) {
-            String gTitle = resolveSectionTitle(group);
-            if (!TextUtils.isEmpty(gTitle)) {
-                if (subtitleSb.length() > 0) subtitleSb.append(" · ");
-                subtitleSb.append(gTitle);
-            }
-            JSONArray items = group.optJSONArray("items");
-            if (items != null) {
-                totalCount += items.length();
-                for (int i = 0; i < items.length() && previewItems.size() < 4; i++) {
-                    JSONObject item = items.optJSONObject(i);
-                    if (item != null) previewItems.add(item);
-                }
-            }
+        // Overlapping monogram avatar stack (up to 4 avatars: GitHub contributors first, then Special Thanks)
+        List<String> avNames = new ArrayList<>(4);
+        List<String> avHandles = new ArrayList<>(4);
+        List<Integer> avColors = new ArrayList<>(4);
+        for (ContributorsRepository.Contributor c : ghContributors) {
+            if (avNames.size() >= 4) break;
+            avNames.add(c.login);
+            avHandles.add("");
+            avColors.add(resolveAvatarColor(null, c.login, p.accentBlue));
         }
-
-        // Overlapping monogram avatar stack (up to 4 avatars)
-        int shown = Math.min(4, previewItems.size());
-        int avSize = dp(activity, 26);
-        int step = dp(activity, 18);
-        int stackW = avSize + Math.max(0, shown - 1) * step;
-        FrameLayout avatarStack = new FrameLayout(activity);
-        int ringColor = (p.cardFillTop & 0x00FFFFFF) | 0xFF000000;
-        int strokePx = Math.max(1, dp(activity, 1.5f));
-        for (int i = 0; i < shown; i++) {
-            JSONObject item = previewItems.get(i);
+        for (JSONObject item : specialThanks) {
+            if (avNames.size() >= 4) break;
             String name = resolveLocalized(item, "nameKey", "name", "");
             String handle = item.optString("handle", "");
-            int bg = resolveAvatarColor(item, name, p.accentBlue);
-
-            TextView av = new TextView(activity);
-            av.setText(extractInitial(name, handle));
-            av.setTextColor(Color.WHITE);
-            av.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-            av.setTypeface(boldTf);
-            av.setGravity(Gravity.CENTER);
-            GradientDrawable circle = new GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    new int[]{bg, darken(bg, 0.82f)}
-            );
-            circle.setShape(GradientDrawable.OVAL);
-            circle.setStroke(strokePx, ringColor);
-            av.setBackground(circle);
-
-            FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(avSize, avSize);
-            int visualIdx = rtl ? (shown - 1 - i) : i;
-            flp.leftMargin = visualIdx * step;
-            avatarStack.addView(av, flp);
+            avNames.add(name);
+            avHandles.add(handle);
+            avColors.add(resolveAvatarColor(item, name, p.accentBlue));
         }
-        LinearLayout.LayoutParams stackLp = new LinearLayout.LayoutParams(stackW, avSize);
+
+        int shown = avNames.size();
+        FrameLayout avatarStack = null;
+        LinearLayout.LayoutParams stackLp = null;
+        if (shown > 0) {
+            int avSize = dp(activity, 26);
+            int step = dp(activity, 18);
+            int stackW = avSize + (shown - 1) * step;
+            avatarStack = new FrameLayout(activity);
+            int ringColor = (p.cardFillTop & 0x00FFFFFF) | 0xFF000000;
+            int strokePx = Math.max(1, dp(activity, 1.5f));
+            for (int i = 0; i < shown; i++) {
+                int bg = avColors.get(i);
+                TextView av = new TextView(activity);
+                av.setText(extractInitial(avNames.get(i), avHandles.get(i)));
+                av.setTextColor(Color.WHITE);
+                av.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+                av.setTypeface(boldTf);
+                av.setGravity(Gravity.CENTER);
+                GradientDrawable circle = new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{bg, darken(bg, 0.82f)}
+                );
+                circle.setShape(GradientDrawable.OVAL);
+                circle.setStroke(strokePx, ringColor);
+                av.setBackground(circle);
+
+                FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(avSize, avSize);
+                int visualIdx = rtl ? (shown - 1 - i) : i;
+                flp.leftMargin = visualIdx * step;
+                avatarStack.addView(av, flp);
+            }
+            stackLp = new LinearLayout.LayoutParams(stackW, avSize);
+        }
 
         LinearLayout textCol = new LinearLayout(activity);
         textCol.setOrientation(LinearLayout.VERTICAL);
@@ -821,23 +878,25 @@ public final class CreditsSheet {
         titleTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
         textCol.addView(titleTv);
 
-        if (subtitleSb.length() > 0) {
-            TextView subTv = new TextView(activity);
-            subTv.setText(subtitleSb.toString());
-            subTv.setTextColor(p.textSecondary);
-            subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-            subTv.setMaxLines(1);
-            subTv.setEllipsize(TextUtils.TruncateAt.END);
-            subTv.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
-            subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
-            LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            subLp.topMargin = dp(activity, 2);
-            textCol.addView(subTv, subLp);
-        }
+        String subtitle = !specialThanks.isEmpty()
+                ? (Translator.get(Keys.CreditsContributors) + " · " + Translator.get(Keys.CreditsSpecialThanks))
+                : "GitHub";
+        TextView subTv = new TextView(activity);
+        subTv.setText(subtitle);
+        subTv.setTextColor(p.textSecondary);
+        subTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        subTv.setMaxLines(1);
+        subTv.setEllipsize(TextUtils.TruncateAt.END);
+        subTv.setGravity(rtl ? Gravity.RIGHT : Gravity.LEFT);
+        subTv.setTextAlignment(View.TEXT_ALIGNMENT_GRAVITY);
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = dp(activity, 2);
+        textCol.addView(subTv, subLp);
 
+        int totalCount = ghContributors.size() + specialThanks.size();
         TextView countPill = new TextView(activity);
-        countPill.setText(String.valueOf(totalCount));
+        countPill.setText((ghContributors.isEmpty() && loading) ? "..." : String.valueOf(totalCount));
         countPill.setTextColor(p.accentBlue);
         countPill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         countPill.setTypeface(mediumTf);
@@ -870,262 +929,39 @@ public final class CreditsSheet {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         if (rtl) {
             endLp.rightMargin = dp(activity, 10);
-            stackLp.leftMargin = dp(activity, 12);
             card.addView(endGroup, endLp);
             card.addView(textCol, textLp);
-            card.addView(avatarStack, stackLp);
+            if (avatarStack != null) {
+                stackLp.leftMargin = dp(activity, 12);
+                card.addView(avatarStack, stackLp);
+            }
         } else {
-            stackLp.rightMargin = dp(activity, 12);
+            if (avatarStack != null) {
+                stackLp.rightMargin = dp(activity, 12);
+                card.addView(avatarStack, stackLp);
+            }
             textLp.rightMargin = dp(activity, 10);
-            card.addView(avatarStack, stackLp);
             card.addView(textCol, textLp);
             card.addView(endGroup, endLp);
         }
 
-        card.setOnClickListener(v -> showContributorsSheet(
-                activity, p, mediumTf, boldTf, groups, parentDialog, controller));
+        card.setOnClickListener(v -> ContributorsSheet.show(
+                activity, p, mediumTf, boldTf, specialThanks, parentDialog, controller));
+        GlassDesign.attachPressScale(card);
         return card;
     }
 
-    private static void showContributorsSheet(
+    static LinearLayout createSectionHeaderRow(
             Activity activity,
             GlassDesign.Palette p,
             Typeface mediumTf,
-            Typeface boldTf,
-            List<JSONObject> groups,
-            Dialog parentDialog,
-            SettingsController controller) {
-        try {
-            Dialog subDialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
-            subDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-            FrameLayout scrim = new FrameLayout(activity);
-            scrim.setLayoutDirection(Translator.isRtl() ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-            scrim.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            scrim.setOnClickListener(v -> subDialog.dismiss());
-
-            int screenH = activity.getResources().getDisplayMetrics().heightPixels;
-            int maxSheetH = Math.min((int) (screenH * 0.84f), dp(activity, 680));
-            float topRadius = dp(activity, 28);
-
-            LinearLayout sheet = new LinearLayout(activity) {
-                @Override
-                protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-                    int mode = MeasureSpec.getMode(heightMeasureSpec);
-                    int size = MeasureSpec.getSize(heightMeasureSpec);
-                    int capped = (mode == MeasureSpec.UNSPECIFIED) ? maxSheetH : Math.min(size, maxSheetH);
-                    super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(capped, MeasureSpec.AT_MOST));
-                }
-            };
-            sheet.setOrientation(LinearLayout.VERTICAL);
-            sheet.setClickable(true);
-            sheet.setBackground(GlassDesign.createAuroraBackground(p));
-            sheet.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight() + Math.round(topRadius), topRadius);
-                }
-            });
-            sheet.setClipToOutline(true);
-            scrim.addView(sheet, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
-
-            View handle = new View(activity);
-            GradientDrawable handleBg = new GradientDrawable();
-            handleBg.setColor(p.light ? Color.argb(42, 15, 23, 42) : Color.argb(56, 255, 255, 255));
-            handleBg.setCornerRadius(dp(activity, 2));
-            handle.setBackground(handleBg);
-            LinearLayout.LayoutParams handleLp = new LinearLayout.LayoutParams(dp(activity, 36), dp(activity, 4));
-            handleLp.gravity = Gravity.CENTER_HORIZONTAL;
-            handleLp.topMargin = dp(activity, 10);
-            handleLp.bottomMargin = dp(activity, 10);
-            sheet.addView(handle, handleLp);
-
-            LinearLayout topBar = new LinearLayout(activity);
-            topBar.setOrientation(LinearLayout.HORIZONTAL);
-            topBar.setGravity(Gravity.CENTER_VERTICAL);
-            LinearLayout.LayoutParams topBarLp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            topBarLp.setMargins(dp(activity, 14), 0, dp(activity, 14), dp(activity, 10));
-            sheet.addView(topBar, topBarLp);
-
-            topBar.addView(new View(activity), new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
-
-            TextView titleTv = new TextView(activity);
-            titleTv.setText(Translator.get(Keys.CreditsContributors));
-            titleTv.setTextColor(p.textPrimary);
-            titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f);
-            titleTv.setTypeface(mediumTf);
-            titleTv.setGravity(Gravity.CENTER);
-            titleTv.setSingleLine(true);
-            topBar.addView(titleTv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-            ImageView closeBtn = GlassDesign.createCloseCircleButton(activity, p, subDialog::dismiss);
-            topBar.addView(closeBtn, new LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)));
-
-            ScrollView scroll = new ScrollView(activity);
-            scroll.setVerticalScrollBarEnabled(false);
-            scroll.setOverScrollMode(View.OVER_SCROLL_ALWAYS);
-            sheet.addView(scroll, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-            LinearLayout content = new LinearLayout(activity);
-            content.setOrientation(LinearLayout.VERTICAL);
-            content.setPadding(dp(activity, 14), dp(activity, 2), dp(activity, 14), getNavBarHeight(activity) + dp(activity, 22));
-            scroll.addView(content, new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            int totalCount = 0;
-            for (JSONObject group : groups) {
-                JSONArray items = group.optJSONArray("items");
-                if (items != null) totalCount += items.length();
-            }
-
-            final LinearLayout cardsContainer = new LinearLayout(activity);
-            cardsContainer.setOrientation(LinearLayout.VERTICAL);
-            final int[] activeFilter = {-1};
-
-            final Runnable renderGroups = () -> {
-                cardsContainer.removeAllViews();
-                boolean first = true;
-                for (int i = 0; i < groups.size(); i++) {
-                    if (activeFilter[0] != -1 && activeFilter[0] != i) continue;
-                    View card = buildSectionCard(
-                            activity, p, mediumTf, boldTf, groups.get(i), subDialog, parentDialog, controller);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                    if (!first) lp.topMargin = dp(activity, 12);
-                    first = false;
-                    cardsContainer.addView(card, lp);
-                }
-            };
-
-            if (groups.size() >= 2 && totalCount >= 6) {
-                HorizontalScrollView filterScroll = new HorizontalScrollView(activity);
-                filterScroll.setHorizontalScrollBarEnabled(false);
-                LinearLayout filterRow = new LinearLayout(activity);
-                filterRow.setOrientation(LinearLayout.HORIZONTAL);
-
-                final List<TextView> chips = new ArrayList<>();
-                final int count = groups.size() + 1;
-                for (int i = 0; i < count; i++) {
-                    final int target = i - 1;
-                    TextView chip = new TextView(activity);
-                    chip.setText(target == -1 ? String.valueOf(totalCount) : resolveSectionTitle(groups.get(target)));
-                    chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-                    chip.setTypeface(mediumTf);
-                    chip.setSingleLine(true);
-                    chip.setPadding(dp(activity, 12), dp(activity, 6), dp(activity, 12), dp(activity, 6));
-                    LinearLayout.LayoutParams chipLp = new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                    if (i > 0) chipLp.setMarginStart(dp(activity, 8));
-                    filterRow.addView(chip, chipLp);
-                    chips.add(chip);
-                }
-
-                final Runnable updateChips = () -> {
-                    for (int i = 0; i < chips.size(); i++) {
-                        boolean selected = (i - 1) == activeFilter[0];
-                        TextView chip = chips.get(i);
-                        chip.setTextColor(selected ? p.accentBlue : p.textSecondary);
-                        GradientDrawable bg = new GradientDrawable();
-                        bg.setCornerRadius(dp(activity, 14));
-                        bg.setColor(selected ? p.accentSoft : p.divider);
-                        chip.setBackground(bg);
-                    }
-                };
-                for (int i = 0; i < chips.size(); i++) {
-                    final int target = i - 1;
-                    chips.get(i).setOnClickListener(v -> {
-                        activeFilter[0] = target;
-                        updateChips.run();
-                        renderGroups.run();
-                    });
-                }
-                updateChips.run();
-                filterScroll.addView(filterRow);
-                LinearLayout.LayoutParams fsLp = new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                fsLp.bottomMargin = dp(activity, 12);
-                content.addView(filterScroll, fsLp);
-            }
-
-            renderGroups.run();
-            content.addView(cardsContainer, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            subDialog.setContentView(scrim);
-            GlassDesign.configureEdgeToEdgeSheetDialog(subDialog, p.light);
-
-            sheet.setTranslationY(dp(activity, 44));
-            sheet.setAlpha(0f);
-            subDialog.show();
-            GlassDesign.applySheetSystemBarAppearance(subDialog, p.light);
-            sheet.animate()
-                    .translationY(0f)
-                    .alpha(1f)
-                    .setDuration(220)
-                    .setInterpolator(new DecelerateInterpolator(2.2f))
-                    .start();
-        } catch (Throwable t) {
-            Logger.e(t);
-        }
-    }
-
-    private static String resolveSectionTitle(JSONObject sec) {
-        String title = resolveLocalized(sec, "titleKey", "title", "");
-        if (!TextUtils.isEmpty(title)) return title;
-        String type = sec.optString("type", "");
-        if ("contributors".equalsIgnoreCase(type)) {
-            return Translator.getOrDefault(Keys.CreditsContributors, "Contributors");
-        }
-        if ("special".equalsIgnoreCase(type)) {
-            return Translator.getOrDefault(Keys.CreditsSpecialThanks, "Special Thanks");
-        }
-        return "";
-    }
-
-    private static String resolveSectionIcon(JSONObject sec) {
-        String icon = sec.optString("icon", "");
-        if (!TextUtils.isEmpty(icon)) return icon;
-        String type = sec.optString("type", "");
-        if ("contributors".equalsIgnoreCase(type)) return "code";
-        return "sparkles";
-    }
-
-    private static String resolveSectionBadgeColor(JSONObject sec) {
-        String hex = sec.optString("badgeColor", "");
-        if (!TextUtils.isEmpty(hex)) return hex;
-        String type = sec.optString("type", "");
-        if ("contributors".equalsIgnoreCase(type)) return "#2A85FF";
-        if ("special".equalsIgnoreCase(type)) return "#FF9F0A";
-        return "";
-    }
-
-    private static LinearLayout buildSectionCard(
-            Activity activity,
-            GlassDesign.Palette p,
-            Typeface mediumTf,
-            Typeface boldTf,
-            JSONObject sec,
-            Dialog dialog,
-            Dialog parentDialog,
-            SettingsController controller) {
-
-        LinearLayout card = new LinearLayout(activity);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(GlassDesign.createGlassCardDrawable(p, dp(activity, 22)));
-        card.setClipToOutline(true);
-
-        String title = resolveSectionTitle(sec);
-        int badgeColor = parseColorSafe(resolveSectionBadgeColor(sec), p.accentBlue);
-        int iconType = resolveIconType(resolveSectionIcon(sec));
-
+            String title,
+            int badgeColor,
+            int iconType) {
         final boolean rtl = Translator.isRtl();
-        // Compact header row
         LinearLayout headerRow = new LinearLayout(activity);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
         headerRow.setGravity((rtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         headerRow.setPadding(dp(activity, 16), dp(activity, 12), dp(activity, 16), dp(activity, 10));
 
@@ -1149,7 +985,28 @@ public final class CreditsSheet {
             headerRow.addView(badge, badgeLp);
             headerRow.addView(headerTv);
         }
-        card.addView(headerRow);
+        return headerRow;
+    }
+
+    private static LinearLayout buildSectionCard(
+            Activity activity,
+            GlassDesign.Palette p,
+            Typeface mediumTf,
+            Typeface boldTf,
+            JSONObject sec,
+            Dialog dialog,
+            Dialog parentDialog,
+            SettingsController controller) {
+
+        LinearLayout card = new LinearLayout(activity);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(GlassDesign.createGlassCardDrawable(p, dp(activity, 22)));
+        card.setClipToOutline(true);
+
+        String title = resolveLocalized(sec, "titleKey", "title", "");
+        int badgeColor = parseColorSafe(sec.optString("badgeColor", ""), p.accentBlue);
+        int iconType = resolveIconType(sec.optString("icon", ""));
+        card.addView(createSectionHeaderRow(activity, p, mediumTf, title, badgeColor, iconType));
 
         JSONArray items = sec.optJSONArray("items");
         if (items != null) {
@@ -1163,7 +1020,7 @@ public final class CreditsSheet {
         return card;
     }
 
-    private static View buildItemRow(
+    static View buildItemRow(
             Activity activity,
             GlassDesign.Palette p,
             Typeface mediumTf,
@@ -1175,7 +1032,7 @@ public final class CreditsSheet {
 
         String name = resolveLocalized(item, "nameKey", "name", "");
         String handle = item.optString("handle", "");
-        String role = resolveItemRole(item);
+        String role = resolveLocalized(item, "roleKey", "role", "");
         String url = item.optString("url", "");
         String iconName = item.optString("icon", "");
         int avatarBg = resolveAvatarColor(item, name, p.accentBlue);
@@ -1305,7 +1162,7 @@ public final class CreditsSheet {
         return row;
     }
 
-    private static void openUrl(Activity activity, String url, Dialog dialog, Dialog parentDialog, SettingsController controller) {
+    static void openUrl(Activity activity, String url, Dialog dialog, Dialog parentDialog, SettingsController controller) {
         try {
             if (dialog != null) dialog.dismiss();
             if (parentDialog != null) parentDialog.dismiss();
@@ -1326,7 +1183,7 @@ public final class CreditsSheet {
         }
     }
 
-    private static View createDivider(Context ctx, GlassDesign.Palette p) {
+    static View createDivider(Context ctx, GlassDesign.Palette p) {
         View div = new View(ctx);
         div.setBackgroundColor(p.divider);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -1342,43 +1199,25 @@ public final class CreditsSheet {
         if (obj != null) return obj;
         try {
             return new JSONObject(
-                    "{\"name\":\"TeleVip Next\",\"taglineKey\":\"CreditsTagline\",\"sections\":[{\"titleKey\":\"CreditsAuthors\",\"icon\":\"sparkles\",\"badgeColor\":\"#8B6BFF\",\"items\":[{\"name\":\"doandat943\",\"handle\":\"@doandat943\",\"roleKey\":\"CreditsMaintainerRole\",\"avatarBg\":\"#2A85FF\",\"url\":\"https://github.com/doandat943\"},{\"name\":\"Mustafa\",\"handle\":\"@mustafa1dev\",\"roleKey\":\"CreditsOriginalAuthorRole\",\"avatarBg\":\"#FF7A45\",\"url\":\"https://github.com/mustafa1dev\"}]},{\"titleKey\":\"CreditsLinks\",\"icon\":\"telegram\",\"badgeColor\":\"#28A8EA\",\"items\":[{\"nameKey\":\"DeveloperChannel\",\"handle\":\"@televipnext\",\"roleKey\":\"CreditsChannelRole\",\"icon\":\"telegram\",\"avatarBg\":\"#28A8EA\",\"url\":\"https://t.me/televipnext\"},{\"nameKey\":\"CreditsSourceCode\",\"handle\":\"GitHub\",\"roleKey\":\"CreditsSourceCodeRole\",\"icon\":\"code\",\"avatarBg\":\"#34C759\",\"url\":\"https://github.com/doandat943/TeleVip-Next-LSPosed\"}]}],\"contributors\":[{\"type\":\"contributors\",\"items\":[{\"name\":\"ronaldiputra09\",\"handle\":\"@ronaldiputra09\",\"lang\":\"id\",\"avatarBg\":\"#34C759\",\"url\":\"https://github.com/ronaldiputra09\"}]},{\"type\":\"special\",\"items\":[{\"name\":\"Soheyl | \u0633\u0647\u06cc\u0644\",\"handle\":\"@qlHlb\",\"roleKey\":\"CreditsMember\",\"avatarBg\":\"#AF52DE\",\"url\":\"https://t.me/qlHlb\"}]}]}");
+                    "{\"name\":\"TeleVip Next\",\"taglineKey\":\"CreditsTagline\",\"sections\":[{\"titleKey\":\"CreditsAuthors\",\"icon\":\"sparkles\",\"badgeColor\":\"#8B6BFF\",\"items\":[{\"name\":\"doandat943\",\"handle\":\"@doandat943\",\"roleKey\":\"CreditsMaintainerRole\",\"avatarBg\":\"#2A85FF\",\"url\":\"https://github.com/doandat943\"},{\"name\":\"Mustafa\",\"handle\":\"@mustafa1dev\",\"roleKey\":\"CreditsOriginalAuthorRole\",\"avatarBg\":\"#FF7A45\",\"url\":\"https://github.com/mustafa1dev\"}]},{\"titleKey\":\"CreditsLinks\",\"icon\":\"telegram\",\"badgeColor\":\"#28A8EA\",\"items\":[{\"nameKey\":\"DeveloperChannel\",\"handle\":\"@televipnext\",\"roleKey\":\"CreditsChannelRole\",\"icon\":\"telegram\",\"avatarBg\":\"#28A8EA\",\"url\":\"https://t.me/televipnext\"},{\"nameKey\":\"CreditsSourceCode\",\"handle\":\"GitHub\",\"roleKey\":\"CreditsSourceCodeRole\",\"icon\":\"code\",\"avatarBg\":\"#34C759\",\"url\":\"https://github.com/doandat943/TeleVip-Next-LSPosed\"}]}],\"specialThanks\":[{\"name\":\"Soheyl | \u0633\u0647\u06cc\u0644\",\"handle\":\"@qlHlb\",\"roleKey\":\"CreditsMember\",\"avatarBg\":\"#AF52DE\",\"url\":\"https://t.me/qlHlb\"}]}");
         } catch (Throwable ignored) {
             return new JSONObject();
         }
     }
 
-    private static String resolveItemRole(JSONObject item) {
-        String baseRole = resolveLocalized(item, "roleKey", "role", "");
-        StringBuilder langSb = new StringBuilder();
-        String singleLang = item.optString("lang", "");
-        if (!TextUtils.isEmpty(singleLang)) {
-            langSb.append(Translator.getLanguageDisplayName(singleLang));
+    static int resolveAutoAvatarColor(String name, int fallback) {
+        if (!TextUtils.isEmpty(name)) {
+            return AUTO_AVATAR_COLORS[(name.hashCode() & 0x7FFFFFFF) % AUTO_AVATAR_COLORS.length];
         }
-        JSONArray langs = item.optJSONArray("langs");
-        if (langs != null) {
-            for (int i = 0; i < langs.length(); i++) {
-                String code = langs.optString(i, "");
-                if (TextUtils.isEmpty(code)) continue;
-                if (langSb.length() > 0) langSb.append(" · ");
-                langSb.append(Translator.getLanguageDisplayName(code));
-            }
-        }
-        if (!TextUtils.isEmpty(baseRole) && langSb.length() > 0) {
-            return baseRole + " · " + langSb;
-        }
-        return !TextUtils.isEmpty(baseRole) ? baseRole : langSb.toString();
+        return fallback;
     }
 
     private static int resolveAvatarColor(JSONObject item, String name, int fallback) {
-        String hex = item.optString("avatarBg", "");
+        String hex = item != null ? item.optString("avatarBg", "") : "";
         if (!TextUtils.isEmpty(hex)) {
             return parseColorSafe(hex, fallback);
         }
-        if (!TextUtils.isEmpty(name)) {
-            return AUTO_AVATAR_COLORS[Math.abs(name.hashCode()) % AUTO_AVATAR_COLORS.length];
-        }
-        return fallback;
+        return resolveAutoAvatarColor(name, fallback);
     }
 
     private static String resolveLocalized(JSONObject obj, String keyField, String literalField, String fallback) {
@@ -1432,14 +1271,14 @@ public final class CreditsSheet {
         return GlassDesign.ICON_SPARKLES;
     }
 
-    private static int parseColorSafe(String hex, int fallback) {
+    static int parseColorSafe(String hex, int fallback) {
         try {
             if (!TextUtils.isEmpty(hex)) return Color.parseColor(hex);
         } catch (Throwable ignored) {}
         return fallback;
     }
 
-    private static int darken(int color, float factor) {
+    static int darken(int color, float factor) {
         return Color.rgb(
                 Math.max(0, Math.round(Color.red(color) * factor)),
                 Math.max(0, Math.round(Color.green(color) * factor)),
@@ -1447,7 +1286,7 @@ public final class CreditsSheet {
         );
     }
 
-    private static String extractInitial(String name, String handle) {
+    static String extractInitial(String name, String handle) {
         String src = !TextUtils.isEmpty(name) ? name : handle;
         if (!TextUtils.isEmpty(src)) {
             for (int i = 0; i < src.length(); i++) {
@@ -1475,7 +1314,7 @@ public final class CreditsSheet {
         return id > 0 ? ctx.getResources().getDimensionPixelSize(id) : 0;
     }
 
-    private static int dp(Context ctx, float v) {
+    static int dp(Context ctx, float v) {
         return Math.round(v * ctx.getResources().getDisplayMetrics().density);
     }
 }

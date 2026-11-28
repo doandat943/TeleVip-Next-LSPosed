@@ -47,30 +47,13 @@
       ]
     }
   ],
-  "contributors": [
+  "specialThanks": [
     {
-      "type": "contributors",
-      "items": [
-        {
-          "name": "ronaldiputra09",
-          "handle": "@ronaldiputra09",
-          "lang": "id",
-          "avatarBg": "#34C759",
-          "url": "https://github.com/ronaldiputra09"
-        }
-      ]
-    },
-    {
-      "type": "special",
-      "items": [
-        {
-          "name": "Soheyl | سهیل",
-          "handle": "@qlHlb",
-          "roleKey": "CreditsMember",
-          "avatarBg": "#AF52DE",
-          "url": "https://t.me/qlHlb"
-        }
-      ]
+      "name": "Soheyl | سهیل",
+      "handle": "@qlHlb",
+      "roleKey": "CreditsMember",
+      "avatarBg": "#AF52DE",
+      "url": "https://t.me/qlHlb"
     }
   ]
 }
