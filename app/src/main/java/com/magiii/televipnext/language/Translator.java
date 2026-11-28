@@ -19,8 +19,8 @@ public class Translator {
     public static final String[] SUPPORTED_LANGS = {
             LANG_AUTO, "en",
             "ar", "az", "bg", "bn", "cs", "de", "el", "es",
-            "fa", "fi", "fil", "fr", "he", "hi", "id", "vi",
-            "zh"
+            "fa", "fi", "fil", "fr", "he", "hi", "hu", "id",
+            "vi", "zh"
     };
 
     private static final Map<String, JSONObject> langMap = new HashMap<>();
@@ -118,6 +118,8 @@ public class Translator {
                 return "\u05e2\u05d1\u05e8\u05d9\u05ea";
             case "hi":
                 return "\u0939\u093f\u0928\u094d\u0926\u0940";
+            case "hu":
+                return "Magyar";
             case "id":
                 return "Bahasa Indonesia";
             case "vi":
