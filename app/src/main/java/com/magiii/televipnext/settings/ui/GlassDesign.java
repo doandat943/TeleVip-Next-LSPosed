@@ -23,6 +23,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -488,13 +489,20 @@ public final class GlassDesign {
 
             labels = new TextView[titles.length];
             Typeface medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+            int labelHPad = Math.round(6f * density);
+            float scaledDensity = ctx.getResources().getDisplayMetrics().scaledDensity;
+            int minTextPx = Math.max(1, Math.round(9.5f * scaledDensity));
+            int maxTextPx = Math.max(minTextPx + 1, Math.round(13.5f * scaledDensity));
             for (int i = 0; i < titles.length; i++) {
                 final int idx = i;
                 TextView tv = new TextView(ctx);
                 tv.setText(titles[i]);
                 tv.setGravity(Gravity.CENTER);
-                tv.setSingleLine(true);
-                tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+                tv.setPadding(labelHPad, 0, labelHPad, 0);
+                tv.setMaxLines(1);
+                tv.setEllipsize(TextUtils.TruncateAt.END);
+                tv.setAutoSizeTextTypeUniformWithConfiguration(
+                        minTextPx, maxTextPx, 1, TypedValue.COMPLEX_UNIT_PX);
                 tv.setTypeface(medium);
                 tv.setTextColor(i == selectedIndex ? palette.textPrimary : palette.textSecondary);
                 tv.setOnClickListener(v -> {

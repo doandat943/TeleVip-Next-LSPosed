@@ -16,7 +16,7 @@ import java.util.Map;
 public class Translator {
 
     public static final String LANG_AUTO = "auto";
-    public static final String[] SUPPORTED_LANGS = {LANG_AUTO, "en", "fa", "vi", "ar", "es", "zh"};
+    public static final String[] SUPPORTED_LANGS = {LANG_AUTO, "en", "ar", "es", "fa", "vi", "zh"};
 
     private static final Map<String, JSONObject> langMap = new HashMap<>();
 
@@ -46,9 +46,16 @@ public class Translator {
         }
     }
 
-    private static String normalizeLangCode(String langCode) {
+    static String normalizeLangCode(String langCode) {
         if (langCode != null) {
             String lower = langCode.toLowerCase(Locale.ROOT);
+            if ("in".equals(lower)) {
+                lower = "id";
+            } else if ("iw".equals(lower)) {
+                lower = "he";
+            } else if ("tl".equals(lower)) {
+                lower = "fil";
+            }
             for (String supported : SUPPORTED_LANGS) {
                 if (supported.equals(lower)) {
                     return supported;
@@ -78,14 +85,14 @@ public class Translator {
         switch (normalized) {
             case "en":
                 return "English";
-            case "fa":
-                return "\u0641\u0627\u0631\u0633\u06cc";
-            case "vi":
-                return "Ti\u1ebfng Vi\u1ec7t";
             case "ar":
                 return "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
             case "es":
                 return "Espa\u00f1ol";
+            case "fa":
+                return "\u0641\u0627\u0631\u0633\u06cc";
+            case "vi":
+                return "Ti\u1ebfng Vi\u1ec7t";
             case "zh":
                 return "\u4e2d\u6587";
             default:
@@ -103,9 +110,12 @@ public class Translator {
         return getLanguageDisplayName(normalized);
     }
 
+    static boolean isRtlLang(String lang) {
+        return "fa".equals(lang) || "ar".equals(lang) || "he".equals(lang) || "ur".equals(lang);
+    }
+
     public static boolean isRtl() {
-        String lang = getCurrentLangCode();
-        return "fa".equals(lang) || "ar".equals(lang);
+        return isRtlLang(getCurrentLangCode());
     }
 
     private static String getCurrentLangCode() {
@@ -119,7 +129,8 @@ public class Translator {
                 locale = Locale.getDefault();
             }
             if (locale != null) {
-                return locale.getLanguage().toLowerCase(Locale.ROOT);
+                String language = normalizeLangCode(locale.getLanguage());
+                return LANG_AUTO.equals(language) ? "en" : language;
             }
         } catch (Throwable ignored) {}
         return "en";

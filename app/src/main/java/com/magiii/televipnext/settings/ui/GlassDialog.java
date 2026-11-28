@@ -110,12 +110,13 @@ public final class GlassDialog {
 
             // Scrollable options list
             ScrollView scroll = new ScrollView(activity);
-            scroll.setVerticalScrollBarEnabled(false);
+            scroll.setVerticalScrollBarEnabled(options.length > 8);
             scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
             LinearLayout list = new LinearLayout(activity);
             list.setOrientation(LinearLayout.VERTICAL);
 
+            View selectedRow = null;
             for (int i = 0; i < options.length; i++) {
                 if (i > 0) {
                     list.addView(createDivider(activity, p, dp(activity, 16)));
@@ -156,6 +157,7 @@ public final class GlassDialog {
                         row.addView(optTv, optLp);
                         row.addView(checkIv, checkLp);
                     }
+                    selectedRow = row;
                 } else {
                     row.addView(optTv, optLp);
                 }
@@ -173,6 +175,15 @@ public final class GlassDialog {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             card.addView(scroll, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+            if (selectedRow != null && options.length > 8) {
+                final View targetRow = selectedRow;
+                scroll.post(() -> {
+                    int scH = scroll.getHeight();
+                    if (scH > 0) {
+                        scroll.scrollTo(0, Math.max(0, targetRow.getTop() - scH / 3));
+                    }
+                });
+            }
 
             card.addView(createDivider(activity, p, 0));
 
